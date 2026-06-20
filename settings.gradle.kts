@@ -27,4 +27,5 @@ include(
     "kronikol4j-assertj",
     "kronikol4j-opentelemetry",
     "kronikol4j-spring",
+    "kronikol4j-grpc",
 )
