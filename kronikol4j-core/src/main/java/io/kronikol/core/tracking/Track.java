@@ -3,7 +3,9 @@ package io.kronikol.core.tracking;
 import io.kronikol.core.context.TestInfo;
 import io.kronikol.core.context.TestInfoResolver;
 import io.kronikol.core.context.TestPhaseContext;
+import io.kronikol.core.support.SourceExpression;
 import java.net.URI;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -29,6 +31,21 @@ public final class Track {
      */
     public static void record(String description, boolean passed, String failureMessage) {
         logAssertion(description, passed, failureMessage);
+    }
+
+    /**
+     * Runs {@code assertion}, recording it with an expression description <strong>auto-captured</strong>
+     * from the call-site source (Tier 2, plan §3.9) — no explicit description needed:
+     * <pre>{@code Track.that(() -> assertThat(order.status()).isEqualTo(CONFIRMED));}</pre>
+     */
+    public static void that(Runnable assertion) {
+        String line = SourceExpression.forCallerOutside(
+            Set.of(Track.class.getName(), SourceExpression.class.getName()));
+        String description = SourceExpression.extractLambdaBody(line);
+        if (description == null || description.isBlank()) {
+            description = "assertion";
+        }
+        that(description, assertion);
     }
 
     /** Runs {@code assertion}, recording its pass/fail outcome (and message on failure) as a note. */
