@@ -16,4 +16,6 @@ include(
     "kronikol4j-runtime",
     "kronikol4j-junit5",
     "kronikol4j-proxy",
+    "kronikol4j-http",
+    "kronikol4j-jdbc",
 )
