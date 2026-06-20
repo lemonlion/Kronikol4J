@@ -28,4 +28,5 @@ include(
     "kronikol4j-opentelemetry",
     "kronikol4j-spring",
     "kronikol4j-grpc",
+    "kronikol4j-spring-boot-starter",
 )
