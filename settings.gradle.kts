@@ -33,4 +33,5 @@ include(
     "kronikol4j-aws",
     "kronikol4j-azure",
     "kronikol4j-gcp",
+    "kronikol4j-gradle-plugin",
 )
