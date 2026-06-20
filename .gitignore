@@ -21,3 +21,7 @@ build-logic/build/
 # OS
 .DS_Store
 Thumbs.db
+
+# .NET capture harness build output
+parity-harness/**/bin/
+parity-harness/**/obj/

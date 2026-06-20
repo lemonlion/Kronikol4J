@@ -54,9 +54,9 @@ class ProxyTrackingEndToEndTest {
         assertThat(diagrams).hasSize(1);
         String uml = diagrams.get(0).diagrams().get(0);
         assertThat(uml)
-            .contains("\"OrderService\" as OrderService")
-            .contains("Test -> OrderService : checkout /OrderService/checkout")
-            .contains("OrderService --> Test : OK");
+            .contains("participant \"OrderService\" as orderService")
+            .contains("test -> orderService: checkout: /OrderService/checkout")
+            .contains("orderService --> test: OK");
     }
 
     @Test

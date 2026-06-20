@@ -35,7 +35,7 @@ class MessageTrackingTest {
 
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml)
-            .contains("queue \"Kafka\" as Kafka")
-            .contains("Test -> Kafka : PUBLISH /");
+            .contains("queue \"Kafka\" as kafka")
+            .contains("test -> kafka: PUBLISH: /");
     }
 }

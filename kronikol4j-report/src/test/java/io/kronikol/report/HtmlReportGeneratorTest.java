@@ -69,7 +69,7 @@ class HtmlReportGeneratorTest {
             .contains("badge passed")
             .contains("class=\"plantuml-browser\" id=\"puml-0\"")
             .contains("window.kronikolDiagrams[\"puml-0\"] = \"")        // diagram data map
-            .contains("Test -&gt; OrderService : POST /checkout")        // raw PlantUML, HTML-escaped
+            .contains("test -&gt; orderService: POST: /checkout")        // raw PlantUML, HTML-escaped
             .endsWith("</html>\n");
     }
 

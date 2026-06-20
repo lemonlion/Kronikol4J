@@ -47,8 +47,8 @@ class SqlTrackingTest {
 
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml)
-            .contains("database \"OrderDb\" as OrderDb")   // SQL category -> database shape
-            .contains("Test -> OrderDb : SELECT /")
-            .contains("OrderDb --> Test : OK");
+            .contains("database \"OrderDb\" as orderDb")   // SQL category -> database shape
+            .contains("test -> orderDb: SELECT: /")
+            .contains("orderDb --> test: OK");
     }
 }

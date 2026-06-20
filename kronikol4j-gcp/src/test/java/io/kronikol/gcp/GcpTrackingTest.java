@@ -26,8 +26,8 @@ class GcpTrackingTest {
         GcpTracking.bigQuery(GcpTrackingOptions.forService("Analytics"), "query", "sales",
             "SELECT count(*) FROM orders");
         String uml = PlantUmlCreator.create(RequestResponseLogger.getAllLogs()).get(0).diagrams().get(0);
-        assertThat(uml).contains("database \"Analytics\" as Analytics")
-            .contains("Test -> Analytics : QUERY /");
+        assertThat(uml).contains("database \"Analytics\" as analytics")
+            .contains("test -> analytics: QUERY: /");
     }
 
     @Test
@@ -37,6 +37,6 @@ class GcpTrackingTest {
         assertThat(logs).allSatisfy(l ->
             assertThat(l.metaType()).isEqualTo(RequestResponseMetaType.EVENT));
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
-        assertThat(uml).contains("queue \"Events\" as Events").contains("Test -> Events : PUBLISH /");
+        assertThat(uml).contains("queue \"Events\" as events").contains("test -> events: PUBLISH: /");
     }
 }

@@ -56,8 +56,8 @@ class KronikolRestTemplateInterceptorTest {
 
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml)
-            .contains("Test -> OrderService : GET /orders/42")
-            .contains("OrderService --> Test : OK")
+            .contains("test -> orderService: GET: /orders/42")
+            .contains("orderService --> test: OK")
             .contains("\"id\": 42"); // pretty-printed in the diagram note
     }
 }

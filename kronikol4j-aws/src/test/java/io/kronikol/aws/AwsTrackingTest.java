@@ -30,16 +30,16 @@ class AwsTrackingTest {
         assertThat(logs.get(0).content()).isEqualTo("my-bucket/photo.jpg");
 
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
-        assertThat(uml).contains("database \"FileStore\" as FileStore")
-            .contains("Test -> FileStore : PUT /");
+        assertThat(uml).contains("database \"FileStore\" as fileStore")
+            .contains("test -> fileStore: PUT: /");
     }
 
     @Test
     void dynamoDbRendersAsADatabaseParticipant() {
         AwsTracking.dynamoDb(AwsTrackingOptions.forService("OrdersTable"), "PutItem", "orders", "{\"id\":1}");
         String uml = PlantUmlCreator.create(RequestResponseLogger.getAllLogs()).get(0).diagrams().get(0);
-        assertThat(uml).contains("database \"OrdersTable\" as OrdersTable")
-            .contains("Test -> OrdersTable : PUTITEM /");
+        assertThat(uml).contains("database \"OrdersTable\" as ordersTable")
+            .contains("test -> ordersTable: PUTITEM: /");
     }
 
     @Test
@@ -51,7 +51,7 @@ class AwsTrackingTest {
             assertThat(l.metaType()).isEqualTo(RequestResponseMetaType.EVENT));
 
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
-        assertThat(uml).contains("queue \"OrderQueue\" as OrderQueue")
-            .contains("Test -> OrderQueue : SEND /");
+        assertThat(uml).contains("queue \"OrderQueue\" as orderQueue")
+            .contains("test -> orderQueue: SEND: /");
     }
 }

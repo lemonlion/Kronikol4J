@@ -49,9 +49,9 @@ public final class DependencyPalette {
         Map.entry(DependencyCategories.SERVICE_BUS, Shape.QUEUE),
         Map.entry(DependencyCategories.BLOB_STORAGE, Shape.DATABASE),
         Map.entry(DependencyCategories.S3, Shape.DATABASE),
-        Map.entry(DependencyCategories.HTTP, Shape.PARTICIPANT),
-        Map.entry(DependencyCategories.MEDIATR, Shape.PARTICIPANT),
-        Map.entry(DependencyCategories.GRPC, Shape.PARTICIPANT));
+        Map.entry(DependencyCategories.HTTP, Shape.ENTITY),
+        Map.entry(DependencyCategories.MEDIATR, Shape.ENTITY),
+        Map.entry(DependencyCategories.GRPC, Shape.ENTITY));
 
     private static final Map<String, String> COLORS = Map.ofEntries(
         Map.entry(DependencyCategories.SQL, "#FADBD8"),

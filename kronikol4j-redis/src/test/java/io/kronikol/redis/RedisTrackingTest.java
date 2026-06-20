@@ -30,7 +30,7 @@ class RedisTrackingTest {
 
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml)
-            .contains("collections \"Cache\" as Cache")
-            .contains("Test -> Cache : GET /");
+            .contains("collections \"Cache\" as cache")
+            .contains("test -> cache: GET: /");
     }
 }
