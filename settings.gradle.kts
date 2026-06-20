@@ -12,4 +12,5 @@ rootProject.name = "kronikol4j"
 include(
     "kronikol4j-core",
     "kronikol4j-diagram",
+    "kronikol4j-report",
 )
