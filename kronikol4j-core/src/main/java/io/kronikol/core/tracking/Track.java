@@ -23,6 +23,14 @@ public final class Track {
     private Track() {
     }
 
+    /**
+     * Records an assertion outcome directly as a note (no {@link Runnable} to run). Used by the
+     * AssertJ Tier-1 integration's global hooks (plan §3.9).
+     */
+    public static void record(String description, boolean passed, String failureMessage) {
+        logAssertion(description, passed, failureMessage);
+    }
+
     /** Runs {@code assertion}, recording its pass/fail outcome (and message on failure) as a note. */
     public static void that(String description, Runnable assertion) {
         try {
