@@ -31,4 +31,6 @@ include(
     "kronikol4j-spring-boot-starter",
     "kronikol4j-cucumber",
     "kronikol4j-aws",
+    "kronikol4j-azure",
+    "kronikol4j-gcp",
 )
