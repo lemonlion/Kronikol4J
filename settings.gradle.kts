@@ -20,4 +20,7 @@ include(
     "kronikol4j-jdbc",
     "kronikol4j-servlet",
     "kronikol4j-cli",
+    "kronikol4j-redis",
+    "kronikol4j-mongodb",
+    "kronikol4j-messaging",
 )
