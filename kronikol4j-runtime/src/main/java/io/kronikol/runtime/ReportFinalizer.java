@@ -3,8 +3,14 @@ package io.kronikol.runtime;
 import io.kronikol.core.tracking.RequestResponseLogger;
 import io.kronikol.report.HtmlReportGenerator;
 import io.kronikol.report.HtmlReportGenerator.GeneratedReport;
+import io.kronikol.report.merge.FragmentJson;
+import io.kronikol.report.merge.ReportFragment;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
  * Generates the report at end-of-run from the collected {@link RunResults} and the accumulated
@@ -36,9 +42,41 @@ public final class ReportFinalizer {
             RunResults.toFeatures(), RequestResponseLogger.getAllLogs(), outputDir, title);
     }
 
-    /** Generates the report to the configured/default output directory. */
+    /**
+     * Forked mode (run-dir set): emits this JVM's fragment for the build plugin/CLI to merge and
+     * returns {@code null}. Standalone: generates the HTML report to the output directory.
+     */
     public static GeneratedReport finalizeRunToDefault(String title) throws IOException {
+        if (isForkedMode()) {
+            writeFragment(Path.of(System.getProperty(RUN_DIR_PROPERTY)), fragmentFileName(), title);
+            return null;
+        }
         return finalizeRun(resolveOutputDir(), title);
+    }
+
+    /**
+     * Writes this JVM's report fragment to {@code runDir} atomically (temp + move), so a crashed
+     * fork leaves a whole fragment or none (plan §5.3). Returns {@code null} if nothing was tracked.
+     */
+    public static Path writeFragment(Path runDir, String fileName, String title) throws IOException {
+        if (RunResults.isEmpty()) {
+            return null;
+        }
+        ReportFragment fragment = ReportFragments.fromRun(title);
+        Files.createDirectories(runDir);
+        Path target = runDir.resolve(fileName);
+        Path temp = runDir.resolve(fileName + ".tmp");
+        Files.writeString(temp, FragmentJson.toJson(fragment), StandardCharsets.UTF_8);
+        try {
+            Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return target;
+    }
+
+    private static String fragmentFileName() {
+        return "fragment-" + ProcessHandle.current().pid() + ".json";
     }
 
     static Path resolveOutputDir() {
