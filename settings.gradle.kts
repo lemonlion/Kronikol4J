@@ -23,4 +23,5 @@ include(
     "kronikol4j-redis",
     "kronikol4j-mongodb",
     "kronikol4j-messaging",
+    "kronikol4j-testng",
 )
