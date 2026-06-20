@@ -4,10 +4,12 @@ A Java-native reimplementation of [Kronikol](../Kronikol) — automatically capt
 interactions during tests (HTTP, SQL/NoSQL, cache, messaging, cloud SDKs) and generates interactive
 HTML reports with PlantUML diagrams. Deterministic diagrams from actual execution, not AI.
 
-> **Status: foundation in progress.** The build, the core tracking seam, and the diagram pipeline
-> are implemented and fully tested. Breadth toward full feature parity (HTML report, adapters,
-> integrations) is ongoing. See [docs/PORT_PLAN.md](docs/PORT_PLAN.md) for the complete plan,
-> architecture, and the five deep-dive analyses; the plan's §0 is the authoritative status & resume guide.
+> **Status: 24 modules, ~101 tests, all green** on JDK 17–25. The full pipeline (track → diagram →
+> HTML report), the fork-aggregation merge engine + CLI + Gradle plugin, three test frameworks, eleven
+> tracking integrations (incl. AWS/Azure/GCP), assertion tracking (Tiers 0–1), OpenTelemetry, the
+> Spring Boot starter, Maven Central publishing, and CI are implemented and tested. See
+> [CHANGELOG.md](CHANGELOG.md) for the full list and [docs/PORT_PLAN.md](docs/PORT_PLAN.md) for the
+> plan, architecture, and five deep-dive analyses (its §0 is the authoritative status & resume guide).
 
 ## Building
 
@@ -29,11 +31,17 @@ validated on JDK 25.
 | `build-logic` | ✅ | Gradle convention plugin (shared config, Java 17, JUnit 5 + AssertJ, `Automatic-Module-Name`) |
 | `kronikol4j-core` | ✅ tested | The stable tracking seam — `RequestResponseLog` + builder, `RequestResponseLogger`, 4-layer context/identity, `TestCorrelationStore`, registry, constants. **Zero runtime dependencies.** |
 | `kronikol4j-diagram` | ✅ tested | Logs → PlantUML text — `PlantUmlCreator`, the PlantUML encoder, dependency palette, canonical JSON note formatter. Pure logic. |
-| `kronikol4j-report` | ⏳ planned | HTML report assembly + embedded JS/CSS + `MergeableReportMerger` |
-| `kronikol4j-runtime` | ⏳ planned | Per-JVM report-fragment emission + cross-fork merge |
-| `kronikol4j-junit5` | ⏳ planned | JUnit 5 extension + run-completion listener |
-| `kronikol4j-http` / `-jdbc` / `-proxy` / `-servlet` | ⏳ planned | First tracking adapters (the three ingestion patterns) |
-| _… many more (Spring, messaging, cloud, gRPC, OTel, CLI, plugins)_ | ⏳ planned | Breadth to full parity (plan §9 Phase 5+) |
+| `kronikol4j-report` | ✅ tested | HTML report assembly + merge engine (`MergeableReportMerger`) |
+| `kronikol4j-runtime` | ✅ tested | Result collection + report finalization + per-JVM fragment emission |
+| `kronikol4j-cli` / `-gradle-plugin` | ✅ tested | Cross-fork merge (the "Merging Parallel Reports" feature) |
+| `kronikol4j-junit5` / `-testng` / `-cucumber` | ✅ tested | Three test-framework adapters |
+| `-proxy` / `-http` / `-jdbc` / `-servlet` / `-spring` / `-spring-boot-starter` | ✅ tested | HTTP/SQL/proxy tracking + Spring |
+| `-redis` / `-mongodb` / `-messaging` / `-grpc` | ✅ tested | Cache / NoSQL / messaging / RPC tracking |
+| `-aws` / `-azure` / `-gcp` | ✅ tested | Cloud SDK recorders |
+| `-assertj` / `-opentelemetry` | ✅ tested | Assertion Tier 1 (zero-weave) + OTel bridge |
+
+See [CHANGELOG.md](CHANGELOG.md) for the full module list and [docs/PORT_PLAN.md](docs/PORT_PLAN.md)
+§9 Phase 5+ for the remaining roadmap (Tier-2 assertions, golden-file harness, Spock).
 
 ## Design
 
