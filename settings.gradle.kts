@@ -30,4 +30,5 @@ include(
     "kronikol4j-grpc",
     "kronikol4j-spring-boot-starter",
     "kronikol4j-cucumber",
+    "kronikol4j-aws",
 )
