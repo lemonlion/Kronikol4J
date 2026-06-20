@@ -68,7 +68,9 @@ class HtmlReportGeneratorTest {
             .contains("Checkout succeeds")
             .contains("badge passed")
             .contains("class=\"plantuml-browser\" id=\"puml-0\"")
-            .contains("window.kronikolDiagrams[\"puml-0\"] = \"")        // diagram data map
+            .contains("id=\"kronikol-diagrams\"")                        // JSON diagram data map
+            .contains("plantuml.js")                                     // PlantUML-WASM from the CDN
+            .contains("plantumlLoad")                                    // the bundled browser renderer
             .contains("test -&gt; orderService: POST: /checkout")        // raw PlantUML, HTML-escaped
             .endsWith("</html>\n");
     }

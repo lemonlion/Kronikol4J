@@ -54,6 +54,6 @@ class MergeTest {
         assertThat(html)
             .contains("<title>Merged Run</title>")
             .contains("class=\"plantuml-browser\"")
-            .contains("window.kronikolDiagrams[\"puml-0\"]");
+            .contains("id=\"kronikol-diagrams\"");
     }
 }

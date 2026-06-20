@@ -1,28 +1,31 @@
 package io.kronikol.report;
 
 import io.kronikol.core.tracking.RequestResponseLog;
+import io.kronikol.diagram.json.Json;
 import io.kronikol.diagram.model.PlantUmlForTest;
 import io.kronikol.diagram.plantuml.PlantUmlCreator;
-import io.kronikol.diagram.plantuml.PlantUmlTextEncoder;
 import io.kronikol.report.html.HtmlEscaper;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.Scenario;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Assembles the interactive HTML report from scenarios + tracked logs (plan §1 Seam C / Phase 3).
  *
- * <p>Browser-only rendering (plan §3.5): each diagram's PlantUML is encoded into a JS data map and a
- * {@code .plantuml-browser} element is emitted for the client-side renderer. The externalized
- * {@code plantuml-render.js} asset (a .NET-side §4.2 prep task) performs the WASM render; until it is
- * bundled, the collapsible raw PlantUML beneath each diagram keeps the report useful. All output uses
+ * <p>Browser-only rendering (plan §3.5): each diagram's PlantUML is placed in the
+ * {@code #kronikol-diagrams} JSON map; the bundled {@code kronikol-render.js} loads PlantUML-WASM
+ * from the CDN and renders each {@code .plantuml-browser} element client-side. A collapsible raw
+ * PlantUML block beneath each diagram keeps the report useful without scripts. All output uses
  * {@code \n} and the {@link HtmlEscaper} parity shim (§4.4/§6.5).
  */
 public final class HtmlReportGenerator {
@@ -65,7 +68,7 @@ public final class HtmlReportGenerator {
     /** Builds the report HTML as a string (no IO) — the CLI writes it to its own {@code -o} path. */
     public static String renderHtml(List<Feature> features, Map<String, String> diagramByTestId, String title) {
         StringBuilder body = new StringBuilder(2048);
-        StringBuilder dataMap = new StringBuilder(512);
+        Map<String, String> diagramData = new LinkedHashMap<>();
         int diagramCounter = 0;
         int passed = 0;
         int failed = 0;
@@ -99,11 +102,9 @@ public final class HtmlReportGenerator {
                 String plantUml = diagramByTestId.get(scenario.testId());
                 if (plantUml != null) {
                     String id = "puml-" + (diagramCounter++);
-                    String encoded = PlantUmlTextEncoder.encode(plantUml);
-                    dataMap.append("window.kronikolDiagrams[\"").append(id).append("\"] = \"")
-                        .append(encoded).append("\";").append(NL);
+                    diagramData.put(id, plantUml); // plain PlantUML; the renderer splits it to lines
                     body.append("      <div class=\"plantuml-browser\" id=\"").append(id)
-                        .append("\" data-diagram-id=\"").append(id).append("\"></div>").append(NL);
+                        .append("\"></div>").append(NL);
                     body.append("      <details class=\"puml-src\"><summary>PlantUML source</summary><pre>")
                         .append(HtmlEscaper.encode(plantUml)).append("</pre></details>").append(NL);
                 }
@@ -113,10 +114,16 @@ public final class HtmlReportGenerator {
         }
 
         String summary = totalScenarios + " scenarios · " + passed + " passed · " + failed + " failed";
-        return document(HtmlEscaper.encode(title), summary, dataMap.toString(), body.toString());
+        return document(HtmlEscaper.encode(title), summary, diagramData, body.toString());
     }
 
-    private static String document(String title, String summary, String dataMap, String body) {
+    /** PlantUML-WASM CDN (matches the .NET {@code PlantUmlJsCdnBase}). */
+    private static final String CDN =
+        "https://cdn.jsdelivr.net/gh/lemonlion/plantuml-js-plantuml_limit_size_98304@v1.2026.3beta6-patched";
+    private static final String RENDER_SCRIPT = loadResource("io/kronikol/report/kronikol-render.js");
+    private static final String SEARCH_SCRIPT = loadResource("io/kronikol/report/advanced-search.js");
+
+    private static String document(String title, String summary, Map<String, String> diagramData, String body) {
         return "<!DOCTYPE html>" + NL
             + "<html lang=\"en\">" + NL
             + "<head>" + NL
@@ -124,10 +131,11 @@ public final class HtmlReportGenerator {
             + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" + NL
             + "<title>" + title + "</title>" + NL
             + "<style>" + NL + STYLES + NL + "</style>" + NL
-            + "<script>" + NL + "window.kronikolDiagrams = window.kronikolDiagrams || {};" + NL
-            + dataMap + "</script>" + NL
-            + "<!-- Browser rendering: the externalized plantuml-render.js (plan §4.2) renders each"
-            + " .plantuml-browser element from window.kronikolDiagrams. -->" + NL
+            + "<script defer src=\"" + CDN + "/viz-global.js\"></script>" + NL
+            + "<script defer src=\"" + CDN + "/plantuml.js\"></script>" + NL
+            + "<script id=\"kronikol-diagrams\" type=\"application/json\">" + Json.write(diagramData) + "</script>" + NL
+            + "<script>" + NL + SEARCH_SCRIPT + NL + "</script>" + NL
+            + "<script>" + NL + RENDER_SCRIPT + NL + "</script>" + NL
             + "</head>" + NL
             + "<body>" + NL
             + "<h1>" + title + "</h1>" + NL
@@ -135,6 +143,17 @@ public final class HtmlReportGenerator {
             + body
             + "</body>" + NL
             + "</html>" + NL;
+    }
+
+    private static String loadResource(String resource) {
+        try (InputStream in = HtmlReportGenerator.class.getClassLoader().getResourceAsStream(resource)) {
+            if (in == null) {
+                throw new IllegalStateException("bundled resource not found: " + resource);
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static final String STYLES = String.join(NL,
