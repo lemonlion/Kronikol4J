@@ -13,4 +13,7 @@ include(
     "kronikol4j-core",
     "kronikol4j-diagram",
     "kronikol4j-report",
+    "kronikol4j-runtime",
+    "kronikol4j-junit5",
+    "kronikol4j-proxy",
 )
