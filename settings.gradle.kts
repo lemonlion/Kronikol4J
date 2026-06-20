@@ -25,4 +25,5 @@ include(
     "kronikol4j-messaging",
     "kronikol4j-testng",
     "kronikol4j-assertj",
+    "kronikol4j-opentelemetry",
 )
