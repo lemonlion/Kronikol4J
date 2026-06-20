@@ -56,6 +56,11 @@ public final class PlantUmlCreator {
         sb.append(NL);
 
         for (RequestResponseLog log : logs) {
+            // Override path: assertion notes and custom fragments render verbatim (plan §3.9).
+            if (log.plantUml() != null) {
+                sb.append(log.plantUml()).append(NL);
+                continue;
+            }
             String caller = alias(log.callerName());
             String service = alias(log.serviceName());
             if (log.type() == RequestResponseType.REQUEST) {
@@ -76,6 +81,9 @@ public final class PlantUmlCreator {
         // name -> category; callers default to null, services contribute their dependency category.
         Map<String, String> categories = new LinkedHashMap<>();
         for (RequestResponseLog log : logs) {
+            if (log.plantUml() != null) {
+                continue; // override fragments (e.g. assertion notes) declare no participants
+            }
             categories.putIfAbsent(log.callerName(), null);
             String existing = categories.get(log.serviceName());
             if (!categories.containsKey(log.serviceName()) || existing == null) {

@@ -18,4 +18,5 @@ include(
     "kronikol4j-proxy",
     "kronikol4j-http",
     "kronikol4j-jdbc",
+    "kronikol4j-servlet",
 )

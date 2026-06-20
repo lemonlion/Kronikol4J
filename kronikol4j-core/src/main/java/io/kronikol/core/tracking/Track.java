@@ -1,0 +1,60 @@
+package io.kronikol.core.tracking;
+
+import io.kronikol.core.context.TestInfo;
+import io.kronikol.core.context.TestInfoResolver;
+import io.kronikol.core.context.TestPhaseContext;
+import java.net.URI;
+import java.util.UUID;
+
+/**
+ * Assertion tracking — <strong>Tier 0</strong> (plan §3.9): a manual wrapper that records the outcome
+ * of an assertion as a green/red note in the diagram. Java has no {@code CallerArgumentExpression},
+ * so the description is explicit:
+ *
+ * <pre>{@code Track.that("order is confirmed", () -> assertThat(order.status()).isEqualTo(CONFIRMED));}</pre>
+ *
+ * <p>Tier 1 (the zero-weave AssertJ global-hook integration) and Tier 2 (compile-time full-fidelity
+ * capture) build on this. A failing assertion is still rethrown.
+ */
+public final class Track {
+
+    private static final URI ASSERT_URI = URI.create("assert://assertion/");
+
+    private Track() {
+    }
+
+    /** Runs {@code assertion}, recording its pass/fail outcome (and message on failure) as a note. */
+    public static void that(String description, Runnable assertion) {
+        try {
+            assertion.run();
+        } catch (AssertionError failure) {
+            logAssertion(description, false, failure.getMessage());
+            throw failure;
+        }
+        logAssertion(description, true, null);
+    }
+
+    private static void logAssertion(String description, boolean passed, String failureMessage) {
+        TestInfo who = TestInfoResolver.resolve(null);
+        if (who == null) {
+            return;
+        }
+        String note = passed
+            ? "hnote across #d4edda\n✓ " + description + "\nend note"
+            : "hnote across #f8d7da\n✗ " + description
+                + (failureMessage == null ? "" : "\n" + failureMessage) + "\nend note";
+
+        RequestResponseLogger.log(RequestResponseLog.builder()
+            .testInfo(who)
+            .method(Method.of("ASSERT"))
+            .uri(ASSERT_URI)
+            .serviceName("Assertion")
+            .callerName(TrackingDefaults.CALLER_NAME)
+            .type(RequestResponseType.REQUEST)
+            .traceId(UUID.randomUUID())
+            .requestResponseId(UUID.randomUUID())
+            .phase(TestPhaseContext.current())
+            .build()
+            .plantUml(note)); // rendered verbatim by PlantUmlCreator (override path)
+    }
+}
