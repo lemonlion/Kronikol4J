@@ -46,7 +46,24 @@ public final class HtmlReportGenerator {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }
         }
+        return generateFromDiagrams(features, diagramByTestId, outputDir, title);
+    }
 
+    /** Renders from pre-computed diagrams — used by the merge path, where fragments already carry
+     *  their PlantUML (no raw logs to re-render). */
+    public static GeneratedReport generateFromDiagrams(List<Feature> features,
+                                                       Map<String, String> diagramByTestId,
+                                                       Path outputDir,
+                                                       String title) throws IOException {
+        String html = renderHtml(features, diagramByTestId, title);
+        Files.createDirectories(outputDir);
+        Path file = outputDir.resolve("TestRunReport.html");
+        Files.writeString(file, html, StandardCharsets.UTF_8);
+        return new GeneratedReport(html, file);
+    }
+
+    /** Builds the report HTML as a string (no IO) — the CLI writes it to its own {@code -o} path. */
+    public static String renderHtml(List<Feature> features, Map<String, String> diagramByTestId, String title) {
         StringBuilder body = new StringBuilder(2048);
         StringBuilder dataMap = new StringBuilder(512);
         int diagramCounter = 0;
@@ -96,12 +113,7 @@ public final class HtmlReportGenerator {
         }
 
         String summary = totalScenarios + " scenarios · " + passed + " passed · " + failed + " failed";
-        String html = document(HtmlEscaper.encode(title), summary, dataMap.toString(), body.toString());
-
-        Files.createDirectories(outputDir);
-        Path file = outputDir.resolve("TestRunReport.html");
-        Files.writeString(file, html, StandardCharsets.UTF_8);
-        return new GeneratedReport(html, file);
+        return document(HtmlEscaper.encode(title), summary, dataMap.toString(), body.toString());
     }
 
     private static String document(String title, String summary, String dataMap, String body) {

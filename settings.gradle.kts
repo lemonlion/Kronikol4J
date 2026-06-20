@@ -19,4 +19,5 @@ include(
     "kronikol4j-http",
     "kronikol4j-jdbc",
     "kronikol4j-servlet",
+    "kronikol4j-cli",
 )

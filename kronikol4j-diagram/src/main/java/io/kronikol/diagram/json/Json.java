@@ -43,7 +43,35 @@ public final class Json {
     }
 
     /** A number token preserved verbatim so {@code 1.0} never becomes {@code 1} (parity). */
-    record RawNumber(String literal) {
+    public record RawNumber(String literal) {
+    }
+
+    /** Parses a complete JSON document into ordered maps / lists / String / Boolean / RawNumber / null.
+     *  @throws IllegalArgumentException if the text is not a single valid JSON document. */
+    public static Object parse(String text) {
+        try {
+            Parser parser = new Parser(text);
+            Object value = parser.parseValue();
+            parser.skipWhitespace();
+            if (!parser.atEnd()) {
+                throw new IllegalArgumentException("trailing content after JSON document");
+            }
+            return value;
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("invalid JSON: " + e.getMessage(), e);
+        }
+    }
+
+    /** Serializes a value (Map/List/String/Boolean/RawNumber/null) using the canonical format. */
+    public static String write(Object value) {
+        StringBuilder sb = new StringBuilder();
+        write(value, sb, 0);
+        return sb.toString();
+    }
+
+    /** Wraps a numeric literal for {@link #write}. */
+    public static RawNumber number(long value) {
+        return new RawNumber(Long.toString(value));
     }
 
     private static void write(Object value, StringBuilder sb, int indent) {
