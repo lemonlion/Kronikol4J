@@ -132,6 +132,10 @@ CaptureHtmlWholeTestFlow();
 // + different activity/flame (per-example diagram-view divs).
 CaptureHtmlParamWholeTestFlow();
 
+// Parameterized option flags (non-default) — titleizeParameterNames:false / maxParameterColumns:1 /
+// groupParameterizedTests:false.
+CaptureHtmlParamOptions();
+
 // Whole-test-flow in a PARAMETERIZED group, all examples identical (shared seq + shared flame +
 // "identical across test cases" badge; FlameChart-only so allWtfIdentical can hold).
 CaptureHtmlParamWholeTestFlowSame();
@@ -379,6 +383,39 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlParamOptions()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // A two-key OutlineId group, captured three ways to exercise the option flags.
+    Func<Scenario[]> squares = () => new[]
+    {
+        new Scenario { Id = "s1", DisplayName = "Squares 5", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50), OutlineId = "Squares", ExampleValues = new() { ["input"] = "5", ["result"] = "25" } },
+        new Scenario { Id = "s2", DisplayName = "Squares 6", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60), OutlineId = "Squares", ExampleValues = new() { ["input"] = "6", ["result"] = "36" } }
+    };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+
+    // titleizeParameterNames:false → raw "input"/"result" sub-headers (not "Input"/"Result").
+    var f1 = new Feature { DisplayName = "Math", Scenarios = squares() };
+    var p1 = ReportGenerator.GenerateHtmlReport(diagrams, [f1], start, end, null, "report-paramnotitleize.html", "Kronikol Run", includeTestRunData: false, titleizeParameterNames: false);
+    File.WriteAllText(Path.Combine(outDir, "report-paramnotitleize.html"), File.ReadAllText(p1).ReplaceLineEndings("\n"));
+    Console.WriteLine("=== report-paramnotitleize.html ===");
+
+    // maxParameterColumns:1 → 2 keys > 1 → Fallback single "Test Case" column.
+    var f2 = new Feature { DisplayName = "Math", Scenarios = squares() };
+    var p2 = ReportGenerator.GenerateHtmlReport(diagrams, [f2], start, end, null, "report-parammaxcols.html", "Kronikol Run", includeTestRunData: false, maxParameterColumns: 1);
+    File.WriteAllText(Path.Combine(outDir, "report-parammaxcols.html"), File.ReadAllText(p2).ReplaceLineEndings("\n"));
+    Console.WriteLine("=== report-parammaxcols.html ===");
+
+    // groupParameterizedTests:false → non-OutlineId prefix scenarios render individually.
+    var l1 = new Scenario { Id = "l1", DisplayName = "Login(user: bob, role: admin)", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50) };
+    var l2 = new Scenario { Id = "l2", DisplayName = "Login(user: sue, role: guest)", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60) };
+    var f3 = new Feature { DisplayName = "Security", Scenarios = [l1, l2] };
+    var p3 = ReportGenerator.GenerateHtmlReport(diagrams, [f3], start, end, null, "report-paramnogroup.html", "Kronikol Run", includeTestRunData: false, groupParameterizedTests: false);
+    File.WriteAllText(Path.Combine(outDir, "report-paramnogroup.html"), File.ReadAllText(p3).ReplaceLineEndings("\n"));
+    Console.WriteLine("=== report-paramnogroup.html ===");
 }
 
 void CaptureHtmlParamWholeTestFlow()

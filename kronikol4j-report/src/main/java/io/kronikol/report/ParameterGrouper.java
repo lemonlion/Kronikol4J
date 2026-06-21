@@ -43,10 +43,11 @@ final class ParameterGrouper {
     }
 
     /** Returns the parameterized groups; non-grouped scenarios render individually. Groups by the
-     *  framework-provided {@code outlineId} first, then by display-name prefix for the remainder.
-     *  Preserves first-seen group order. */
+     *  framework-provided {@code outlineId} first, then — when {@code enabled} — by display-name prefix
+     *  for the remainder (.NET {@code groupParameterizedTests} gates only this second pass). Preserves
+     *  first-seen group order. */
     static List<ParameterizedGroup> analyze(List<Scenario> scenarios, int maxColumns,
-                                            Map<String, String> diagramByTestId) {
+                                            Map<String, String> diagramByTestId, boolean enabled) {
         List<ParameterizedGroup> groups = new ArrayList<>();
         if (scenarios.isEmpty()) {
             return groups;
@@ -71,7 +72,11 @@ final class ParameterGrouper {
             }
         }
 
-        // 2. Group remaining scenarios by display-name prefix (.NET ParameterParser.ExtractBaseName).
+        // 2. Group remaining scenarios by display-name prefix (.NET ParameterParser.ExtractBaseName) —
+        // only when enabled; otherwise the non-OutlineId scenarios render individually.
+        if (!enabled) {
+            return groups;
+        }
         Map<String, List<Scenario>> byPrefix = new LinkedHashMap<>();
         for (Scenario s : scenarios) {
             if (consumed.contains(s.testId())) {

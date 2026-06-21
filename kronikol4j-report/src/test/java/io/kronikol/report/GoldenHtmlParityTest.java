@@ -12,6 +12,7 @@ import io.kronikol.report.model.CiMetadata;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.HtmlCustomization;
+import io.kronikol.report.model.ParameterizedOptions;
 import io.kronikol.report.model.FileAttachment;
 import io.kronikol.report.model.InlineParameterValue;
 import io.kronikol.report.model.Scenario;
@@ -463,6 +464,52 @@ class GoldenHtmlParityTest {
             false, Instant.EPOCH, Instant.EPOCH, custom);
 
         assertParity("report-blankonfail.html", actual);
+    }
+
+    private static java.util.List<Feature> squaresFeature() {
+        LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();
+        ev1.put("input", "5");
+        ev1.put("result", "25");
+        LinkedHashMap<String, String> ev2 = new LinkedHashMap<>();
+        ev2.put("input", "6");
+        ev2.put("result", "36");
+        Scenario s1 = Scenario.builder("Squares 5", "s1", ExecutionStatus.PASSED)
+            .durationMs(50).outlineId("Squares").exampleValues(ev1).build();
+        Scenario s2 = Scenario.builder("Squares 6", "s2", ExecutionStatus.PASSED)
+            .durationMs(60).outlineId("Squares").exampleValues(ev2).build();
+        return List.of(new Feature("Math", List.of(s1, s2)));
+    }
+
+    private static String renderParam(java.util.List<Feature> features, ParameterizedOptions opts)
+            throws IOException {
+        return DotNetHtmlReportRenderer.render(features, Map.of(), null, "Kronikol Run", PINNED_VERSION,
+            false, java.time.Instant.EPOCH, java.time.Instant.EPOCH, HtmlCustomization.NONE,
+            WholeTestFlowInput.NONE, opts);
+    }
+
+    @Test
+    void parameterizedBrowserHtmlReport_noTitleize_isByteForByteIdenticalToDotNetGolden() throws IOException {
+        assertParity("report-paramnotitleize.html",
+            renderParam(squaresFeature(), new ParameterizedOptions(true, 10, false)));
+    }
+
+    @Test
+    void parameterizedBrowserHtmlReport_maxColumnsFallback_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        assertParity("report-parammaxcols.html",
+            renderParam(squaresFeature(), new ParameterizedOptions(true, 1, true)));
+    }
+
+    @Test
+    void parameterizedBrowserHtmlReport_groupingDisabled_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        Scenario l1 = Scenario.builder("Login(user: bob, role: admin)", "l1", ExecutionStatus.PASSED)
+            .durationMs(50).build();
+        Scenario l2 = Scenario.builder("Login(user: sue, role: guest)", "l2", ExecutionStatus.PASSED)
+            .durationMs(60).build();
+        assertParity("report-paramnogroup.html",
+            renderParam(List.of(new Feature("Security", List.of(l1, l2))),
+                new ParameterizedOptions(false, 10, true)));
     }
 
     @Test

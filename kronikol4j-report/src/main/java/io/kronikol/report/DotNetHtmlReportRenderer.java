@@ -12,6 +12,7 @@ import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.FileAttachment;
 import io.kronikol.report.model.HtmlCustomization;
 import io.kronikol.report.model.InlineParameterValue;
+import io.kronikol.report.model.ParameterizedOptions;
 import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
 import io.kronikol.report.model.StepParameter;
@@ -173,6 +174,20 @@ public final class DotNetHtmlReportRenderer {
                                 String componentDiagram, String title, String version,
                                 boolean includeTestRunData, Instant startTime, Instant endTime,
                                 HtmlCustomization custom, WholeTestFlowInput wtfInput) {
+        return render(features, diagramByTestId, componentDiagram, title, version, includeTestRunData,
+            startTime, endTime, custom, wtfInput, ParameterizedOptions.DEFAULTS);
+    }
+
+    /**
+     * As {@link #render(List, Map, String, String, String, boolean, Instant, Instant, HtmlCustomization,
+     * WholeTestFlowInput)}, with the parameterized-test options (grouping toggle, max columns, name
+     * titleizing).
+     */
+    public static String render(List<Feature> features, Map<String, String> diagramByTestId,
+                                String componentDiagram, String title, String version,
+                                boolean includeTestRunData, Instant startTime, Instant endTime,
+                                HtmlCustomization custom, WholeTestFlowInput wtfInput,
+                                ParameterizedOptions paramOptions) {
         if (custom.generateBlankOnFailedTests() && anyScenarioFailed(features)) {
             return ""; // .NET WriteFile(string.Empty, …) — a deliberately blank report
         }
@@ -184,7 +199,7 @@ public final class DotNetHtmlReportRenderer {
         StringBuilder body = new StringBuilder(8_192);
         appendBody(body, title, version, features, diagramByTestId == null ? Map.of() : diagramByTestId,
             hasComponent ? componentDiagram : null, diagramData, includeTestRunData, startTime, endTime, custom,
-            wtfInput);
+            wtfInput, paramOptions);
 
         StringBuilder html = new StringBuilder(head.length() + body.length() + 1_024);
         html.append(head).append(body);
@@ -340,7 +355,7 @@ public final class DotNetHtmlReportRenderer {
                                    Map<String, String> diagramByTestId, String componentDiagram,
                                    Map<String, String> diagramData, boolean includeTestRunData,
                                    Instant startTime, Instant endTime, HtmlCustomization custom,
-                                   WholeTestFlowInput wtfInput) {
+                                   WholeTestFlowInput wtfInput, ParameterizedOptions paramOptions) {
         if (custom.customLogoHtml() != null) {
             body.append("<div class=\"custom-logo\">").append(custom.customLogoHtml()).append("</div>");
         }
@@ -415,8 +430,9 @@ public final class DotNetHtmlReportRenderer {
 
             // Parameterized grouping (by OutlineId) folded into the rule grouping, with .NET's
             // first-encounter rendering: a group renders once, at its first scenario.
-            List<ParameterGrouper.ParameterizedGroup> paramGroups =
-                ParameterGrouper.analyze(ordered, 10, diagramByTestId);
+            List<ParameterGrouper.ParameterizedGroup> paramGroups = ParameterGrouper.analyze(
+                ordered, paramOptions.maxParameterColumns(), diagramByTestId,
+                paramOptions.groupParameterizedTests());
             Map<String, ParameterGrouper.ParameterizedGroup> scenarioToGroup = new HashMap<>();
             for (ParameterGrouper.ParameterizedGroup g : paramGroups) {
                 for (Scenario s : g.scenarios()) {
@@ -453,7 +469,8 @@ public final class DotNetHtmlReportRenderer {
                     renderedGroupKeys.add(groupKey);
                     counter = appendParameterizedGroup(body, feature, group, "pgrp" + (paramGroupCounter++),
                         scenarioDependencies, scenarioSearchTerms, diagramByTestId, diagramData, counter,
-                        custom.showStepNumbers(), toggles, wtfInput, median);
+                        custom.showStepNumbers(), toggles, wtfInput, median,
+                        paramOptions.titleizeParameterNames());
                     continue;
                 }
                 counter = appendScenario(body, feature, scenario, diagramByTestId,
@@ -1044,7 +1061,8 @@ public final class DotNetHtmlReportRenderer {
                                                  Map<String, String> diagramByTestId,
                                                  Map<String, String> diagramData, int counter,
                                                  boolean showStepNumbers, DiagramToggles toggles,
-                                                 WholeTestFlowInput wtfInput, int medianSpanCount) {
+                                                 WholeTestFlowInput wtfInput, int medianSpanCount,
+                                                 boolean titleize) {
         List<Scenario> scenarios = group.scenarios();
         boolean hasFailure = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.FAILED);
         boolean hasSkipped = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.SKIPPED);
@@ -1135,7 +1153,7 @@ public final class DotNetHtmlReportRenderer {
         boolean hasFlatView = !group.flatParameterNames().isEmpty();
         if (hasFlatView) {
             body.append("<div class=\"param-table-wrapper\">");
-            appendFlatParamTable(body, feature, group, prefix, scenarioSearchTerms);
+            appendFlatParamTable(body, feature, group, prefix, scenarioSearchTerms, titleize);
         }
 
         String groupedTableClass = hasFlatView ? " param-table-grouped" : "";
@@ -1154,7 +1172,8 @@ public final class DotNetHtmlReportRenderer {
             body.append("<th rowspan=\"2\" style=\"width:5.5em\">Duration</th></tr>");
             body.append("<tr>");
             for (String name : group.parameterNames()) {
-                body.append("<th class=\"sub-header\">").append(HtmlEscaper.encode(Humanize.titleize(name))).append("</th>");
+                body.append("<th class=\"sub-header\">")
+                    .append(HtmlEscaper.encode(titleize ? Humanize.titleize(name) : name)).append("</th>");
             }
             body.append("</tr>");
         } else {
@@ -1386,7 +1405,7 @@ public final class DotNetHtmlReportRenderer {
      *  when the group has a flat view (.NET {@code param-table-flat} block). */
     private static void appendFlatParamTable(StringBuilder body, Feature feature,
                                              ParameterGrouper.ParameterizedGroup group, String prefix,
-                                             Map<String, Set<String>> scenarioSearchTerms) {
+                                             Map<String, Set<String>> scenarioSearchTerms, boolean titleize) {
         List<Scenario> scenarios = group.scenarios();
         List<String> flatNames = group.flatParameterNames();
         body.append("<table class=\"param-test-table param-table-flat\" data-prefix=\"").append(prefix)
@@ -1399,7 +1418,8 @@ public final class DotNetHtmlReportRenderer {
         body.append("<th rowspan=\"2\" style=\"width:5.5em\">Duration</th></tr>");
         body.append("<tr>");
         for (String name : flatNames) {
-            body.append("<th class=\"sub-header\">").append(HtmlEscaper.encode(Humanize.titleize(name))).append("</th>");
+            body.append("<th class=\"sub-header\">")
+                .append(HtmlEscaper.encode(titleize ? Humanize.titleize(name) : name)).append("</th>");
         }
         body.append("</tr></thead><tbody>");
 
