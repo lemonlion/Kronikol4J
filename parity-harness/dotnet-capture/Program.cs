@@ -114,6 +114,11 @@ CaptureHtmlCustomStyleSheet();
 CaptureCiSummaryFailed();
 CaptureCiSummaryDiagrams();
 
+// Diagnostic report (DiagnosticReportGenerator.BuildHtml) — the deterministic sections driven by
+// logs + features + config (log summary, per-service/per-test, unknown entries, unpaired, orphaned,
+// no-log scenarios, activity-span count). The runtime-registry sections are empty in the harness.
+CaptureDiagnosticReport();
+
 // showStepNumbers — background/scenario step number prefixes (1., 2., …) incl. nested sub-steps (1.1.).
 CaptureHtmlStepNumbers();
 
@@ -926,6 +931,39 @@ void CaptureCiSummaryDiagrams()
     var md = CiSummaryGenerator.GenerateMarkdown([feature], diagrams, diagrams, start, end).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "ci-summary-diagrams.md"), md);
     Console.WriteLine($"=== ci-summary-diagrams.md ({md.Length} chars) ===");
+}
+
+void CaptureDiagnosticReport()
+{
+    // Logs exercising every deterministic section: paired (s1/s2), unpaired (PaymentService), "unknown"
+    // entries (BackgroundSvc x2 → breakdown with first/last seen), an orphaned test id (orphan1), plus
+    // `&` / `<` in names and a `&` in a URI to prove WebUtility.HtmlEncode escaping.
+    Guid Rr(int n) => Guid.Parse($"00000000-0000-0000-0000-0000000001{n:x2}");
+    Guid Tr(int n) => Guid.Parse($"00000000-0000-0000-0000-0000000002{n:x2}");
+    DateTimeOffset Ts(int s, int ms = 0) => new DateTimeOffset(2024, 1, 15, 10, 0, s, ms, TimeSpan.Zero);
+    var logs = new[]
+    {
+        new RequestResponseLog("Checkout succeeds", "s1", HttpMethod.Post, "{}", new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test", RequestResponseType.Request, Tr(1), Rr(1), false) { Timestamp = Ts(1) },
+        new RequestResponseLog("Checkout succeeds", "s1", HttpMethod.Post, "{}", new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test", RequestResponseType.Response, Tr(1), Rr(1), false, StatusCode: HttpStatusCode.OK) { Timestamp = Ts(1, 250) },
+        new RequestResponseLog("Checkout succeeds", "s1", HttpMethod.Post, "{}", new Uri("http://pay/charge?amt=5&cur=USD"), NoHeaders(), "PaymentService", "Test", RequestResponseType.Request, Tr(2), Rr(2), false) { Timestamp = Ts(1, 300) },
+        new RequestResponseLog("Lookup order", "s2", HttpMethod.Get, null, new Uri("http://orders/123"), NoHeaders(), "OrderService", "Test", RequestResponseType.Request, Tr(3), Rr(3), false) { Timestamp = Ts(2) },
+        new RequestResponseLog("Lookup order", "s2", HttpMethod.Get, null, new Uri("http://orders/123"), NoHeaders(), "OrderService", "Test", RequestResponseType.Response, Tr(3), Rr(3), false, StatusCode: HttpStatusCode.OK) { Timestamp = Ts(2, 100) },
+        new RequestResponseLog("BackgroundPoll", "unknown", HttpMethod.Get, null, new Uri("http://bg/poll"), NoHeaders(), "BackgroundSvc", "Test", RequestResponseType.Request, Tr(4), Rr(4), false) { Timestamp = Ts(2) },
+        new RequestResponseLog("BackgroundPoll", "unknown", HttpMethod.Get, null, new Uri("http://bg/poll"), NoHeaders(), "BackgroundSvc", "Test", RequestResponseType.Request, Tr(5), Rr(5), false) { Timestamp = Ts(8) },
+        new RequestResponseLog("Ghost & Co", "orphan1", HttpMethod.Get, null, new Uri("http://ghost/x"), NoHeaders(), "GhostService", "Test", RequestResponseType.Request, Tr(6), Rr(6), false) { Timestamp = Ts(3) },
+    };
+    var checkout = new Feature { DisplayName = "Checkout", Scenarios = [
+        new Scenario { Id = "s1", DisplayName = "Checkout succeeds", Result = ExecutionResult.Passed },
+        new Scenario { Id = "s3", DisplayName = "Edge <case>", Result = ExecutionResult.Passed } ] };
+    var lookup = new Feature { DisplayName = "Lookup", Scenarios = [
+        new Scenario { Id = "s2", DisplayName = "Lookup order", Result = ExecutionResult.Passed } ] };
+    var options = new ReportConfigurationOptions { ReportsFolderPath = "diag-out" };
+    // BuildHtml is internal; use the public Generate (writes DiagnosticReport.html) and read it back.
+    DiagnosticReportGenerator.Generate(logs, [checkout, lookup], options);
+    var generated = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "diag-out", "DiagnosticReport.html");
+    var html = File.ReadAllText(generated).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "diagnostic-report.html"), html);
+    Console.WriteLine($"=== diagnostic-report.html ({html.Length} chars) ===");
 }
 
 void CaptureHtmlCiMetadata()

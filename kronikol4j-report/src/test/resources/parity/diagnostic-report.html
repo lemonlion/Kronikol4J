@@ -1,0 +1,50 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>Kronikol Diagnostic Report</title>
+<style>body{font-family:system-ui,sans-serif;margin:2em;color:#333}table{border-collapse:collapse;margin:1em 0}th,td{border:1px solid #ddd;padding:6px 12px;text-align:left}th{background:#f5f5f5}h2{margin-top:1.5em;border-bottom:1px solid #ddd;padding-bottom:4px}.warn{color:#b45309}.info{color:#1d4ed8}</style>
+</head><body>
+<h1>Kronikol — Diagnostic Report</h1>
+<h2>Configuration</h2><table>
+<tr><td><code>InternalFlowTracking</code></td><td>True</td></tr>
+<tr><td><code>InternalFlowSpanGranularity</code></td><td>AutoInstrumentation</td></tr>
+<tr><td><code>InternalFlowActivitySources</code></td><td>&lt;not configured&gt;</td></tr>
+<tr><td><code>InternalFlowDiagramStyle</code></td><td>ActivityDiagram</td></tr>
+<tr><td><code>InternalFlowNoDataBehavior</code></td><td>HideLink</td></tr>
+<tr><td><code>DiagramFormat</code></td><td>PlantUml</td></tr>
+<tr><td><code>PlantUmlRendering</code></td><td>BrowserJs</td></tr>
+<tr><td><code>GenerateComponentDiagram</code></td><td>True</td></tr>
+</table>
+<h2>Request/Response Log Summary</h2>
+<p>8 total log entries across 4 distinct test ID(s).</p>
+<h3>Entries per Service</h3><table><tr><th>Service</th><th>Count</th></tr>
+<tr><td>OrderService</td><td>4</td></tr>
+<tr><td>BackgroundSvc</td><td>2</td></tr>
+<tr><td>PaymentService</td><td>1</td></tr>
+<tr><td>GhostService</td><td>1</td></tr>
+</table>
+<h3>Entries per Test (top 50)</h3><table><tr><th>Test Name</th><th>Test ID</th><th>Count</th></tr>
+<tr><td>Checkout succeeds</td><td>s1</td><td>3</td></tr>
+<tr><td>Lookup order</td><td>s2</td><td>2</td></tr>
+<tr><td>BackgroundPoll</td><td>unknown</td><td>2</td></tr>
+<tr><td>Ghost &amp; Co</td><td>orphan1</td><td>1</td></tr>
+</table>
+<h3 class="warn">⚠ Unknown Entries Breakdown (2 entries)</h3>
+<p>These log entries have test ID "unknown" — typically from background threads without test correlation.</p>
+<table><tr><th>Service</th><th>Method</th><th>Count</th><th>First Seen</th><th>Last Seen</th></tr>
+<tr><td>BackgroundSvc</td><td>GET</td><td>2</td><td>2024-01-15 10:00:02</td><td>2024-01-15 10:00:08</td></tr>
+</table>
+<h3 class="warn">⚠ 4 Unpaired Request(s)</h3><table><tr><th>Test</th><th>Service</th><th>Method</th><th>URI</th></tr>
+<tr><td>Checkout succeeds</td><td>PaymentService</td><td>POST</td><td>http://pay/charge?amt=5&amp;cur=USD</td></tr>
+<tr><td>BackgroundPoll</td><td>BackgroundSvc</td><td>GET</td><td>http://bg/poll</td></tr>
+<tr><td>BackgroundPoll</td><td>BackgroundSvc</td><td>GET</td><td>http://bg/poll</td></tr>
+<tr><td>Ghost &amp; Co</td><td>GhostService</td><td>GET</td><td>http://ghost/x</td></tr>
+</table>
+<h3 class="warn">⚠ 2 Orphaned Test ID(s)</h3>
+<p>These test IDs appear in logs but don't match any feature scenario:</p><ul>
+<li>BackgroundPoll (unknown)</li>
+<li>Ghost &amp; Co (orphan1)</li>
+</ul>
+<h3 class="warn">⚠ 1 Scenario(s) with No Log Entries</h3><ul>
+<li>Edge &lt;case&gt;</li>
+</ul>
+<h2>Activity Spans</h2><p>0 total span(s) in InternalFlowSpanStore.</p>
+</body></html>
