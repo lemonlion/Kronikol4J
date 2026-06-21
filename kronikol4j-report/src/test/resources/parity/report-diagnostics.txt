@@ -1,0 +1,4 @@
+Report diagnostics: 4 log entries across 2 test(s).
+Warning: 2 unpaired request(s) detected (no matching response with same RequestResponseId).
+Warning: 1 orphaned test ID(s) in logs do not match any feature scenario.
+Warning: InternalFlowSpanStore has 0 spans — activity diagrams will be empty.

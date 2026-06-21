@@ -119,6 +119,10 @@ CaptureCiSummaryDiagrams();
 // no-log scenarios, activity-span count). The runtime-registry sections are empty in the harness.
 CaptureDiagnosticReport();
 
+// ReportDiagnostics.Analyse — the deterministic console warnings (log counts, unpaired, orphaned, the
+// 0-spans note). Captured as the newline-joined array; the runtime-store warnings are empty here.
+CaptureReportDiagnostics();
+
 // showStepNumbers — background/scenario step number prefixes (1., 2., …) incl. nested sub-steps (1.1.).
 CaptureHtmlStepNumbers();
 
@@ -964,6 +968,26 @@ void CaptureDiagnosticReport()
     var html = File.ReadAllText(generated).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "diagnostic-report.html"), html);
     Console.WriteLine($"=== diagnostic-report.html ({html.Length} chars) ===");
+}
+
+void CaptureReportDiagnostics()
+{
+    // logs: a paired pair (s1) + an unpaired request (s1) + an orphaned-test-id request (orphan1) → the
+    // log-count, unpaired, orphaned and 0-spans warnings. InternalFlowSpanStore is empty in the harness.
+    Guid Rr(int n) => Guid.Parse($"00000000-0000-0000-0000-0000000001{n:x2}");
+    var logs = new[]
+    {
+        new RequestResponseLog("Checkout succeeds", "s1", HttpMethod.Post, "{}", new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test", RequestResponseType.Request, Rr(10), Rr(1), false),
+        new RequestResponseLog("Checkout succeeds", "s1", HttpMethod.Post, "{}", new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test", RequestResponseType.Response, Rr(10), Rr(1), false),
+        new RequestResponseLog("Checkout succeeds", "s1", HttpMethod.Post, "{}", new Uri("http://pay/charge"), NoHeaders(), "PaymentService", "Test", RequestResponseType.Request, Rr(11), Rr(2), false),
+        new RequestResponseLog("Ghost", "orphan1", HttpMethod.Get, null, new Uri("http://ghost/x"), NoHeaders(), "GhostService", "Test", RequestResponseType.Request, Rr(12), Rr(3), false),
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [
+        new Scenario { Id = "s1", DisplayName = "Checkout succeeds", Result = ExecutionResult.Passed } ] };
+    var warnings = ReportDiagnostics.Analyse(logs, [feature]);
+    var text = string.Join("\n", warnings);
+    File.WriteAllText(Path.Combine(outDir, "report-diagnostics.txt"), text);
+    Console.WriteLine($"=== report-diagnostics.txt ({warnings.Length} warning(s)) ===");
 }
 
 void CaptureHtmlCiMetadata()
