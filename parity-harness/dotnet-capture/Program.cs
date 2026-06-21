@@ -87,6 +87,10 @@ CaptureHtmlR2Flatten();
 // param-table-flat table (− toggle) and a hidden param-table-grouped table (+ toggle).
 CaptureHtmlFlattenToggle();
 
+// Display-name prefix grouping — non-OutlineId scenarios sharing a base name, with params encoded in
+// the display name (ExtractBaseName + Parse → ScalarColumns).
+CaptureHtmlPrefixGroup();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -685,6 +689,34 @@ void CaptureHtmlFlattenToggle()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-flattentoggle.html"), content);
     Console.WriteLine($"=== report-flattentoggle.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlPrefixGroup()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // No OutlineId, no ExampleValues — params are encoded in the display name. ParameterGrouper groups
+    // by display-name prefix (ExtractBaseName "Login") and DetermineParamsAndRule parses the names
+    // (ParameterParser.Parse) into user/role columns (ScalarColumns).
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Login(user: bob, role: admin)", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50),
+        Steps = [ new ScenarioStep { Keyword = "Then", Text = "access granted", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) } ]
+    };
+    var s2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Login(user: sue, role: guest)", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(60),
+        ErrorMessage = "Expected: granted\nActual: denied"
+    };
+    var feature = new Feature { DisplayName = "Security", Scenarios = [s1, s2] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-prefixgroup.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-prefixgroup.html"), content);
+    Console.WriteLine($"=== report-prefixgroup.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

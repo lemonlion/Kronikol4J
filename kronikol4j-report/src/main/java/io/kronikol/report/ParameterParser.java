@@ -227,6 +227,218 @@ final class ParameterParser {
         }
     }
 
+    /**
+     * Parses parameter name-value pairs from a test display name. Supports
+     * "{@code Method(name: val, name2: val2)}" (named), "{@code Method(val1, val2)}" (positional),
+     * and "{@code Scenario [name: val]}" (bracketed). Returns null if no params or input is empty.
+     */
+    static Map<String, String> parse(String displayName) {
+        if (displayName == null || displayName.isEmpty()) {
+            return null;
+        }
+        // Bracketed format first: "Name [key: val, ...]" or "Name [k1: v1] [k2: v2]".
+        int spBracket = displayName.lastIndexOf(" [");
+        if (spBracket >= 0 && displayName.endsWith("]")) {
+            Map<String, String> allParams = new LinkedHashMap<>();
+            String remaining = displayName;
+            while (true) {
+                if (remaining.length() < 3 || remaining.charAt(remaining.length() - 1) != ']') {
+                    break;
+                }
+                int matchingOpen = findMatchingOpenBracket(remaining);
+                if (matchingOpen < 1 || remaining.charAt(matchingOpen - 1) != ' ') {
+                    break;
+                }
+                String inner = remaining.substring(matchingOpen + 1, remaining.length() - 1).strip();
+                if (inner.isEmpty()) {
+                    break;
+                }
+                Map<String, String> result = parseParams(inner);
+                if (result.isEmpty()) {
+                    break;
+                }
+                for (Map.Entry<String, String> kv : result.entrySet()) {
+                    allParams.putIfAbsent(kv.getKey(), kv.getValue());
+                }
+                remaining = remaining.substring(0, matchingOpen - 1).stripTrailing();
+            }
+            if (!allParams.isEmpty()) {
+                return allParams;
+            }
+        }
+        // Parens format: "Method(params...)".
+        int parenStart = findOpenParen(displayName);
+        if (parenStart < 0 || !displayName.endsWith(")")) {
+            return null;
+        }
+        String parenInner = displayName.substring(parenStart + 1, displayName.length() - 1).strip();
+        if (parenInner.isEmpty()) {
+            return null;
+        }
+        Map<String, String> parsed = parseParams(parenInner);
+        return parsed.isEmpty() ? null : parsed;
+    }
+
+    /**
+     * Extracts the base name (without the parameter suffix) from a display name: strips a trailing
+     * "{@code (params)}" or one-or-more " {@code [params]}" groups. Returns null for empty input.
+     */
+    static String extractBaseName(String displayName) {
+        if (displayName == null || displayName.isEmpty()) {
+            return null;
+        }
+        String current = displayName;
+        while (true) {
+            if (current.length() < 3 || current.charAt(current.length() - 1) != ']') {
+                break;
+            }
+            int matchingOpen = findMatchingOpenBracket(current);
+            if (matchingOpen < 1 || current.charAt(matchingOpen - 1) != ' ') {
+                break;
+            }
+            current = current.substring(0, matchingOpen - 1).stripTrailing();
+        }
+        if (current.length() < displayName.length()) {
+            return current;
+        }
+        int parenStart = findOpenParen(displayName);
+        if (parenStart >= 0 && displayName.endsWith(")")) {
+            return displayName.substring(0, parenStart).stripTrailing();
+        }
+        return displayName;
+    }
+
+    /** Index of the '[' matching the trailing ']' (considering nesting), or -1. */
+    private static int findMatchingOpenBracket(String span) {
+        int depth = 0;
+        for (int i = span.length() - 1; i >= 0; i--) {
+            if (span.charAt(i) == ']') {
+                depth++;
+            } else if (span.charAt(i) == '[') {
+                depth--;
+            }
+            if (depth == 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Index of the first '(' not inside a quoted string, or -1. */
+    private static int findOpenParen(String s) {
+        boolean inQuote = false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"' && (i == 0 || s.charAt(i - 1) != '\\')) {
+                inQuote = !inQuote;
+            }
+            if (c == '(' && !inQuote) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static Map<String, String> parseParams(String inner) {
+        Map<String, String> result = new LinkedHashMap<>();
+        List<String> tokens = splitParams(inner);
+        int positionalIndex = 0;
+        for (String token : tokens) {
+            String trimmed = token.strip();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            int colonIdx = findColon(trimmed);
+            if (colonIdx > 0) {
+                String key = trimmed.substring(0, colonIdx).strip();
+                String value = stripQuotes(trimmed.substring(colonIdx + 1).strip());
+                result.put(key, value);
+            } else {
+                result.put("arg" + positionalIndex, stripQuotes(trimmed));
+            }
+            positionalIndex++;
+        }
+        return result;
+    }
+
+    /** Index of the first ':' not inside quotes/parens/braces/brackets, or -1. */
+    private static int findColon(String s) {
+        boolean inQuote = false;
+        int parenDepth = 0;
+        int braceDepth = 0;
+        int bracketDepth = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"' && (i == 0 || s.charAt(i - 1) != '\\')) {
+                inQuote = !inQuote;
+            }
+            if (!inQuote) {
+                if (c == '(') {
+                    parenDepth++;
+                } else if (c == ')') {
+                    parenDepth--;
+                } else if (c == '{') {
+                    braceDepth++;
+                } else if (c == '}') {
+                    braceDepth--;
+                } else if (c == '[') {
+                    bracketDepth++;
+                } else if (c == ']') {
+                    bracketDepth--;
+                } else if (c == ':' && parenDepth == 0 && braceDepth == 0 && bracketDepth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static List<String> splitParams(String inner) {
+        List<String> tokens = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuote = false;
+        int parenDepth = 0;
+        int braceDepth = 0;
+        int bracketDepth = 0;
+        for (int i = 0; i < inner.length(); i++) {
+            char c = inner.charAt(i);
+            if (c == '"' && (i == 0 || inner.charAt(i - 1) != '\\')) {
+                inQuote = !inQuote;
+            }
+            if (!inQuote) {
+                if (c == '(') {
+                    parenDepth++;
+                } else if (c == ')') {
+                    parenDepth--;
+                } else if (c == '{') {
+                    braceDepth++;
+                } else if (c == '}') {
+                    braceDepth--;
+                } else if (c == '[') {
+                    bracketDepth++;
+                } else if (c == ']') {
+                    bracketDepth--;
+                } else if (c == ',' && parenDepth == 0 && braceDepth == 0 && bracketDepth == 0) {
+                    tokens.add(current.toString());
+                    current.setLength(0);
+                    continue;
+                }
+            }
+            current.append(c);
+        }
+        if (current.length() > 0) {
+            tokens.add(current.toString());
+        }
+        return tokens;
+    }
+
+    private static String stripQuotes(String value) {
+        if (value.length() >= 2 && value.charAt(0) == '"' && value.charAt(value.length() - 1) == '"') {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
+    }
+
     private static boolean isTruncationSuffix(String value) {
         int i = value.length() - 1;
         while (i >= 0 && (value.charAt(i) == '.' || value.charAt(i) == '·')) {

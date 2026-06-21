@@ -2,6 +2,7 @@ package io.kronikol.report;
 
 import io.kronikol.report.model.Scenario;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -11,14 +12,15 @@ import java.util.Set;
 /**
  * Groups parameterized test scenarios for the report's parameter table (.NET {@code ParameterGrouper}).
  *
- * <p>Scope: the Java {@link Scenario} model carries {@code outlineId} / {@code exampleValues} /
- * {@code exampleDisplayName} but not the .NET {@code ExampleRawValues} (a live {@code object} graph —
- * the reflection R2/R3/R4 paths over it are runtime-specific and not cross-runtime byte-parity-able).
- * So grouping is by the framework-provided {@code outlineId} and the table is rendered with the
- * {@code ScalarColumns} (or {@code Fallback}) rule. Complex-object cells whose {@code exampleValues}
- * string is a record {@code ToString()} shape ARE rendered (R3 sub-table / R4 expandable) via the
- * string-based {@link ParameterValueRenderer}. The .NET display-name-prefix grouping (via
- * {@code ParameterParser}) and the string-based R2 flatten toggle are handled separately.
+ * <p>Scope: grouping is by the framework-provided {@code outlineId} first, then by display-name prefix
+ * ({@link ParameterParser#extractBaseName}); a group's columns come from {@code exampleValues} or, when
+ * absent, from parsing each member's display name ({@link ParameterParser#parse}). A single
+ * record-{@code ToString()} param is flattened into columns ({@code FlattenedObject}); complex-object
+ * cells whose {@code exampleValues} string is a record shape render as R3 sub-tables / R4 expandables
+ * via the string-based {@link ParameterValueRenderer}; {@code exampleFlatValues} drives the flatten
+ * toggle. The one .NET path not ported is the reflection R2/R3/R4 rendering over a live
+ * {@code ExampleRawValues} object graph — it is runtime-specific (PascalCase names, .NET type names)
+ * and not cross-runtime byte-parity-able, so only the deterministic string-based subset is mirrored.
  */
 final class ParameterGrouper {
 
@@ -37,13 +39,17 @@ final class ParameterGrouper {
     private ParameterGrouper() {
     }
 
-    /** Returns the parameterized groups (keyed by {@code outlineId}); non-grouped scenarios render
-     *  individually. Preserves first-seen group order. */
+    /** Returns the parameterized groups; non-grouped scenarios render individually. Groups by the
+     *  framework-provided {@code outlineId} first, then by display-name prefix for the remainder.
+     *  Preserves first-seen group order. */
     static List<ParameterizedGroup> analyze(List<Scenario> scenarios, int maxColumns) {
         List<ParameterizedGroup> groups = new ArrayList<>();
         if (scenarios.isEmpty()) {
             return groups;
         }
+        Set<String> consumed = new HashSet<>();
+
+        // 1. Group by OutlineId (framework-provided).
         Map<String, List<Scenario>> byOutline = new LinkedHashMap<>();
         for (Scenario s : scenarios) {
             if (s.outlineId() != null) {
@@ -52,10 +58,31 @@ final class ParameterGrouper {
         }
         for (Map.Entry<String, List<Scenario>> e : byOutline.entrySet()) {
             List<Scenario> members = e.getValue();
-            if (members.size() < 2 && !hasParameters(members)) {
-                continue; // single, parameter-less → rendered as an individual scenario
+            if (members.size() >= 2 || hasParameters(members)) {
+                groups.add(buildGroup(Humanize.formatScenarioDisplayName(e.getKey()), members, maxColumns));
             }
-            groups.add(buildGroup(Humanize.formatScenarioDisplayName(e.getKey()), members, maxColumns));
+            for (Scenario m : members) {
+                consumed.add(m.testId());
+            }
+        }
+
+        // 2. Group remaining scenarios by display-name prefix (.NET ParameterParser.ExtractBaseName).
+        Map<String, List<Scenario>> byPrefix = new LinkedHashMap<>();
+        for (Scenario s : scenarios) {
+            if (consumed.contains(s.testId())) {
+                continue;
+            }
+            String baseName = ParameterParser.extractBaseName(s.name());
+            if (baseName == null) {
+                baseName = s.name();
+            }
+            byPrefix.computeIfAbsent(baseName, k -> new ArrayList<>()).add(s);
+        }
+        for (Map.Entry<String, List<Scenario>> e : byPrefix.entrySet()) {
+            List<Scenario> members = e.getValue();
+            if (members.size() >= 2 || hasParameters(members)) {
+                groups.add(buildGroup(e.getKey(), members, maxColumns));
+            } // else: single, parameter-less → rendered as an individual scenario
         }
         return groups;
     }
@@ -63,6 +90,10 @@ final class ParameterGrouper {
     private static boolean hasParameters(List<Scenario> members) {
         for (Scenario m : members) {
             if (m.exampleValues() != null && !m.exampleValues().isEmpty()) {
+                return true;
+            }
+            Map<String, String> parsed = ParameterParser.parse(m.name());
+            if (parsed != null && !parsed.isEmpty()) {
                 return true;
             }
         }
@@ -104,9 +135,28 @@ final class ParameterGrouper {
             }
             return new ParameterizedGroup(groupName, new ArrayList<>(keys), Rule.SCALAR_COLUMNS, members, flatNames);
         }
-        // Not all members carry ExampleValues → .NET parses display names (ParameterParser, out of
-        // scope here); fall back to the single "Test Case" column.
-        return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames);
+        // Not all members carry ExampleValues → parse display names (.NET DetermineParamsAndRule
+        // fallback). Every member's display name must parse, else the single "Test Case" column.
+        List<Map<String, String>> allParsed = new ArrayList<>();
+        for (Scenario m : members) {
+            Map<String, String> parsed = ParameterParser.parse(m.name());
+            if (parsed == null || parsed.isEmpty()) {
+                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames);
+            }
+            allParsed.add(parsed);
+        }
+        // Populate exampleValues from the parsed display name where absent; columns are the parsed keys.
+        List<Scenario> populated = new ArrayList<>();
+        Set<String> allKeys = new LinkedHashSet<>();
+        for (int i = 0; i < members.size(); i++) {
+            Scenario m = members.get(i);
+            allKeys.addAll(allParsed.get(i).keySet());
+            populated.add(m.exampleValues() == null ? withExampleValues(m, allParsed.get(i)) : m);
+        }
+        if (allKeys.size() > maxColumns) {
+            return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, populated, flatNames);
+        }
+        return new ParameterizedGroup(groupName, new ArrayList<>(allKeys), Rule.SCALAR_COLUMNS, populated, flatNames);
     }
 
     /**

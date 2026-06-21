@@ -302,6 +302,25 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void parameterizedBrowserHtmlReport_displayNamePrefixGroup_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        Scenario s1 = Scenario.builder("Login(user: bob, role: admin)", "s1", ExecutionStatus.PASSED)
+            .durationMs(50)
+            .steps(List.of(new ScenarioStep("Then", "access granted", ExecutionStatus.PASSED, 10L,
+                List.of(), List.of())))
+            .build();
+        Scenario s2 = Scenario.builder("Login(user: sue, role: guest)", "s2", ExecutionStatus.FAILED)
+            .durationMs(60).error("Expected: granted\nActual: denied")
+            .build();
+        Feature feature = new Feature("Security", List.of(s1, s2));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-prefixgroup.html", actual);
+    }
+
+    @Test
     void summaryBrowserHtmlReport_includeTestRunData_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         Scenario login1 = Scenario.builder("Login succeeds", "s1", ExecutionStatus.PASSED)
