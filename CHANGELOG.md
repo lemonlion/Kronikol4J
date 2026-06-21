@@ -2,6 +2,42 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.13] — unreleased
+
+Completes **Phase 1 (rich reporting)**: the byte-for-byte HTML report parity now covers the
+rich step, parameterized, and customization feature surface — each proven against a dedicated
+golden captured from the real .NET `ReportGenerator`. This supersedes the v0.1.12 "out of scope"
+note: R2 flattened-object detection, the parameter flatten-toggle, complex-object (R3/R4) cells,
+display-name-prefix grouping, and inline/tabular/tree step parameters are now **implemented**
+(via their deterministic string-based paths — see Notes). Full suite green; Playwright passes.
+
+### Added — proven byte-parity for
+- **Rich steps** — step comments + doc-strings (`<pre><code class="language-…">`); inline,
+  tabular (`step-param-table`) and tree (`step-param-tree`) step parameters via `RenderParameter`;
+  the combined setup+assertion tabular table (key-aligned); structured `TextSegments` with inline
+  parameter spans and table references (small complex → inline summary, large → expandable button).
+- **String-based parameter rendering** — `ParameterParser` (record `ToString()` parsing,
+  `parse`/`extractBaseName` display-name parsing) and `ParameterValueRenderer` (R3 `cell-subtable`
+  / R4 `param-expand` with highlighted JSON, nested-record recursion, `List<T>` type-name cleanup).
+- **Rich parameterized groups** — R2 string-based flattened-object grouping (`FlattenedObject`),
+  the `ExampleFlatValues` flatten toggle (`param-table-wrapper` / `param-table-flat` / grouped),
+  display-name-prefix grouping for non-`OutlineId` scenarios, and per-example vs shared sequence
+  diagrams (`AllDiagramsIdentical` badge), with the model expanded (`exampleFlatValues`, rich
+  `ScenarioStep` parameters) without disturbing the report-data serializers.
+- **Customization** — CI metadata block (`ci-chart-group` + provider/build/branch/commit/pipeline/
+  repository table), custom CSS / favicon / logo, `showStepNumbers` (incl. nested `1.1.` sub-steps),
+  `generateBlankOnFailedTests`, and the assertion-note / step-delimiter / database diagram-toolbar
+  toggles — all via a new `HtmlCustomization` carrier and a `render(…)` overload.
+
+### Notes
+- **The only deliberate exclusion remains server-side PlantUML image rendering** (the Node.js /
+  inline-SVG `ImgSrc` pre-render path); diagrams render in-browser from the gzip `puml-data` island.
+- The .NET **reflection-based** object rendering over a live `ExampleRawValues` object graph is
+  runtime-specific (PascalCase property names, .NET type names) and is *not* cross-runtime
+  byte-parity-able — analogous to the gzip `puml-data` boundary — so only the deterministic
+  **string-based** paths (operating on the `ExampleValues`/`InlineValue` strings) are ported.
+  Documented at the call sites.
+
 ## [0.1.12] — unreleased
 
 Extends the byte-for-byte HTML report parity (v0.1.11) across the report's richer
