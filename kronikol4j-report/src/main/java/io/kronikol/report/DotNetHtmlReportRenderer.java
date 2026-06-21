@@ -877,7 +877,8 @@ public final class DotNetHtmlReportRenderer {
             .append("<a class=\"scenario-link\" href=\"#").append(anchorId)
             .append("\" title=\"Link to this scenario\" onclick=\"event.stopPropagation()\">&#128279;</a></summary>");
 
-        boolean scalarColumns = group.rule() == ParameterGrouper.Rule.SCALAR_COLUMNS && !group.parameterNames().isEmpty();
+        boolean scalarColumns = (group.rule() == ParameterGrouper.Rule.SCALAR_COLUMNS
+            || group.rule() == ParameterGrouper.Rule.FLATTENED_OBJECT) && !group.parameterNames().isEmpty();
         body.append("<table class=\"param-test-table\" data-prefix=\"").append(prefix).append("\"><thead>");
         if (scalarColumns) {
             body.append("<tr><th rowspan=\"2\" style=\"width:2.5em\">#</th>");

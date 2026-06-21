@@ -79,6 +79,10 @@ CaptureHtmlComplexParams();
 // nested record (recursion) and a collection type name (TryCleanCollectionTypeName) and a scalar.
 CaptureHtmlParamComplexCells();
 
+// String-based R2 FlattenedObject — a single record-string param flattened into per-property columns
+// (TryStringBasedFlatten), with a nested-record column rendered as an R3 cell-subtable.
+CaptureHtmlR2Flatten();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -609,6 +613,39 @@ void CaptureHtmlParamComplexCells()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-paramcells.html"), content);
     Console.WriteLine($"=== report-paramcells.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlR2Flatten()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // Two examples sharing OutlineId "Orders" with a SINGLE param "order" whose value is a record
+    // ToString() string. With no ExampleRawValues, ParameterGrouper.TryStringBasedFlatten parses it
+    // and flattens to one column per property (R2 FlattenedObject) — Id/Total scalar, Who a nested
+    // record rendered as an R3 cell-subtable in each cell.
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Order one", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50),
+        OutlineId = "Orders",
+        ExampleValues = new() { ["order"] = "Order { Id = 1, Who = Person { Name = Bob, Age = 30 }, Total = 50 }" },
+        Steps = [ new ScenarioStep { Keyword = "Then", Text = "it ships", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) } ]
+    };
+    var s2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Order two", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(60),
+        OutlineId = "Orders",
+        ExampleValues = new() { ["order"] = "Order { Id = 2, Who = Person { Name = Sue, Age = 25 }, Total = 75 }" },
+        ErrorMessage = "Expected: shipped\nActual: pending"
+    };
+    var feature = new Feature { DisplayName = "Fulfilment", Scenarios = [s1, s2] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-r2flatten.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-r2flatten.html"), content);
+    Console.WriteLine($"=== report-r2flatten.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

@@ -247,6 +247,30 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void parameterizedBrowserHtmlReport_stringBasedR2Flatten_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();
+        ev1.put("order", "Order { Id = 1, Who = Person { Name = Bob, Age = 30 }, Total = 50 }");
+        LinkedHashMap<String, String> ev2 = new LinkedHashMap<>();
+        ev2.put("order", "Order { Id = 2, Who = Person { Name = Sue, Age = 25 }, Total = 75 }");
+        Scenario s1 = Scenario.builder("Order one", "s1", ExecutionStatus.PASSED)
+            .durationMs(50).outlineId("Orders").exampleValues(ev1)
+            .steps(List.of(new ScenarioStep("Then", "it ships", ExecutionStatus.PASSED, 10L,
+                List.of(), List.of())))
+            .build();
+        Scenario s2 = Scenario.builder("Order two", "s2", ExecutionStatus.FAILED)
+            .durationMs(60).outlineId("Orders").exampleValues(ev2)
+            .error("Expected: shipped\nActual: pending")
+            .build();
+        Feature feature = new Feature("Fulfilment", List.of(s1, s2));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-r2flatten.html", actual);
+    }
+
+    @Test
     void summaryBrowserHtmlReport_includeTestRunData_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         Scenario login1 = Scenario.builder("Login succeeds", "s1", ExecutionStatus.PASSED)

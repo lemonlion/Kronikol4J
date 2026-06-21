@@ -23,7 +23,7 @@ import java.util.Set;
 final class ParameterGrouper {
 
     enum Rule {
-        SCALAR_COLUMNS, FALLBACK
+        SCALAR_COLUMNS, FLATTENED_OBJECT, FALLBACK
     }
 
     record ParameterizedGroup(String groupDisplayName, List<String> parameterNames, Rule rule,
@@ -83,6 +83,13 @@ final class ParameterGrouper {
             for (Scenario m : members) {
                 keys.addAll(m.exampleValues().keySet());
             }
+            // R2: a single param whose value is a record ToString() string → flatten into columns.
+            if (keys.size() == 1) {
+                ParameterizedGroup flat = tryStringBasedFlatten(groupName, members, keys.iterator().next(), maxColumns);
+                if (flat != null) {
+                    return flat;
+                }
+            }
             if (keys.size() > maxColumns) {
                 return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members);
             }
@@ -91,5 +98,49 @@ final class ParameterGrouper {
         // Not all members carry ExampleValues → .NET parses display names (ParameterParser, out of
         // scope here); fall back to the single "Test Case" column.
         return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members);
+    }
+
+    /**
+     * String-based R2 (.NET {@code ParameterGrouper.TryStringBasedFlatten}): when a single
+     * {@code exampleValues} param is a record {@code ToString()} shape ("{@code Type { Prop = Val, ... }}")
+     * that parses across <em>all</em> members with the first member's property names, flatten it into
+     * one column per property — each member's {@code exampleValues} is replaced by the parsed map.
+     * Returns null (no flatten) if any member fails to parse or lacks a property the first member has.
+     */
+    private static ParameterizedGroup tryStringBasedFlatten(String groupName, List<Scenario> members,
+                                                            String paramKey, int maxColumns) {
+        String firstValue = members.get(0).exampleValues() == null
+            ? null : members.get(0).exampleValues().get(paramKey);
+        Map<String, String> firstParsed = ParameterParser.tryParseRecordToString(firstValue);
+        if (firstParsed == null) {
+            return null;
+        }
+        List<String> propertyNames = new ArrayList<>(firstParsed.keySet());
+        if (propertyNames.isEmpty() || propertyNames.size() > maxColumns) {
+            return null;
+        }
+        List<Scenario> flattened = new ArrayList<>();
+        for (Scenario m : members) {
+            String val = m.exampleValues() == null ? null : m.exampleValues().get(paramKey);
+            Map<String, String> parsed = ParameterParser.tryParseRecordToString(val);
+            if (parsed == null) {
+                return null;
+            }
+            for (String pn : propertyNames) {
+                if (!parsed.containsKey(pn)) {
+                    return null;
+                }
+            }
+            flattened.add(withExampleValues(m, parsed));
+        }
+        return new ParameterizedGroup(groupName, propertyNames, Rule.FLATTENED_OBJECT, flattened);
+    }
+
+    /** Rebuilds an (immutable) {@link Scenario} with a replaced {@code exampleValues} map. */
+    private static Scenario withExampleValues(Scenario s, Map<String, String> exampleValues) {
+        return new Scenario(s.name(), s.testId(), s.status(), s.durationMs(), s.error(),
+            s.isHappyPath(), s.errorStackTrace(), s.labels(), s.categories(), s.rule(),
+            s.outlineId(), exampleValues, s.exampleDisplayName(),
+            s.attachments(), s.backgroundSteps(), s.steps());
     }
 }
