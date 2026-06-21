@@ -2,6 +2,51 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.1] — unreleased
+
+Closes the two roadmap gaps flagged in 0.1.0 (assertion Tier 2 and the golden-file parity harness)
+and adds real-browser render verification. Full suite green on JDK 17–25.
+
+### Byte-for-byte PlantUML parity (closes the golden-file gap)
+- **Real cross-runtime parity harness** — a C# capture program (`parity-harness/dotnet-capture`)
+  drives the *real* .NET `PlantUmlCreator` to emit golden `.puml` fixtures; `PlantUmlParityTest`
+  builds the identical corpus in Java and asserts byte-for-byte equality (only the trailing newline
+  normalised). **5 scenarios**: simple HTTP, colored arrows, multi-trace, SQL, and fire-and-forget
+  events.
+- Aligned the Java generator to .NET exactly: `@startuml`/`!pragma teoz`/event-`<style>` prefix,
+  the `autonumber`/`skinparam wrapWidth` preamble, arrow + label formatting, note openers
+  (`note left`/`note right`, `note<<eventNote>>`), and camelCase-sanitised aliases.
+- **Fixed a participant-shape bug** caught by parity: a null-category response log was clobbering the
+  request's dependency category, so services rendered as `participant` instead of `entity`/`database`.
+  Now the first non-null category per service wins. `DependencyPalette` rewritten to the .NET
+  two-level category→type→shape+color model (null category → `entity`).
+
+### Assertion Tier 2 — automatic capture (closes the Tier 2 gap)
+- **Tier 2a (source expression)** — `Track.that(Runnable)` / `Track.record(...)` capture the
+  assertion's source text by reading the caller's `.java` line via `StackWalker`
+  (`SourceExpression.forCallerOutsidePackages`), the analog of .NET reading PDB sequence points.
+- **Tier 2b (`kronikol4j-assertj-agent`)** — a **ByteBuddy agent** that instruments AssertJ's
+  `AbstractAssert` hierarchy to auto-capture every assertion's **actual + expected values AND source
+  expression** with **no wrapper and no `.as()`** — the full fidelity .NET gets from IL weaving.
+  - Instruments `AbstractAssert` *and its `org.assertj.core.api` subtypes*, so primitive-specialised
+    overloads (`AbstractIntegerAssert.isEqualTo(int)`, …) are covered, not just the `Object` form.
+  - Records **exactly once per logical assertion** via call-depth tracking (outermost frame only),
+    so a subclass override delegating to `super.isEqualTo` doesn't double-count.
+  - Works on **JDK 25**: sets `net.bytebuddy.experimental` (in a static initializer and the test JVM
+    args) so ByteBuddy 1.15 can parse AssertJ types whose generics reference JDK 25 classes.
+  - Usable as a `-javaagent` (declares `Premain-Class`/`Agent-Class`) or via self-attach `install()`.
+
+### Browser rendering + offline reports
+- **Client-side PlantUML-WASM rendering** wired into `HtmlReportGenerator`: diagram sources go into a
+  `#kronikol-diagrams` JSON map and the bundled `kronikol-render.js` loads the WASM library
+  (`plantumlLoad([], …)` → `plantuml.render(lines, id)`) to paint each `.plantuml-browser` element.
+- **Self-contained / offline reports** — `kronikol.report.assetBase` system property repoints the
+  WASM assets at a local directory (default: the CDN), so a report can render with no network.
+- **Playwright pixel verification** (`playwright/`) — a real headless-Chromium test loads a generated
+  report from `file://` and asserts the WASM pipeline actually injects an `<svg>` with real
+  dimensions, text glyphs, and the tracked participant — fully offline, no request mocking. Fed by
+  the `:kronikol4j-report:generatePlaywrightFixture` task (`OfflineReportFixture`).
+
 ## [0.1.0] — unreleased
 
 The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md](docs/PORT_PLAN.md).
