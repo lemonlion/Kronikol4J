@@ -1096,6 +1096,9 @@ public final class DotNetHtmlReportRenderer {
         if (step.durationMs() != null) {
             body.append(" <span class=\"step-duration\">(").append(formatDurationBadge(step.durationMs())).append(")</span>");
         }
+        for (String comment : step.comments()) {
+            body.append("<div class=\"step-comment\">").append(HtmlEscaper.encode(comment)).append("</div>");
+        }
         for (FileAttachment att : step.attachments()) {
             String relPath = HtmlEscaper.encode(att.relativePath());
             String name = HtmlEscaper.encode(att.name());
@@ -1107,6 +1110,12 @@ public final class DotNetHtmlReportRenderer {
             } else {
                 body.append("<a class=\"step-attachment\" href=\"").append(relPath).append("\">").append(name).append("</a>");
             }
+        }
+        if (step.docString() != null) {
+            String codeClass = step.docStringMediaType() != null
+                ? " class=\"language-" + HtmlEscaper.encode(step.docStringMediaType()) + "\"" : "";
+            body.append("<pre class=\"step-docstring\"><code").append(codeClass).append(">")
+                .append(HtmlEscaper.encode(step.docString())).append("</code></pre>");
         }
 
         if (hasSub) {

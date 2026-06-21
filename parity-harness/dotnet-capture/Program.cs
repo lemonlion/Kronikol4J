@@ -55,6 +55,9 @@ CaptureHtmlParameterized();
 // Test Execution Summary, the pie chart, and the header-row wrapping.
 CaptureHtmlSummary();
 
+// Rich step rendering — a step with Comments + a DocString (with media type).
+CaptureHtmlStepDetails();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -328,6 +331,33 @@ void CaptureHtmlSummary()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-summary.html"), content);
     Console.WriteLine($"=== report-summary.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlStepDetails()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Checkout succeeds", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500),
+        Steps =
+        [
+            new ScenarioStep
+            {
+                Keyword = "When", Text = "the user submits the order", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(40),
+                Comments = [ "verify the payload", "idempotency key sent" ],
+                DocString = "{\n  \"id\": 42,\n  \"total\": \"9.99\"\n}", DocStringMediaType = "json"
+            }
+        ]
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [scenario] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-stepdetails.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-stepdetails.html"), content);
+    Console.WriteLine($"=== report-stepdetails.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

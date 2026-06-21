@@ -224,6 +224,24 @@ class GoldenHtmlParityTest {
         assertParity("report-summary.html", actual);
     }
 
+    @Test
+    void stepDetailsBrowserHtmlReport_commentsAndDocString_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        ScenarioStep step = ScenarioStep.builder("When", "the user submits the order", ExecutionStatus.PASSED)
+            .durationMs(40)
+            .comments(List.of("verify the payload", "idempotency key sent"))
+            .docString("{\n  \"id\": 42,\n  \"total\": \"9.99\"\n}").docStringMediaType("json")
+            .build();
+        Scenario scenario = Scenario.builder("Checkout succeeds", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500).steps(List.of(step)).build();
+        Feature feature = new Feature("Checkout", List.of(scenario));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-stepdetails.html", actual);
+    }
+
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
     private static void assertParity(String goldenName, String actual) throws IOException {
         Path dump = Path.of("build", "parity", goldenName.replace(".html", ".actual.html"));
