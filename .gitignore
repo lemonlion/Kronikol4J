@@ -25,3 +25,8 @@ Thumbs.db
 # .NET capture harness build output
 parity-harness/**/bin/
 parity-harness/**/obj/
+
+# .NET capture harness scratch output (the HTML/asset dumps; goldens are copied into the test resources)
+parity-harness/dotnet-capture/fixtures/report.html
+parity-harness/dotnet-capture/fixtures/stylesheets.css
+parity-harness/dotnet-capture/fixtures/assets/
