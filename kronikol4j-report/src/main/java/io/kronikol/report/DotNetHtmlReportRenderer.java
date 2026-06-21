@@ -494,9 +494,12 @@ public final class DotNetHtmlReportRenderer {
 
         if (failed) {
             // .NET interpolates the error + stack trace RAW (unescaped) into the <pre>. diffHtml is the
-            // ErrorDiffParser expected/actual table — empty unless the message matches that shape (a
-            // separate port; the corpus error does not match, so "" is byte-correct here).
+            // ErrorDiffParser expected/actual table — empty unless the message matches that shape.
             String diffHtml = "";
+            ErrorDiffParser.DiffResult diff = ErrorDiffParser.tryParseExpectedActual(scenario.error());
+            if (diff != null) {
+                diffHtml = ErrorDiffParser.generateDiffHtml(diff.expected(), diff.actual());
+            }
             body.append("<details class=\"failure-result\" open>").append(NL)
                 .append("   <summary class=\"h4\">Failure Result</summary>").append(NL)
                 .append("   <pre>").append(NL)

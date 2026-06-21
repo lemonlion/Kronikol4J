@@ -43,6 +43,10 @@ CaptureHtmlAttachments();
 // and a rule change — exercising the <details class="rule"> open/close around consecutive scenarios.
 CaptureHtmlRules();
 
+// ErrorDiffParser: a failed scenario whose message matches the xUnit Expected/Actual shape, so the
+// failure-result block carries the character-level diff table (error-diff / diff-del / diff-ins).
+CaptureHtmlErrorDiff();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -238,6 +242,26 @@ void CaptureHtmlRules()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-rules.html"), content);
     Console.WriteLine($"=== report-rules.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlErrorDiff()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var failed = new Scenario
+    {
+        Id = "s1", DisplayName = "Checkout validates total", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(15),
+        ErrorMessage = "Expected: 400\nActual: 500",
+        ErrorStackTrace = "at Checkout.Validate()"
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [failed] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-errordiff.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-errordiff.html"), content);
+    Console.WriteLine($"=== report-errordiff.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

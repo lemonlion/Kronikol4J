@@ -159,6 +159,22 @@ class GoldenHtmlParityTest {
         assertParity("report-rules.html", actual);
     }
 
+    @Test
+    void errorDiffBrowserHtmlReport_expectedActualDiff_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        Scenario failed = Scenario.builder("Checkout validates total", "s1", ExecutionStatus.FAILED)
+            .durationMs(15)
+            .error("Expected: 400\nActual: 500")
+            .errorStackTrace("at Checkout.Validate()")
+            .build();
+        Feature feature = new Feature("Checkout", List.of(failed));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-errordiff.html", actual);
+    }
+
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
     private static void assertParity(String goldenName, String actual) throws IOException {
         Path dump = Path.of("build", "parity", goldenName.replace(".html", ".actual.html"));
