@@ -4,6 +4,7 @@ import io.kronikol.report.html.HtmlEscaper;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.Scenario;
+import io.kronikol.report.model.ScenarioStep;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -485,6 +486,23 @@ public final class DotNetHtmlReportRenderer {
                 .append("</details>");
         }
 
+        if (!scenario.backgroundSteps().isEmpty()) {
+            body.append("<details class=\"scenario-background\">");
+            body.append("<summary class=\"h4\">Background Steps</summary>");
+            for (ScenarioStep step : scenario.backgroundSteps()) {
+                appendStep(body, step, null); // showStepNumbers defaults off → no number prefix
+            }
+            body.append("</details>");
+        }
+        if (!scenario.steps().isEmpty()) {
+            body.append("<details class=\"scenario-steps\" open>");
+            body.append("<summary class=\"h4\">Steps</summary>");
+            for (ScenarioStep step : scenario.steps()) {
+                appendStep(body, step, null);
+            }
+            body.append("</details>");
+        }
+
         String diagram = diagramByTestId.get(scenario.testId());
         boolean hasSequenceDiagrams = diagram != null;
         if (hasSequenceDiagrams) {
@@ -527,8 +545,118 @@ public final class DotNetHtmlReportRenderer {
     }
 
     private static void collectStepText(Scenario scenario, List<String> parts) {
-        // Steps are not yet part of the parity corpus; when present, their text feeds data-search.
-        scenario.steps().forEach(step -> parts.add(step.text()));
+        collectStepText(scenario.steps(), parts); // .NET CollectStepText: Steps only (not background), recursing sub-steps
+    }
+
+    private static void collectStepText(List<ScenarioStep> steps, List<String> parts) {
+        for (ScenarioStep step : steps) {
+            parts.add(step.text());
+            collectStepText(step.subSteps(), parts);
+        }
+    }
+
+    /** Ports .NET {@code RenderStep} for the fields the Java {@link ScenarioStep} model carries
+     *  (keyword/text/status/duration/sub-steps); the .NET-only inline/tabular params, doc-strings and
+     *  comments are not representable in the Java model and never reach here. */
+    private static void appendStep(StringBuilder body, ScenarioStep step, String numberPrefix) {
+        ExecutionStatus status = step.status();
+        boolean hasSub = !step.subSteps().isEmpty();
+
+        if (hasSub) {
+            body.append(hasAnyFailed(step)
+                ? "<details class=\"step step-collapsible\" open>"
+                : "<details class=\"step step-collapsible\">");
+            body.append("<summary>");
+        } else {
+            body.append("<div class=\"step\">");
+        }
+
+        if (numberPrefix != null) {
+            body.append("<span class=\"step-number\">").append(numberPrefix).append("</span>");
+        }
+        if (status != null) {
+            body.append("<span class=\"step-status ").append(stepStatusClass(step)).append("\" title=\"")
+                .append(stepStatusTooltip(step)).append("\">").append(stepStatusIcon(status)).append("</span>");
+        }
+        if (step.keyword() != null) {
+            body.append("<span class=\"step-keyword\">").append(HtmlEscaper.encode(step.keyword())).append("</span> ");
+        }
+        body.append("<span class=\"step-text\">").append(HtmlEscaper.encode(step.text())).append("</span>");
+        if (step.durationMs() != null) {
+            body.append(" <span class=\"step-duration\">(").append(formatDurationBadge(step.durationMs())).append(")</span>");
+        }
+
+        if (hasSub) {
+            body.append("</summary>");
+            body.append("<div class=\"sub-steps\">");
+            for (int i = 0; i < step.subSteps().size(); i++) {
+                String subPrefix = numberPrefix != null ? numberPrefix + (i + 1) + "." : null;
+                appendStep(body, step.subSteps().get(i), subPrefix);
+            }
+            body.append("</div>");
+            body.append("</details>");
+        } else {
+            body.append("</div>");
+        }
+    }
+
+    private static String stepStatusClass(ScenarioStep step) {
+        return switch (step.status()) {
+            case PASSED -> hasAnySkipped(step) ? "passed-skipped"
+                : hasAnyBypassed(step) ? "passed-bypassed" : "passed";
+            case FAILED -> "failed";
+            case SKIPPED -> "skipped";
+            case INCONCLUSIVE -> "bypassed";
+        };
+    }
+
+    private static String stepStatusIcon(ExecutionStatus status) {
+        return switch (status) {
+            case PASSED -> "&#10003;";
+            case FAILED -> "&#10005;";
+            case SKIPPED -> "&#216;";
+            case INCONCLUSIVE -> "&#8631;";
+        };
+    }
+
+    private static String stepStatusTooltip(ScenarioStep step) {
+        return switch (step.status()) {
+            case PASSED -> hasAnySkipped(step)
+                ? "Passed (with skipped sub-steps) — all assertions passed, but one or more sub-steps were skipped. Skipped steps did not execute and also prevented execution of subsequent steps"
+                : hasAnyBypassed(step)
+                ? "Passed (with bypassed sub-steps) — all assertions passed, but one or more sub-steps were bypassed (intentionally skipped over without preventing execution of subsequent steps)"
+                : "Passed — all assertions in this step passed";
+            case FAILED -> "Failed — this step threw an exception or an assertion failed";
+            case SKIPPED -> "Skipped — this step did not execute because it was intentionally skipped, either at the scenario level, or at the step level. In the latter case the skip also prevented execution of subsequent steps";
+            case INCONCLUSIVE -> "Bypassed — some or all of the logic in this step was intentionally skipped over without preventing execution of subsequent steps";
+        };
+    }
+
+    private static boolean hasAnyFailed(ScenarioStep step) {
+        for (ScenarioStep sub : step.subSteps()) {
+            if (sub.status() == ExecutionStatus.FAILED || hasAnyFailed(sub)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasAnyBypassed(ScenarioStep step) {
+        for (ScenarioStep sub : step.subSteps()) {
+            if (sub.status() == ExecutionStatus.INCONCLUSIVE || hasAnyBypassed(sub)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasAnySkipped(ScenarioStep step) {
+        for (ScenarioStep sub : step.subSteps()) {
+            if (sub.status() == ExecutionStatus.SKIPPED || hasAnySkipped(sub)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String scenarioTooltip(ExecutionStatus status) {

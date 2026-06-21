@@ -27,6 +27,10 @@ CaptureHtml();
 // status filters with failures, and mixed-status timeline — so the migrated tests prove those paths).
 CaptureHtmlRich();
 
+// BDD steps: a scenario with Background Steps + Steps (incl. a nested sub-step), exercising the
+// scenario-background/scenario-steps <details>, RenderStep status/keyword/duration and sub-step recursion.
+CaptureHtmlSteps();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -106,6 +110,42 @@ void CaptureHtmlRich()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-rich.html"), content);
     Console.WriteLine($"=== report-rich.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlSteps()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Checkout succeeds", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500),
+        BackgroundSteps =
+        [
+            new ScenarioStep { Keyword = "Given", Text = "a logged-in user", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) }
+        ],
+        Steps =
+        [
+            new ScenarioStep { Keyword = "Given", Text = "an empty cart", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(20) },
+            new ScenarioStep
+            {
+                Keyword = "When", Text = "the user checks out", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(500),
+                SubSteps = [ new ScenarioStep { Text = "POST /checkout", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(400) } ]
+            },
+            new ScenarioStep { Keyword = "Then", Text = "the order is confirmed", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(30) }
+        ]
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [scenario] };
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", "",
+            "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml")
+    };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-steps.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-steps.html"), content);
+    Console.WriteLine($"=== report-steps.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

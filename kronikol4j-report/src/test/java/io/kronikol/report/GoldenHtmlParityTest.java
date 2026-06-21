@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.Scenario;
+import io.kronikol.report.model.ScenarioStep;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,6 +73,29 @@ class GoldenHtmlParityTest {
             List.of(feature), diagramByTestId, componentDiagram, "Kronikol Run", PINNED_VERSION);
 
         assertParity("report-rich.html", actual);
+    }
+
+    @Test
+    void stepsBrowserHtmlReport_backgroundAndSteps_isByteForByteIdenticalToDotNetGolden() throws IOException {
+        ScenarioStep substep =
+            new ScenarioStep(null, "POST /checkout", ExecutionStatus.PASSED, 400L, List.of(), List.of());
+        Scenario scenario = Scenario.builder("Checkout succeeds", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500)
+            .backgroundSteps(List.of(
+                new ScenarioStep("Given", "a logged-in user", ExecutionStatus.PASSED, 10L, List.of(), List.of())))
+            .steps(List.of(
+                new ScenarioStep("Given", "an empty cart", ExecutionStatus.PASSED, 20L, List.of(), List.of()),
+                new ScenarioStep("When", "the user checks out", ExecutionStatus.PASSED, 500L, List.of(substep), List.of()),
+                new ScenarioStep("Then", "the order is confirmed", ExecutionStatus.PASSED, 30L, List.of(), List.of())))
+            .build();
+        Feature feature = new Feature("Checkout", List.of(scenario));
+        Map<String, String> diagramByTestId = Map.of(
+            "s1", "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml");
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-steps.html", actual);
     }
 
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
