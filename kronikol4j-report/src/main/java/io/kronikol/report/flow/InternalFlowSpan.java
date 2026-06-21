@@ -19,10 +19,18 @@ import java.time.Instant;
  * @param operationName the span's operation name (label fallback)
  * @param startTime     the span start instant (UTC), used for deterministic ordering and flame offsets
  * @param durationMs    the span duration in milliseconds
+ * @param traceId       the span's trace id, used only to correlate spans to a test in
+ *                      {@link InternalFlowSegmentBuilder} (the renderers never read it); may be null
  */
 public record InternalFlowSpan(
     String spanId, String parentSpanId, String sourceName, String displayName, String operationName,
-    Instant startTime, double durationMs) {
+    Instant startTime, double durationMs, String traceId) {
+
+    /** Back-compatible span without a trace id (the renderers do not need one). */
+    public InternalFlowSpan(String spanId, String parentSpanId, String sourceName, String displayName,
+                            String operationName, Instant startTime, double durationMs) {
+        this(spanId, parentSpanId, sourceName, displayName, operationName, startTime, durationMs, null);
+    }
 
     /** The rendered label: {@code displayName} when present, else {@code operationName}. */
     public String label() {

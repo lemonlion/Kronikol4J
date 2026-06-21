@@ -6,11 +6,14 @@ import io.kronikol.diagram.component.ComponentRelationship;
 import io.kronikol.diagram.model.PlantUmlForTest;
 import io.kronikol.diagram.plantuml.PlantUmlCreator;
 import io.kronikol.report.data.ReportData;
+import io.kronikol.report.flow.WholeTestFlowInput;
 import io.kronikol.report.model.Feature;
+import io.kronikol.report.model.HtmlCustomization;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,9 +96,40 @@ public final class HtmlReportGenerator {
     /** As {@link #renderHtml(List, Map, String)}, embedding a run-level component-diagram section. */
     public static String renderHtml(List<Feature> features, Map<String, String> diagramByTestId,
                                     String componentDiagram, String title) {
-        String html = DotNetHtmlReportRenderer.render(
-            features, diagramByTestId, componentDiagram, title, ReportData.defaultKronikolVersion());
-        // Offline, self-contained report: rewrite the baked-in CDN base to the override, if set.
+        return postProcess(DotNetHtmlReportRenderer.render(
+            features, diagramByTestId, componentDiagram, title, ReportData.defaultKronikolVersion()));
+    }
+
+    /**
+     * As {@link #renderHtml(List, Map, String, String)}, additionally rendering the whole-test-flow
+     * (internal-flow activity diagrams + flame charts) from the captured segments. This is the public
+     * extension point for the whole-test-flow feature: a caller that collects finished OpenTelemetry
+     * spans (via a {@code SpanProcessor}) builds the input with
+     * {@link io.kronikol.report.flow.InternalFlowSegmentBuilder#buildWholeTestSegments} and a
+     * {@link WholeTestFlowInput}, then passes it here.
+     */
+    public static String renderHtml(List<Feature> features, Map<String, String> diagramByTestId,
+                                    String componentDiagram, String title, WholeTestFlowInput wholeTestFlow) {
+        return postProcess(DotNetHtmlReportRenderer.render(
+            features, diagramByTestId, componentDiagram, title, ReportData.defaultKronikolVersion(),
+            false, Instant.EPOCH, Instant.EPOCH, HtmlCustomization.NONE, wholeTestFlow));
+    }
+
+    /** As {@link #generateFromDiagrams(List, Map, String, Path, String)}, with whole-test-flow views. */
+    public static GeneratedReport generateFromDiagrams(List<Feature> features,
+                                                       Map<String, String> diagramByTestId,
+                                                       String componentDiagram, Path outputDir, String title,
+                                                       WholeTestFlowInput wholeTestFlow) throws IOException {
+        String html = renderHtml(features, diagramByTestId, componentDiagram, title, wholeTestFlow);
+        Files.createDirectories(outputDir);
+        Path file = outputDir.resolve("TestRunReport.html");
+        Files.writeString(file, html, StandardCharsets.UTF_8);
+        return new GeneratedReport(html, file);
+    }
+
+    /** Offline, self-contained report: rewrites the baked-in CDN base to the {@link #ASSET_BASE_PROPERTY}
+     *  override, if set. */
+    private static String postProcess(String html) {
         String base = assetBase();
         return base.equals(DEFAULT_CDN) ? html : html.replace(DEFAULT_CDN, base);
     }
