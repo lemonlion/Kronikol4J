@@ -2,6 +2,36 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.14] — unreleased
+
+Adds the **internal-flow / whole-test-flow** report views — the activity diagrams and flame
+charts generated from captured spans — reaching byte-for-byte parity with the .NET renderer for
+the report-rendering side.
+
+### Added — proven byte-parity for
+- **Activity diagrams** (`io.kronikol.report.flow.InternalFlowRenderer.renderActivityDiagram`) — a
+  PlantUML swimlane-per-source activity diagram from a runtime-neutral span tree
+  (`InternalFlowSpan`/`InternalFlowSegment`), including the >100-span batching. The PlantUML keeps
+  native CRLF line endings (it is gzipped into `puml-data` before the report's
+  `ReplaceLineEndings`), so the decoded payload matches verbatim.
+- **Flame-chart data** (`getFlameChartData`/`getFlameChartDataWithMarkers`) — the compact
+  `{s, f, m}` JSON serialized byte-identically to **System.Text.Json**: integers without a decimal
+  point, doubles as shortest-decimal (trailing zeros stripped), `Math.Round(x, 2)` banker's
+  rounding, and the default HTML-safe string escaping (`" & ' + < > \`` → upper-case `\uXXXX`).
+- **Whole-test-flow report wiring** — `WholeTestFlowVisualization` (None/FlameChart/ActivityDiagram/
+  Both) + `WholeTestFlowInput` + a `render(…)` overload. The multi-view **Diagrams** toolbar
+  (Sequence/Activity/Flame toggle buttons) and the `diagram-view-seq/activity/flame` wrappers are
+  wired into both individual scenarios and parameterized groups (per-example vs the shared
+  "identical across test cases" view), and the `internalFlowTracking`-gated head scripts are emitted.
+
+### Notes
+- The flame chart's gzipped payload is an inline `data-flame-z` body attribute (not the `puml-data`
+  island); like `puml-data`, gzip is not byte-stable across runtimes, so the parity suite masks it
+  for the byte-compare and asserts decoded (gunzip) equality.
+- This release covers the whole-test-flow **rendering**; producing the segments from captured OTel
+  spans (the .NET `InternalFlowSegmentBuilder`/`InternalFlowSpanStore` capture side) is the
+  runtime-integration follow-on.
+
 ## [0.1.13] — unreleased
 
 Completes **Phase 1 (rich reporting)**: the byte-for-byte HTML report parity now covers the
