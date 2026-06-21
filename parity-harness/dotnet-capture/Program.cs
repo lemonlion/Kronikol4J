@@ -120,6 +120,11 @@ CaptureHtmlDiagramToggles();
 // that is what the report gzips into puml-data before its ReplaceLineEndings("\n").
 DumpInternalFlowActivity();
 
+// Internal-flow flame data — the compact System.Text.Json produced by GetFlameChartDataWithMarkers
+// (fractional percentages exercise the double formatting + banker's rounding). Single-line JSON.
+DumpInternalFlowFlame();
+
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -362,6 +367,63 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void DumpInternalFlowFlame()
+{
+    // A 300ms root so the percentages are fractional (33.33, 36.67, …) — exercises the System.Text.Json
+    // double formatting + banker's rounding. Same tree shape as the activity dump.
+    using var listener = new ActivityListener
+    {
+        ShouldListenTo = _ => true,
+        Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllData
+    };
+    ActivitySource.AddActivityListener(listener);
+
+    var t0 = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    using var reqSrc = new ActivitySource("Kronikol.Request");
+    using var svcSrc = new ActivitySource("OrderService");
+    using var dbSrc = new ActivitySource("Database");
+
+    var root = reqSrc.StartActivity("GET /orders")!;
+    root.SetStartTime(t0);
+    var load = svcSrc.StartActivity("LoadOrder")!;
+    load.SetStartTime(t0.AddMilliseconds(100));
+    var sel = dbSrc.StartActivity("SELECT")!;
+    sel.SetStartTime(t0.AddMilliseconds(110));
+    sel.SetEndTime(t0.AddMilliseconds(130));                // 20ms
+    sel.Stop();
+    load.SetEndTime(t0.AddMilliseconds(140));               // 40ms
+    load.Stop();
+    var val = svcSrc.StartActivity("Validate")!;
+    val.SetStartTime(t0.AddMilliseconds(200));
+    val.SetEndTime(t0.AddMilliseconds(230));                // 30ms
+    val.Stop();
+    root.SetEndTime(t0.AddMilliseconds(300));               // 300ms
+    root.Stop();
+
+    var segment = new InternalFlowSegment(
+        Guid.Empty, RequestResponseType.Request, "t1",
+        new DateTimeOffset(t0, TimeSpan.Zero), new DateTimeOffset(t0.AddMilliseconds(300), TimeSpan.Zero),
+        new[] { root, load, sel, val });
+
+    var boundaryLogs = new[]
+    {
+        ("GET: /orders", new DateTimeOffset(t0, TimeSpan.Zero)),
+        // Special chars to capture System.Text.Json's default (HTML-safe) escaping exactly.
+        ("a&b<c>\"d'e+f/g", new DateTimeOffset(t0.AddMilliseconds(60), TimeSpan.Zero)),
+        ("DB: /query", new DateTimeOffset(t0.AddMilliseconds(110), TimeSpan.Zero))
+    };
+    var flameData = InternalFlowRenderer.GetFlameChartDataWithMarkers(segment, boundaryLogs);
+    var flameJson = System.Text.Json.JsonSerializer.Serialize(
+        flameData.Markers != null
+            ? (object)new { s = flameData.Sources, f = flameData.Spans, m = flameData.Markers }
+            : new { s = flameData.Sources, f = flameData.Spans },
+        new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+    File.WriteAllText(Path.Combine(outDir, "iflow-flame.json"), flameJson);
+    Console.WriteLine($"=== iflow-flame.json ({flameJson.Length} chars) ===");
+    Console.WriteLine(flameJson);
 }
 
 void DumpInternalFlowActivity()

@@ -1,0 +1,1 @@
+{"s":["Kronikol.Request","OrderService","Database"],"f":[[0,"GET /orders",0,100,0,300],[1,"LoadOrder",33.33,13.33,1,40],[2,"SELECT",36.67,6.67,2,20],[1,"Validate",66.67,10,1,30]],"m":[[0,"GET: /orders"],[20,"a\u0026b\u003Cc\u003E\u0022d\u0027e\u002Bf/g"],[36.67,"DB: /query"]]}

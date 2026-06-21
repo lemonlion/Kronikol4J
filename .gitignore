@@ -53,5 +53,6 @@ parity-harness/dotnet-capture/fixtures/report-stepnumbers.html
 parity-harness/dotnet-capture/fixtures/report-blankonfail.html
 parity-harness/dotnet-capture/fixtures/report-diagramtoggles.html
 parity-harness/dotnet-capture/fixtures/iflow-activity.txt
+parity-harness/dotnet-capture/fixtures/iflow-flame.json
 parity-harness/dotnet-capture/fixtures/stylesheets.css
 parity-harness/dotnet-capture/fixtures/assets/

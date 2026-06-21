@@ -37,6 +37,26 @@ class InternalFlowRendererTest {
             "activity-diagram PlantUML differs from the .NET golden (note CRLF)");
     }
 
+    @Test
+    void flameChartData_withMarkers_isByteForByteIdenticalToDotNet() {
+        // A 300ms root → fractional percentages (33.33/36.67/…); markers exercise the JSON escaping.
+        InternalFlowSegment segment = new InternalFlowSegment("t1", List.of(
+            new InternalFlowSpan("1", null, "Kronikol.Request", null, "GET /orders", T0, 300.0),
+            new InternalFlowSpan("2", "1", "OrderService", null, "LoadOrder", T0.plusMillis(100), 40.0),
+            new InternalFlowSpan("3", "2", "Database", null, "SELECT", T0.plusMillis(110), 20.0),
+            new InternalFlowSpan("4", "1", "OrderService", null, "Validate", T0.plusMillis(200), 30.0)));
+        List<InternalFlowRenderer.BoundaryMarker> markers = List.of(
+            new InternalFlowRenderer.BoundaryMarker("GET: /orders", T0),
+            new InternalFlowRenderer.BoundaryMarker("a&b<c>\"d'e+f/g", T0.plusMillis(60)),
+            new InternalFlowRenderer.BoundaryMarker("DB: /query", T0.plusMillis(110)));
+
+        String json = InternalFlowRenderer.flameJson(
+            InternalFlowRenderer.getFlameChartDataWithMarkers(segment, markers));
+
+        assertEquals(readFixture("iflow-flame.json"), json,
+            "flame-chart JSON differs from the .NET System.Text.Json golden");
+    }
+
     private static String readFixture(String name) {
         try (InputStream in = InternalFlowRendererTest.class.getResourceAsStream("/parity/" + name)) {
             assertTrue(in != null, "fixture /parity/" + name + " not found on test classpath");
