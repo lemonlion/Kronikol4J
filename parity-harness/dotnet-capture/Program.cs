@@ -2,9 +2,11 @@
 // deterministic corpora (fixed GUIDs) and writes the plain PlantUML to ./fixtures/*.puml.
 // The Java parity tests assert (after normalising only the trailing newline) byte-equality.
 
+using System.Diagnostics;
 using System.Net;
 using Kronikol;
 using Kronikol.ComponentDiagram;
+using Kronikol.InternalFlow;
 using Kronikol.PlantUml;
 using Kronikol.Reports;
 using Kronikol.Tracking;
@@ -112,6 +114,11 @@ CaptureHtmlBlankOnFail();
 // Diagram-toolbar toggles — a diagram with assertion-note / step-delimiter / database markers renders
 // the Assertions/Steps/Databases buttons in the global toolbar and the scenario diagram bar.
 CaptureHtmlDiagramToggles();
+
+// Internal-flow activity diagram — the raw PlantUML produced by InternalFlowRenderer for a nested
+// span tree (swimlanes per source, duration suffixes). Dumped with native (CRLF) line endings, since
+// that is what the report gzips into puml-data before its ReplaceLineEndings("\n").
+DumpInternalFlowActivity();
 
 void CaptureHtml()
 {
@@ -355,6 +362,51 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void DumpInternalFlowActivity()
+{
+    // A deterministic span tree: GET /orders (root) → LoadOrder → SELECT, then Validate (sibling).
+    using var listener = new ActivityListener
+    {
+        ShouldListenTo = _ => true,
+        Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllData
+    };
+    ActivitySource.AddActivityListener(listener);
+
+    var t0 = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    using var reqSrc = new ActivitySource("Kronikol.Request");
+    using var svcSrc = new ActivitySource("OrderService");
+    using var dbSrc = new ActivitySource("Database");
+
+    var root = reqSrc.StartActivity("GET /orders")!;
+    root.SetStartTime(t0);
+    var load = svcSrc.StartActivity("LoadOrder")!;          // parent = root
+    load.SetStartTime(t0.AddMilliseconds(10));
+    var sel = dbSrc.StartActivity("SELECT")!;               // parent = load
+    sel.SetStartTime(t0.AddMilliseconds(15));
+    sel.SetEndTime(t0.AddMilliseconds(35));                 // 20ms
+    sel.Stop();
+    load.SetEndTime(t0.AddMilliseconds(50));                // 40ms
+    load.Stop();
+    var val = svcSrc.StartActivity("Validate")!;            // parent = root (Current back to root)
+    val.SetStartTime(t0.AddMilliseconds(60));
+    val.SetEndTime(t0.AddMilliseconds(90));                 // 30ms
+    val.Stop();
+    root.SetEndTime(t0.AddMilliseconds(100));               // 100ms
+    root.Stop();
+
+    var segment = new InternalFlowSegment(
+        Guid.Empty, RequestResponseType.Request, "t1",
+        new DateTimeOffset(t0, TimeSpan.Zero), new DateTimeOffset(t0.AddMilliseconds(100), TimeSpan.Zero),
+        new[] { root, load, sel, val });
+
+    var batches = InternalFlowRenderer.RenderActivityDiagramBatched(segment, 100);
+    // Write raw (no ReplaceLineEndings) so the fixture keeps the native CRLF the report gzips.
+    File.WriteAllText(Path.Combine(outDir, "iflow-activity.txt"), batches[0]);
+    var crlf = batches[0].Contains("\r\n");
+    Console.WriteLine($"=== iflow-activity.txt ({batches[0].Length} chars, batches={batches.Length}, crlf={crlf}) ===");
 }
 
 void CaptureHtmlDiagramToggles()

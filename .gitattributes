@@ -3,3 +3,7 @@
 *.bat text eol=crlf
 *.jar binary
 gradlew text eol=lf
+
+# Internal-flow activity-diagram fixtures intentionally hold native (CRLF) line endings — the report
+# gzips this PlantUML into puml-data before its ReplaceLineEndings, so the bytes must survive verbatim.
+kronikol4j-report/src/test/resources/parity/iflow-*.txt -text

@@ -1,0 +1,13 @@
+@startuml
+skinparam ActivityBackgroundColor #f0f4ff
+skinparam ActivityBorderColor #666
+skinparam SwimlaneBorderColor #ccc
+|Kronikol.Request|
+:GET /orders (100ms);
+|OrderService|
+:LoadOrder (40ms);
+|Database|
+:SELECT (20ms);
+|OrderService|
+:Validate (30ms);
+@enduml
