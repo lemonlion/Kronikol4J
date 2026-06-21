@@ -51,6 +51,10 @@ CaptureHtmlErrorDiff();
 // scenario-parameterized aggregate <details> + the ScalarColumns param table.
 CaptureHtmlParameterized();
 
+// includeTestRunData=true: the Features Summary table (conditional Steps/Duration columns), the
+// Test Execution Summary, the pie chart, and the header-row wrapping.
+CaptureHtmlSummary();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -293,6 +297,37 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlSummary()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var login1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Login succeeds", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(100),
+        Steps = [ new ScenarioStep { Keyword = "When", Text = "the user logs in", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(30) } ]
+    };
+    var login2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Login fails", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(50),
+        ErrorMessage = "bad password"
+    };
+    var loginFeature = new Feature { DisplayName = "Login", Scenarios = [login1, login2] };
+    var checkout1 = new Scenario
+    {
+        Id = "s3", DisplayName = "Checkout succeeds", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(200)
+    };
+    var checkoutFeature = new Feature { DisplayName = "Checkout", Scenarios = [checkout1] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [loginFeature, checkoutFeature], start, end, null, "report-summary.html", "Kronikol Run", includeTestRunData: true);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-summary.html"), content);
+    Console.WriteLine($"=== report-summary.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

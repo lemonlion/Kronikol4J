@@ -11,6 +11,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
@@ -117,14 +121,27 @@ public final class DotNetHtmlReportRenderer {
      */
     public static String render(List<Feature> features, Map<String, String> diagramByTestId,
                                 String componentDiagram, String title, String version) {
+        return render(features, diagramByTestId, componentDiagram, title, version,
+            false, Instant.EPOCH, Instant.EPOCH);
+    }
+
+    /**
+     * As {@link #render(List, Map, String, String, String)}, with the .NET {@code includeTestRunData}
+     * block (the Features Summary table, the Test Execution Summary and the pie chart). {@code startTime}
+     * / {@code endTime} feed the execution summary; they are ignored when {@code includeTestRunData} is
+     * false (the production default).
+     */
+    public static String render(List<Feature> features, Map<String, String> diagramByTestId,
+                                String componentDiagram, String title, String version,
+                                boolean includeTestRunData, Instant startTime, Instant endTime) {
         boolean hasComponent = componentDiagram != null && !componentDiagram.isEmpty();
         Map<String, String> diagramData = new LinkedHashMap<>();
         StringBuilder head = new StringBuilder(300_000);
         appendHead(head, title, version, hasComponent);
 
         StringBuilder body = new StringBuilder(8_192);
-        appendBody(body, title, features, diagramByTestId == null ? Map.of() : diagramByTestId,
-            hasComponent ? componentDiagram : null, diagramData);
+        appendBody(body, title, version, features, diagramByTestId == null ? Map.of() : diagramByTestId,
+            hasComponent ? componentDiagram : null, diagramData, includeTestRunData, startTime, endTime);
 
         StringBuilder html = new StringBuilder(head.length() + body.length() + 1_024);
         html.append(head).append(body);
@@ -208,10 +225,14 @@ public final class DotNetHtmlReportRenderer {
 
     // ----------------------------------------------------------------------------------- body -----
 
-    private static void appendBody(StringBuilder body, String title, List<Feature> features,
+    private static void appendBody(StringBuilder body, String title, String version, List<Feature> features,
                                    Map<String, String> diagramByTestId, String componentDiagram,
-                                   Map<String, String> diagramData) {
+                                   Map<String, String> diagramData, boolean includeTestRunData,
+                                   Instant startTime, Instant endTime) {
         body.append("<h1>").append(title).append("</h1>");
+        if (includeTestRunData) {
+            appendTestRunDataSummary(body, features, version, startTime, endTime);
+        }
 
         // Per-scenario dependencies + diagram search terms (drives data-* attributes + filters).
         Map<String, Set<String>> scenarioDependencies = new LinkedHashMap<>();
@@ -237,6 +258,9 @@ public final class DotNetHtmlReportRenderer {
         }
 
         appendFilteringBox(body, features, allDependencies, hasDurations);
+        if (includeTestRunData) {
+            body.append("</div>"); // close header-row (opened in the test-execution-summary block)
+        }
         appendToolbar(body, hasDurations, componentDiagram != null);
         appendTimeline(body, features, hasDurations);
 
@@ -332,6 +356,182 @@ public final class DotNetHtmlReportRenderer {
         }
         body.append("<button class=\"back-to-top\" id=\"back-to-top\" "
             + "onclick=\"window.scrollTo({top:0,behavior:'smooth'})\">↑</button>");
+    }
+
+    private static final DateTimeFormatter DATE_FMT =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter TIME_FMT =
+        DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC);
+
+    /** The .NET {@code includeTestRunData} block: the Features Summary table, the Test Execution
+     *  Summary (which opens {@code <div class="header-row">}, closed after the filtering box) and the
+     *  pie chart. */
+    private static void appendTestRunDataSummary(StringBuilder body, List<Feature> features,
+                                                 String version, Instant startTime, Instant endTime) {
+        List<Scenario> scenarios = features.stream().flatMap(f -> f.scenarios().stream()).toList();
+        long passed = scenarios.stream().filter(s -> s.status() == ExecutionStatus.PASSED).count();
+        long skipped = scenarios.stream().filter(s -> s.status() == ExecutionStatus.SKIPPED).count();
+        long failed = scenarios.stream().filter(s -> s.status() == ExecutionStatus.FAILED).count();
+        long bypassed = scenarios.stream().filter(s -> s.status() == ExecutionStatus.INCONCLUSIVE).count();
+        String overallStatus = failed > 0 ? "Failed" : "Passed";
+
+        boolean hasAnySteps = features.stream()
+            .anyMatch(f -> f.scenarios().stream().anyMatch(s -> !s.steps().isEmpty()));
+        boolean hasAnyDurations = features.stream()
+            .anyMatch(f -> f.scenarios().stream().anyMatch(s -> s.durationMs() > 0));
+
+        body.append("<details class=\"features-summary-details\"><summary class=\"h2\">Features Summary</summary>");
+        body.append("<div class=\"features-summary-table-wrapper\">");
+        body.append("<table class=\"feature-summary-table\"><thead><tr>");
+        body.append("<th onclick=\"sort_table(0)\">Feature</th>");
+        body.append("<th onclick=\"sort_table(1)\">Scenarios</th>");
+        body.append("<th onclick=\"sort_table(2)\">Passed</th>");
+        body.append("<th onclick=\"sort_table(3)\">Failed</th>");
+        body.append("<th onclick=\"sort_table(4)\">Skipped</th>");
+        int nextCol = 5;
+        if (hasAnySteps) {
+            body.append("<th onclick=\"sort_table(").append(nextCol++).append(")\">Steps</th>");
+            body.append("<th class=\"step-status-header\" onclick=\"sort_table(").append(nextCol++).append(")\">Passed</th>");
+            body.append("<th class=\"step-status-header\" onclick=\"sort_table(").append(nextCol++).append(")\">Failed</th>");
+            body.append("<th class=\"step-status-header\" onclick=\"sort_table(").append(nextCol++).append(")\">Skipped</th>");
+        }
+        if (hasAnyDurations) {
+            body.append("<th onclick=\"sort_table(").append(nextCol++).append(")\">Duration</th>");
+            body.append("<th onclick=\"sort_table(").append(nextCol++).append(")\">Avg</th>");
+            body.append("<th onclick=\"sort_table(").append(nextCol).append(")\">Longest</th>");
+        }
+        body.append("</tr></thead><tbody>");
+
+        for (Feature feature : features) {
+            int totalSc = feature.scenarios().size();
+            long passedSc = feature.scenarios().stream().filter(s -> s.status() == ExecutionStatus.PASSED).count();
+            long failedSc = feature.scenarios().stream().filter(s -> s.status() == ExecutionStatus.FAILED).count();
+            long skippedSc = feature.scenarios().stream()
+                .filter(s -> s.status() == ExecutionStatus.SKIPPED || s.status() == ExecutionStatus.INCONCLUSIVE).count();
+            body.append("<tr").append(failedSc > 0 ? " class=\"failed\"" : "").append(">");
+            body.append("<td>").append(HtmlEscaper.encode(feature.displayName())).append("</td>");
+            body.append("<td>").append(totalSc).append("</td>");
+            body.append("<td>").append(passedSc).append("</td>");
+            body.append("<td>").append(failedSc).append("</td>");
+            body.append("<td>").append(skippedSc).append("</td>");
+            if (hasAnySteps) {
+                List<ScenarioStep> allSteps = feature.scenarios().stream()
+                    .flatMap(s -> s.steps().stream()).toList();
+                int[] byStatus = new int[3];
+                int stepCount = countStepsRecursive(allSteps, byStatus);
+                body.append("<td>").append(stepCount).append("</td>");
+                body.append("<td>").append(byStatus[0]).append("</td>");
+                body.append("<td>").append(byStatus[1]).append("</td>");
+                body.append("<td>").append(byStatus[2]).append("</td>");
+            }
+            if (hasAnyDurations) {
+                long[] durations = feature.scenarios().stream()
+                    .filter(s -> s.durationMs() > 0).mapToLong(Scenario::durationMs).toArray();
+                long totalDur = 0;
+                long maxDur = 0;
+                for (long d : durations) {
+                    totalDur += d;
+                    maxDur = Math.max(maxDur, d);
+                }
+                long avgDur = durations.length > 0 ? totalDur / durations.length : 0;
+                body.append("<td>").append(formatDuration(totalDur)).append("</td>");
+                body.append("<td>").append(formatDuration(avgDur)).append("</td>");
+                body.append("<td>").append(formatDuration(maxDur)).append("</td>");
+            }
+            body.append("</tr>");
+        }
+        body.append("</tbody></table></div></details>");
+
+        // Test Execution Summary (opens header-row; closed after the filtering box).
+        body.append("<div class=\"header-row\">").append(NL)
+            .append("<div class=\"test-execution-summary\">").append(NL)
+            .append("    <h2>Test Execution Summary</h2>").append(NL)
+            .append("    <table>").append(NL)
+            .append("        <tr><td colspan=\"2\" class=\"column-header\">Execution</td><td colspan=\"2\" class=\"column-header\">Content</td></tr>").append(NL)
+            .append("        <tr><td>Overall status:</td><td>").append(overallStatus).append("</td><td>Features: </td><td>").append(features.size()).append("</td></tr>").append(NL)
+            .append("        <tr><td>Start Date:</td><td>").append(DATE_FMT.format(startTime)).append(" (UTC)</td><td>Scenarios: </td><td>").append(scenarios.size()).append("</td></tr>").append(NL)
+            .append("        <tr><td>Start Time:</td><td>").append(TIME_FMT.format(startTime)).append(" (UTC)</td><td>Passed Scenarios: </td><td>").append(passed).append("</td></tr>").append(NL)
+            .append("        <tr><td>End Time:</td><td>").append(TIME_FMT.format(endTime)).append(" (UTC)</td><td>Failed Scenarios: </td><td>").append(failed).append("</td></tr>").append(NL)
+            .append("        <tr><td>Duration:</td><td>").append(formatDuration(Duration.between(startTime, endTime).toMillis())).append("</td><td>Skipped Scenarios: </td><td>").append(skipped).append("</td></tr>").append(NL)
+            .append("        <tr style=\"display:none\"><td>Kronikol Version:</td><td>").append(version).append("</td><td></td><td></td></tr>").append(NL)
+            .append("    </table>").append(NL)
+            .append("</div>");
+
+        body.append(generatePieChartSvg((int) passed, (int) failed, (int) skipped, (int) bypassed));
+    }
+
+    /** Total step count (recursive) + status tally into {@code byStatus} = [passed, failed, skipped]
+     *  (skipped folds in bypassed) — mirrors .NET CountStepsRecursive + CountStepsByStatusRecursive. */
+    private static int countStepsRecursive(List<ScenarioStep> steps, int[] byStatus) {
+        int count = steps.size();
+        for (ScenarioStep step : steps) {
+            switch (step.status()) {
+                case PASSED -> byStatus[0]++;
+                case FAILED -> byStatus[1]++;
+                default -> byStatus[2]++; // SKIPPED + INCONCLUSIVE(bypassed)
+            }
+            if (!step.subSteps().isEmpty()) {
+                count += countStepsRecursive(step.subSteps(), byStatus);
+            }
+        }
+        return count;
+    }
+
+    /** Mirrors .NET {@code FormatDuration} (component-based: ms / seconds / minutes+seconds). */
+    private static String formatDuration(long durationMs) {
+        long total = Math.abs(durationMs);
+        if (total < 1000) {
+            return total + "ms";
+        }
+        if (total < 60_000) {
+            return (total / 1000) + "s";
+        }
+        return (total / 60_000) + "m " + ((total / 1000) % 60) + "s";
+    }
+
+    private static String generatePieChartSvg(int passed, int failed, int skipped, int bypassed) {
+        int total = passed + failed + skipped + bypassed;
+        if (total == 0) {
+            return "";
+        }
+        int passRate = (int) Math.rint(100.0 * passed / total);
+        record Seg(double pct, String color, String label, int count) {
+        }
+        List<Seg> segments = new ArrayList<>();
+        if (passed > 0) {
+            segments.add(new Seg(100.0 * passed / total, "#1daf26", "Passed", passed));
+        }
+        if (failed > 0) {
+            segments.add(new Seg(100.0 * failed / total, "#cc0000", "Failed", failed));
+        }
+        if (skipped > 0) {
+            segments.add(new Seg(100.0 * skipped / total, "#949494", "Skipped", skipped));
+        }
+        if (bypassed > 0) {
+            segments.add(new Seg(100.0 * bypassed / total, "#2e7bff", "Bypassed", bypassed));
+        }
+        double radius = 40;
+        double circumference = 2 * Math.PI * radius;
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div class=\"summary-chart\">");
+        sb.append("<svg viewBox=\"0 0 100 100\">");
+        double offset = 0.0;
+        for (Seg seg : segments) {
+            double dash = circumference * seg.pct() / 100.0;
+            double gap = circumference - dash;
+            double dashOffset = -offset * circumference / 100.0;
+            sb.append("<circle cx=\"50\" cy=\"50\" r=\"").append(f1(radius))
+                .append("\" fill=\"none\" stroke=\"").append(seg.color())
+                .append("\" stroke-width=\"12\" stroke-dasharray=\"").append(f2(dash)).append(" ").append(f2(gap))
+                .append("\" stroke-dashoffset=\"").append(f2(dashOffset))
+                .append("\" transform=\"rotate(-90 50 50)\"><title>").append(seg.label()).append(": ")
+                .append(seg.count()).append(" (").append(f0(seg.pct())).append("%)</title></circle>");
+            offset += seg.pct();
+        }
+        sb.append("<text x=\"50\" y=\"50\" text-anchor=\"middle\" dominant-baseline=\"central\" "
+            + "font-size=\"16\" font-weight=\"bold\" fill=\"#333\">").append(passRate).append("%</text>");
+        sb.append("</svg></div>");
+        return sb.toString();
     }
 
     private static void appendFilteringBox(StringBuilder body, List<Feature> features,
@@ -1154,6 +1354,10 @@ public final class DotNetHtmlReportRenderer {
 
     private static String f1(double v) {
         return String.format(Locale.ROOT, "%.1f", v);
+    }
+
+    private static String f2(double v) {
+        return String.format(Locale.ROOT, "%.2f", v);
     }
 
     private static String nullToEmpty(String s) {

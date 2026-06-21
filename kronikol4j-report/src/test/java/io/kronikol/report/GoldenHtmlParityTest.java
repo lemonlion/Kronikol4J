@@ -15,6 +15,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -199,6 +200,28 @@ class GoldenHtmlParityTest {
             List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
 
         assertParity("report-parameterized.html", actual);
+    }
+
+    @Test
+    void summaryBrowserHtmlReport_includeTestRunData_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        Scenario login1 = Scenario.builder("Login succeeds", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(100)
+            .steps(List.of(new ScenarioStep("When", "the user logs in", ExecutionStatus.PASSED, 30L,
+                List.of(), List.of())))
+            .build();
+        Scenario login2 = Scenario.builder("Login fails", "s2", ExecutionStatus.FAILED)
+            .durationMs(50).error("bad password").build();
+        Feature loginFeature = new Feature("Login", List.of(login1, login2));
+        Scenario checkout1 = Scenario.builder("Checkout succeeds", "s3", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(200).build();
+        Feature checkoutFeature = new Feature("Checkout", List.of(checkout1));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(loginFeature, checkoutFeature), Map.of(), null, "Kronikol Run", PINNED_VERSION,
+            true, Instant.parse("2024-01-15T10:00:00Z"), Instant.parse("2024-01-15T10:00:05Z"));
+
+        assertParity("report-summary.html", actual);
     }
 
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
