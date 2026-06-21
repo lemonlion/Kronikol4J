@@ -19,6 +19,36 @@ CaptureComponent("component", FanOut());
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
 
+// Full browser-render HTML report (Stage 0 evidence: scope true byte-parity from the real output).
+CaptureHtml();
+
+void CaptureHtml()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Checkout succeeds", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500)
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [scenario] };
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", "",
+            "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml")
+    };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report.html"), content);
+    Console.WriteLine($"=== report.html ({content.Length} chars) ===");
+
+    // Stage 1 (§4.2): dump the exact embedded CSS so it can be externalized byte-identically.
+    File.WriteAllText(Path.Combine(outDir, "stylesheets.css"),
+        Stylesheets.HtmlReportStyleSheet.ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== stylesheets.css ({Stylesheets.HtmlReportStyleSheet.Length} chars) ===");
+}
+
 void CaptureReportData()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
