@@ -67,6 +67,9 @@ CaptureHtmlStepParams();
 // Rich step rendering — tabular + tree step parameters (step-param-table / step-param-tree).
 CaptureHtmlStepTables();
 
+// Rich step rendering — the combined setup+assertion tabular table (key-aligned).
+CaptureHtmlCombinedTable();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -470,6 +473,49 @@ void CaptureHtmlStepTables()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-steptables.html"), content);
     Console.WriteLine($"=== report-steptables.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlCombinedTable()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var setup = new StepParameter
+    {
+        Name = "inputs", Kind = StepParameterKind.Tabular,
+        TabularValue = new TabularParameterValue(
+            [ new TabularColumn("id", true), new TabularColumn("name", false) ],
+            [
+                new TabularRow(TableRowType.Matching, [ new TabularCell("1", null, VerificationStatus.NotApplicable), new TabularCell("egg", null, VerificationStatus.NotApplicable) ]),
+                new TabularRow(TableRowType.Matching, [ new TabularCell("2", null, VerificationStatus.NotApplicable), new TabularCell("milk", null, VerificationStatus.NotApplicable) ])
+            ])
+    };
+    var assertion = new StepParameter
+    {
+        Name = "outputs", Kind = StepParameterKind.Tabular,
+        TabularValue = new TabularParameterValue(
+            [ new TabularColumn("id", true), new TabularColumn("total", false) ],
+            [
+                new TabularRow(TableRowType.Matching, [ new TabularCell("1", null, VerificationStatus.Success), new TabularCell("9.99", null, VerificationStatus.Success) ]),
+                new TabularRow(TableRowType.Matching, [ new TabularCell("2", null, VerificationStatus.Success), new TabularCell("4.99", null, VerificationStatus.Success) ])
+            ])
+    };
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Cart totals", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500),
+        Steps =
+        [
+            new ScenarioStep { Keyword = "Given", Text = "the cart is set up", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(20), Parameters = [ setup ] },
+            new ScenarioStep { Keyword = "Then", Text = "the totals are correct", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(30), Parameters = [ assertion ] }
+        ]
+    };
+    var feature = new Feature { DisplayName = "Cart", Scenarios = [scenario] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-combinedtable.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-combinedtable.html"), content);
+    Console.WriteLine($"=== report-combinedtable.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

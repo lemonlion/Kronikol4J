@@ -745,22 +745,8 @@ public final class DotNetHtmlReportRenderer {
                 .append("</details>");
         }
 
-        if (!scenario.backgroundSteps().isEmpty()) {
-            body.append("<details class=\"scenario-background\">");
-            body.append("<summary class=\"h4\">Background Steps</summary>");
-            for (ScenarioStep step : scenario.backgroundSteps()) {
-                appendStep(body, step, null); // showStepNumbers defaults off → no number prefix
-            }
-            body.append("</details>");
-        }
-        if (!scenario.steps().isEmpty()) {
-            body.append("<details class=\"scenario-steps\" open>");
-            body.append("<summary class=\"h4\">Steps</summary>");
-            for (ScenarioStep step : scenario.steps()) {
-                appendStep(body, step, null);
-            }
-            body.append("</details>");
-        }
+        appendBackgroundBlock(body, scenario.backgroundSteps());
+        appendStepsBlock(body, scenario.steps());
         appendScenarioAttachments(body, scenario.attachments());
 
         String diagram = diagramByTestId.get(scenario.testId());
@@ -964,20 +950,8 @@ public final class DotNetHtmlReportRenderer {
                 String display = ri == 0 ? "" : " style=\"display:none\"";
                 body.append("<div class=\"param-detail-panel\" id=\"").append(prefix).append("-detail-")
                     .append(ri).append("\"").append(display).append(">");
-                if (!s.backgroundSteps().isEmpty()) {
-                    body.append("<details class=\"scenario-background\"><summary class=\"h4\">Background Steps</summary>");
-                    for (ScenarioStep step : s.backgroundSteps()) {
-                        appendStep(body, step, null);
-                    }
-                    body.append("</details>");
-                }
-                if (!s.steps().isEmpty()) {
-                    body.append("<details class=\"scenario-steps\" open><summary class=\"h4\">Steps</summary>");
-                    for (ScenarioStep step : s.steps()) {
-                        appendStep(body, step, null);
-                    }
-                    body.append("</details>");
-                }
+                appendBackgroundBlock(body, s.backgroundSteps());
+                appendStepsBlock(body, s.steps());
                 appendScenarioAttachments(body, s.attachments());
                 if (s.status() == ExecutionStatus.FAILED) {
                     String diffHtml = "";
@@ -1076,7 +1050,274 @@ public final class DotNetHtmlReportRenderer {
     /** Ports .NET {@code RenderStep} for the fields the Java {@link ScenarioStep} model carries
      *  (keyword/text/status/duration/sub-steps); the .NET-only inline/tabular params, doc-strings and
      *  comments are not representable in the Java model and never reach here. */
-    private static void appendStep(StringBuilder body, ScenarioStep step, String numberPrefix) {
+    private static void appendBackgroundBlock(StringBuilder body, List<ScenarioStep> steps) {
+        if (steps.isEmpty()) {
+            return;
+        }
+        body.append("<details class=\"scenario-background\"><summary class=\"h4\">Background Steps</summary>");
+        for (ScenarioStep step : steps) {
+            appendStep(body, step, null, false); // background: no combined-table suppression
+        }
+        body.append("</details>");
+    }
+
+    /** The {@code scenario-steps} block: each step (with combined-table suppression for tabular
+     *  assertion params), then the combined setup+assertion table when {@link #shouldRenderCombinedTable}. */
+    private static void appendStepsBlock(StringBuilder body, List<ScenarioStep> steps) {
+        if (steps.isEmpty()) {
+            return;
+        }
+        body.append("<details class=\"scenario-steps\" open><summary class=\"h4\">Steps</summary>");
+        boolean renderCombined = shouldRenderCombinedTable(steps);
+        boolean afterThen = false;
+        for (ScenarioStep step : steps) {
+            String kw = step.keyword() == null ? null : step.keyword().trim();
+            if ("Then".equalsIgnoreCase(kw)) {
+                afterThen = true;
+            } else if ("Given".equalsIgnoreCase(kw) || "When".equalsIgnoreCase(kw)) {
+                afterThen = false;
+            }
+            appendStep(body, step, null, renderCombined && afterThen);
+        }
+        if (renderCombined) {
+            appendCombinedTabularParameters(body, steps);
+        }
+        body.append("</details>");
+    }
+
+    /** Port of .NET ShouldRenderCombinedTable: combine when there is both a setup (pre-Then) and an
+     *  assertion (Then) tabular param, linked by IsLinkedOutput, shared key columns, or equal row counts. */
+    private static boolean shouldRenderCombinedTable(List<ScenarioStep> steps) {
+        boolean afterThen = false;
+        TabularParameterValue setupTable = null;
+        TabularParameterValue assertionTable = null;
+        for (ScenarioStep step : steps) {
+            String kw = step.keyword() == null ? null : step.keyword().trim();
+            if ("Then".equalsIgnoreCase(kw)) {
+                afterThen = true;
+            } else if ("Given".equalsIgnoreCase(kw) || "When".equalsIgnoreCase(kw)) {
+                afterThen = false;
+            }
+            TabularParameterValue tab = firstTabular(step);
+            if (tab != null) {
+                if (afterThen && assertionTable == null) {
+                    assertionTable = tab;
+                } else if (!afterThen && setupTable == null) {
+                    setupTable = tab;
+                }
+            }
+        }
+        if (setupTable == null || assertionTable == null) {
+            return false;
+        }
+        if (assertionTable.isLinkedOutput()) {
+            return true;
+        }
+        Set<String> outputKeyNames = new LinkedHashSet<>();
+        for (TabularParameterValue.TabularColumn c : assertionTable.columns()) {
+            if (c.isKey()) {
+                outputKeyNames.add(c.name());
+            }
+        }
+        if (!outputKeyNames.isEmpty()
+            && setupTable.columns().stream().anyMatch(c -> outputKeyNames.contains(c.name()))) {
+            return true;
+        }
+        return setupTable.rows().size() > 1 && setupTable.rows().size() == assertionTable.rows().size();
+    }
+
+    private static TabularParameterValue firstTabular(ScenarioStep step) {
+        for (StepParameter p : step.parameters()) {
+            if (p.kind() == StepParameter.Kind.TABULAR && p.tabularValue() != null) {
+                return p.tabularValue();
+            }
+        }
+        return null;
+    }
+
+    /** Port of .NET RenderCombinedTabularParameters: a single table aligning the input (setup) tables
+     *  against the output (assertion) table, key-aligned by shared key columns when available. */
+    private static void appendCombinedTabularParameters(StringBuilder body, List<ScenarioStep> steps) {
+        record Named(String name, TabularParameterValue table) {
+        }
+        List<Named> namedParams = new ArrayList<>();
+        for (ScenarioStep step : steps) {
+            for (StepParameter p : step.parameters()) {
+                if (p.kind() == StepParameter.Kind.TABULAR && p.tabularValue() != null) {
+                    namedParams.add(new Named(p.name(), p.tabularValue()));
+                }
+            }
+        }
+        if (namedParams.isEmpty()) {
+            return;
+        }
+        boolean hasSeparator = namedParams.size() > 1;
+        List<Named> inputParams = hasSeparator ? namedParams.subList(0, namedParams.size() - 1) : namedParams;
+        Named outputParam = hasSeparator ? namedParams.get(namedParams.size() - 1) : null;
+
+        Set<String> sharedKeyNames = new LinkedHashSet<>();
+        boolean useKeyAlignment = false;
+        if (outputParam != null && !outputParam.table().isLinkedOutput()) {
+            Set<String> outputKeyNames = new LinkedHashSet<>();
+            for (TabularParameterValue.TabularColumn c : outputParam.table().columns()) {
+                if (c.isKey()) {
+                    outputKeyNames.add(c.name());
+                }
+            }
+            if (!outputKeyNames.isEmpty()) {
+                for (Named ip : inputParams) {
+                    for (TabularParameterValue.TabularColumn c : ip.table().columns()) {
+                        if (outputKeyNames.contains(c.name())) {
+                            sharedKeyNames.add(c.name());
+                        }
+                    }
+                }
+                useKeyAlignment = !sharedKeyNames.isEmpty();
+            }
+        }
+
+        int[] inputRowOrder = null;
+        int maxRows;
+        if (useKeyAlignment && outputParam != null && !inputParams.isEmpty()) {
+            Named primaryInput = inputParams.get(0);
+            List<Integer> keyColIn = new ArrayList<>();
+            List<Integer> keyColOut = new ArrayList<>();
+            for (String k : sharedKeyNames) {
+                int i1 = colIndex(primaryInput.table().columns(), k);
+                if (i1 >= 0) {
+                    keyColIn.add(i1);
+                }
+                int i2 = colIndex(outputParam.table().columns(), k);
+                if (i2 >= 0) {
+                    keyColOut.add(i2);
+                }
+            }
+            Map<String, Integer> inputKeyLookup = new HashMap<>();
+            for (int i = 0; i < primaryInput.table().rows().size(); i++) {
+                inputKeyLookup.putIfAbsent(rowKey(primaryInput.table().rows().get(i), keyColIn), i);
+            }
+            List<Integer> aligned = new ArrayList<>();
+            Set<Integer> matched = new HashSet<>();
+            for (TabularParameterValue.TabularRow outRow : outputParam.table().rows()) {
+                Integer idx = inputKeyLookup.get(rowKey(outRow, keyColOut));
+                if (idx != null && matched.add(idx)) {
+                    aligned.add(idx);
+                } else {
+                    aligned.add(-1);
+                }
+            }
+            for (int i = 0; i < primaryInput.table().rows().size(); i++) {
+                if (!matched.contains(i)) {
+                    aligned.add(i);
+                }
+            }
+            inputRowOrder = aligned.stream().mapToInt(Integer::intValue).toArray();
+            maxRows = inputRowOrder.length;
+        } else {
+            maxRows = namedParams.stream().mapToInt(n -> n.table().rows().size()).max().orElse(0);
+        }
+
+        boolean showRowIndicator = namedParams.stream()
+            .anyMatch(n -> n.table().rows().stream().anyMatch(r -> r.type() != TableRowType.MATCHING));
+        body.append(showRowIndicator
+            ? "<div class=\"step-param-combined-table\"><table><thead><tr><th></th>"
+            : "<div class=\"step-param-combined-table\"><table><thead><tr>");
+        for (Named param : inputParams) {
+            appendCombinedHeaders(body, param.name(), param.table());
+        }
+        if (hasSeparator) {
+            body.append("<th class=\"combined-separator\">=</th>");
+            appendCombinedHeaders(body, outputParam.name(), outputParam.table());
+        }
+        body.append("</tr></thead><tbody>");
+
+        for (int ri = 0; ri < maxRows; ri++) {
+            int inputRi = inputRowOrder != null ? inputRowOrder[ri] : ri;
+            int outputRi = inputRowOrder != null
+                ? (ri < (outputParam != null ? outputParam.table().rows().size() : 0) ? ri : -1)
+                : ri;
+            TableRowType rowType;
+            if (outputParam != null && outputRi >= 0 && outputRi < outputParam.table().rows().size()) {
+                rowType = outputParam.table().rows().get(outputRi).type();
+            } else if (inputRi >= 0 && inputParams.get(0).table().rows().size() > inputRi) {
+                rowType = inputParams.get(0).table().rows().get(inputRi).type();
+            } else {
+                rowType = TableRowType.MATCHING;
+            }
+            String rowIndicator = switch (rowType) {
+                case MATCHING -> "=";
+                case SURPLUS -> "+";
+                case MISSING -> "-";
+            };
+            String rowClass = "row-" + rowType.name().toLowerCase(Locale.ROOT);
+            body.append(showRowIndicator
+                ? "<tr class=\"" + rowClass + "\"><td>" + rowIndicator + "</td>"
+                : "<tr class=\"" + rowClass + "\">");
+            for (Named param : inputParams) {
+                appendCombinedCells(body, param.name(), param.table(), inputRi);
+            }
+            if (hasSeparator) {
+                body.append("<td class=\"combined-separator\"></td>");
+                appendCombinedCells(body, outputParam.name(), outputParam.table(), outputRi);
+            }
+            body.append("</tr>");
+        }
+        body.append("</tbody></table></div>");
+    }
+
+    private static void appendCombinedHeaders(StringBuilder body, String name, TabularParameterValue table) {
+        String enc = HtmlEscaper.encode(name);
+        for (TabularParameterValue.TabularColumn col : table.columns()) {
+            body.append("<th data-param=\"").append(enc).append("\"").append(col.isKey() ? " class=\"key\"" : "")
+                .append(">").append(HtmlEscaper.encode(col.name())).append("</th>");
+        }
+    }
+
+    private static void appendCombinedCells(StringBuilder body, String name, TabularParameterValue table, int rowIdx) {
+        String enc = HtmlEscaper.encode(name);
+        if (rowIdx >= 0 && rowIdx < table.rows().size()) {
+            for (TabularParameterValue.TabularCell cell : table.rows().get(rowIdx).values()) {
+                appendCell(body, cell, enc);
+            }
+        } else {
+            for (int ci = 0; ci < table.columns().size(); ci++) {
+                body.append("<td data-param=\"").append(enc).append("\"></td>");
+            }
+        }
+    }
+
+    private static int colIndex(List<TabularParameterValue.TabularColumn> cols, String name) {
+        for (int i = 0; i < cols.size(); i++) {
+            if (cols.get(i).name().equals(name)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static String rowKey(TabularParameterValue.TabularRow row, List<Integer> keyColIndices) {
+        StringBuilder sb = new StringBuilder();
+        for (int j = 0; j < keyColIndices.size(); j++) {
+            if (j > 0) {
+                sb.append('\0');
+            }
+            int ci = keyColIndices.get(j);
+            sb.append(ci < row.values().size() ? row.values().get(ci).value() : "");
+        }
+        return sb.toString();
+    }
+
+    private static void appendCell(StringBuilder body, TabularParameterValue.TabularCell cell, String dataParam) {
+        String cellDisplay = cell.expectation() != null && cell.status() == VerificationStatus.FAILURE
+            ? formatDisplayValue(cell.value()) + "/" + formatDisplayValue(cell.expectation())
+            : formatDisplayValue(cell.value());
+        String dataParamAttr = dataParam != null ? " data-param=\"" + dataParam + "\"" : "";
+        body.append("<td class=\"").append(cellStatusClass(cell.status())).append("\"").append(dataParamAttr)
+            .append(">").append(cellDisplay).append("</td>");
+    }
+
+    private static void appendStep(StringBuilder body, ScenarioStep step, String numberPrefix,
+                                   boolean skipTabularInline) {
         ExecutionStatus status = step.status();
         boolean hasSub = !step.subSteps().isEmpty();
 
@@ -1123,7 +1364,9 @@ public final class DotNetHtmlReportRenderer {
             }
         }
         for (StepParameter param : step.parameters()) {
-            // (skipTabularInline — for the combined tabular table — is threaded with that feature.)
+            if (skipTabularInline && param.kind() == StepParameter.Kind.TABULAR) {
+                continue; // rendered in the combined setup+assertion table instead
+            }
             if (!step.textSegments().isEmpty() && param.kind() == StepParameter.Kind.INLINE) {
                 continue; // already rendered inline in the text segments
             }
@@ -1141,7 +1384,7 @@ public final class DotNetHtmlReportRenderer {
             body.append("<div class=\"sub-steps\">");
             for (int i = 0; i < step.subSteps().size(); i++) {
                 String subPrefix = numberPrefix != null ? numberPrefix + (i + 1) + "." : null;
-                appendStep(body, step.subSteps().get(i), subPrefix);
+                appendStep(body, step.subSteps().get(i), subPrefix, true);
             }
             body.append("</div>");
             body.append("</details>");

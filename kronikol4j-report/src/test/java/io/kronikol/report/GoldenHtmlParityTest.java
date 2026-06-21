@@ -322,6 +322,41 @@ class GoldenHtmlParityTest {
         assertParity("report-steptables.html", actual);
     }
 
+    @Test
+    void combinedTableBrowserHtmlReport_setupAndAssertionTables_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        StepParameter setup = StepParameter.tabular("inputs", new TabularParameterValue(
+            List.of(new TabularColumn("id", true), new TabularColumn("name", false)),
+            List.of(
+                new TabularRow(TableRowType.MATCHING, List.of(
+                    new TabularCell("1", null, VerificationStatus.NOT_APPLICABLE),
+                    new TabularCell("egg", null, VerificationStatus.NOT_APPLICABLE))),
+                new TabularRow(TableRowType.MATCHING, List.of(
+                    new TabularCell("2", null, VerificationStatus.NOT_APPLICABLE),
+                    new TabularCell("milk", null, VerificationStatus.NOT_APPLICABLE))))));
+        StepParameter assertion = StepParameter.tabular("outputs", new TabularParameterValue(
+            List.of(new TabularColumn("id", true), new TabularColumn("total", false)),
+            List.of(
+                new TabularRow(TableRowType.MATCHING, List.of(
+                    new TabularCell("1", null, VerificationStatus.SUCCESS),
+                    new TabularCell("9.99", null, VerificationStatus.SUCCESS))),
+                new TabularRow(TableRowType.MATCHING, List.of(
+                    new TabularCell("2", null, VerificationStatus.SUCCESS),
+                    new TabularCell("4.99", null, VerificationStatus.SUCCESS))))));
+        ScenarioStep given = ScenarioStep.builder("Given", "the cart is set up", ExecutionStatus.PASSED)
+            .durationMs(20).parameters(List.of(setup)).build();
+        ScenarioStep then = ScenarioStep.builder("Then", "the totals are correct", ExecutionStatus.PASSED)
+            .durationMs(30).parameters(List.of(assertion)).build();
+        Scenario scenario = Scenario.builder("Cart totals", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500).steps(List.of(given, then)).build();
+        Feature feature = new Feature("Cart", List.of(scenario));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-combinedtable.html", actual);
+    }
+
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
     private static void assertParity(String goldenName, String actual) throws IOException {
         Path dump = Path.of("build", "parity", goldenName.replace(".html", ".actual.html"));
