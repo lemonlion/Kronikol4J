@@ -2,6 +2,24 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.4] — unreleased
+
+Adds the participant-colour rendering branch and pins it with parity. Full suite green on JDK 17–25.
+
+### Added
+- **Participant-colour mode** — `PlantUmlCreator.create(logs, arrowColors, participantColors)` appends
+  each categorised participant's dependency colour to its declaration (e.g.
+  `entity "OrderService" as orderService #438DD5`), mirroring .NET's
+  `sequenceDiagramParticipantColors`. The un-categorised caller actor and any null-category service get
+  no colour suffix — matching .NET exactly. Closes the last unported `PlantUmlCreator` rendering branch.
+
+### Parity (testing)
+- Corpus expanded 11 → 13 scenarios: `participant-colors` (isolated: coloured entity, uncoloured
+  actor) and `participant-colors-fanout` (combined arrow + participant colours across
+  entity/database/collections), both captured byte-for-byte from real .NET.
+- Added a `PlantUmlCreatorTest` case for the colour guard: a null-category service stays uncoloured
+  even in participant-colour mode (an edge no fixture exercises).
+
 ## [0.1.3] — unreleased
 
 Strengthens the cross-runtime PlantUML parity guarantee and fixes a status-label divergence it

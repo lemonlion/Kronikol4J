@@ -90,6 +90,21 @@ class PlantUmlParityTest {
         assertParity("fan-out", PlantUmlCreator.create(fanOutCorpus(), true).get(0).diagrams().get(0));
     }
 
+    @Test
+    void participantColors() throws IOException {
+        // sequenceDiagramParticipantColors: the dependency colour is appended to each categorised
+        // participant declaration; the un-categorised actor "Test" stays uncoloured.
+        assertParity("participant-colors",
+            PlantUmlCreator.create(httpExchange(), false, true).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void participantColorsFanOut() throws IOException {
+        // Combined arrow + participant colours across three shapes (entity/database/collections).
+        assertParity("participant-colors-fanout",
+            PlantUmlCreator.create(fanOutCorpus(), true, true).get(0).diagrams().get(0));
+    }
+
     // --- corpora (built identically to parity-harness/dotnet-capture/Program.cs) ---
 
     private static List<RequestResponseLog> httpExchange() {

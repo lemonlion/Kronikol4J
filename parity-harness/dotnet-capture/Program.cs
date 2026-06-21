@@ -22,13 +22,16 @@ Capture("unknown-category", Unknown(), arrowColors: true); // unknown -> partici
 Capture("status-codes", StatusCodes(), arrowColors: false); // 404 / 500 / 302 label rendering
 Capture("escaping", Escaping(), arrowColors: false);       // backslash + <>&" + unicode + nested JSON
 Capture("fan-out", FanOut(), arrowColors: true);           // 3 services, one trace: participant order
+// Participant-colour mode: the colour is appended to each categorised participant declaration.
+Capture("participant-colors", SimpleHttp(), arrowColors: false, participantColors: true);
+Capture("participant-colors-fanout", FanOut(), arrowColors: true, participantColors: true);
 
-void Capture(string name, List<RequestResponseLog> logs, bool arrowColors)
+void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool participantColors = false)
 {
     var results = PlantUmlCreator.GetPlantUmlImageTagsPerTestId(
         logs,
         sequenceDiagramArrowColors: arrowColors,
-        sequenceDiagramParticipantColors: false,
+        sequenceDiagramParticipantColors: participantColors,
         clientSideSplitting: true);
 
     foreach (var test in results)

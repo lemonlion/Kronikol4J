@@ -45,6 +45,17 @@ public final class PlantUmlCreator {
 
     /** As {@link #create(List)}, with optional per-dependency-type arrow colouring (.NET default: on). */
     public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, boolean arrowColors) {
+        return create(logs, arrowColors, false);
+    }
+
+    /**
+     * As {@link #create(List, boolean)}, additionally appending each <em>categorised</em> participant's
+     * dependency colour to its declaration — the .NET {@code sequenceDiagramParticipantColors} mode
+     * (e.g. {@code entity "OrderService" as orderService #438DD5}). The un-categorised caller actor and
+     * any null-category service get <em>no</em> colour suffix, matching .NET exactly.
+     */
+    public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, boolean arrowColors,
+                                               boolean participantColors) {
         Map<String, List<RequestResponseLog>> byTest = new LinkedHashMap<>();
         for (RequestResponseLog log : logs) {
             if (log.trackingIgnore()) {
@@ -56,11 +67,12 @@ public final class PlantUmlCreator {
         List<PlantUmlForTest> result = new ArrayList<>();
         byTest.forEach((testId, testLogs) ->
             result.add(new PlantUmlForTest(testId, testLogs.get(0).testName(),
-                List.of(buildDiagram(testLogs, arrowColors)), testLogs)));
+                List.of(buildDiagram(testLogs, arrowColors, participantColors)), testLogs)));
         return result;
     }
 
-    private static String buildDiagram(List<RequestResponseLog> logs, boolean arrowColors) {
+    private static String buildDiagram(List<RequestResponseLog> logs, boolean arrowColors,
+                                       boolean participantColors) {
         boolean hasEvents = logs.stream()
             .anyMatch(l -> l.plantUml() == null && l.metaType() == RequestResponseMetaType.EVENT);
 
@@ -73,7 +85,7 @@ public final class PlantUmlCreator {
         sb.append("autonumber 1").append(NL);
         sb.append(NL);
 
-        appendParticipants(sb, logs);
+        appendParticipants(sb, logs, participantColors);
         sb.append(NL);
 
         for (RequestResponseLog log : logs) {
@@ -104,7 +116,8 @@ public final class PlantUmlCreator {
         return sb.toString();
     }
 
-    private static void appendParticipants(StringBuilder sb, List<RequestResponseLog> logs) {
+    private static void appendParticipants(StringBuilder sb, List<RequestResponseLog> logs,
+                                           boolean participantColors) {
         Set<String> order = new LinkedHashSet<>();          // first-seen participant order
         Set<String> services = new HashSet<>();             // names that appear as a service
         Map<String, String> categoryByService = new HashMap<>(); // first non-null category per service
@@ -121,10 +134,15 @@ public final class PlantUmlCreator {
         }
         for (String name : order) {
             // A service is shaped by its (first non-null) category; a caller-only name is an actor.
-            String keyword = services.contains(name)
-                ? DependencyPalette.shapeFor(categoryByService.get(name))
-                : "actor";
-            sb.append(keyword).append(" \"").append(name).append("\" as ").append(alias(name)).append(NL);
+            String category = services.contains(name) ? categoryByService.get(name) : null;
+            String keyword = services.contains(name) ? DependencyPalette.shapeFor(category) : "actor";
+            sb.append(keyword).append(" \"").append(name).append("\" as ").append(alias(name));
+            // Participant-colour mode colours only categorised participants (never the actor / a
+            // null-category service), matching .NET's `participantColors && category is not null`.
+            if (participantColors && category != null) {
+                sb.append(' ').append(DependencyPalette.colorFor(category));
+            }
+            sb.append(NL);
         }
     }
 

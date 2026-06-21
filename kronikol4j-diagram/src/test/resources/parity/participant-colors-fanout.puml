@@ -1,0 +1,43 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "OrderService" as orderService #438DD5
+database "OrderDb" as orderDb #E74C3C
+collections "CartCache" as cartCache #F39C12
+
+test -[#438DD5]> orderService: POST: /checkout
+note left
+{
+  "item": "egg"
+}
+end note
+orderService -[#438DD5]-> test: OK
+note right
+{
+  "ok": true
+}
+end note
+test -[#E74C3C]> orderDb: SELECT: /
+note left
+SELECT * FROM orders WHERE id = 1
+end note
+orderDb -[#E74C3C]-> test: OK
+note right
+1 row
+end note
+test -[#F39C12]> cartCache: GET: /
+note left
+cart:42
+end note
+cartCache -[#F39C12]-> test: OK
+note right
+{
+  "items": 2
+}
+end note
+@enduml

@@ -83,4 +83,23 @@ class PlantUmlCreatorTest {
         String uml = PlantUmlCreator.create(List.of(request(), resp)).get(0).diagrams().get(0);
         assertThat(uml).contains("orderService --> test: 599");
     }
+
+    @Test
+    void participantColoursOnlyColourCategorisedParticipants() {
+        // A service with no dependency category (the core HTTP handler can leave it null).
+        RequestResponseLog uncategorised = RequestResponseLog.builder()
+            .testName("Checkout succeeds").testId("t1")
+            .method(Method.Http.GET).uri(URI.create("http://gateway/ping"))
+            .serviceName("Gateway").callerName("Test")
+            .type(RequestResponseType.REQUEST).traceId(TRACE).requestResponseId(RR)
+            .build(); // no dependencyCategory → entity shape, and no colour even in participant-colour mode
+
+        String uml = PlantUmlCreator.create(List.of(request(), uncategorised), true, true)
+            .get(0).diagrams().get(0);
+
+        assertThat(uml)
+            .contains("actor \"Test\" as test\n")                        // actor is never coloured
+            .contains("entity \"OrderService\" as orderService #438DD5") // categorised → coloured
+            .contains("entity \"Gateway\" as gateway\n");                // null category → no colour suffix
+    }
 }
