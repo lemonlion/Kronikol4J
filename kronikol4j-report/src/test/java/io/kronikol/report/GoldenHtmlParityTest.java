@@ -3,6 +3,10 @@ package io.kronikol.report;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.kronikol.report.flow.InternalFlowSegment;
+import io.kronikol.report.flow.InternalFlowSpan;
+import io.kronikol.report.flow.WholeTestFlowInput;
+import io.kronikol.report.flow.WholeTestFlowVisualization;
 import io.kronikol.report.model.CiEnvironment;
 import io.kronikol.report.model.CiMetadata;
 import io.kronikol.report.model.ExecutionStatus;
@@ -32,6 +36,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -53,6 +58,8 @@ class GoldenHtmlParityTest {
     private static final String PUML_OPEN = "<script id=\"puml-data\" type=\"application/json\">";
     private static final Pattern PUML_PAIR =
         Pattern.compile("\"([^\"]+)\":\"((?:\\\\u[0-9A-Fa-f]{4}|\\\\.|[^\"\\\\])*)\"");
+    /** Inline gzipped flame-chart payload — like puml-data, not byte-stable across runtimes (plan §6.4). */
+    private static final Pattern FLAME_Z = Pattern.compile("data-flame-z=\"([^\"]*)\"");
 
     @Test
     void browserHtmlReport_isByteForByteIdenticalToDotNetGolden() throws IOException {
@@ -459,6 +466,34 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void browserHtmlReport_wholeTestFlowActivityAndFlame_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        java.time.Instant t0 = java.time.Instant.parse("2024-01-15T10:00:00Z");
+        InternalFlowSegment segment = new InternalFlowSegment("s1", List.of(
+            new InternalFlowSpan("1", null, "Kronikol.Request", null, "GET /orders", t0, 100.0),
+            new InternalFlowSpan("2", "1", "OrderService", null, "LoadOrder", t0.plusMillis(10), 40.0),
+            new InternalFlowSpan("3", "2", "Database", null, "SELECT", t0.plusMillis(15), 20.0),
+            new InternalFlowSpan("4", "1", "OrderService", null, "Validate", t0.plusMillis(60), 30.0)));
+        WholeTestFlowInput wtf = new WholeTestFlowInput(
+            Map.of("iflow-test-s1", segment), WholeTestFlowVisualization.BOTH, Map.of(), true);
+
+        Scenario scenario = Scenario.builder("Order flow", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(100)
+            .steps(List.of(new ScenarioStep("When", "the order flows", ExecutionStatus.PASSED, 20L,
+                List.of(), List.of())))
+            .build();
+        Feature feature = new Feature("Orders", List.of(scenario));
+        Map<String, String> diagramByTestId = new LinkedHashMap<>();
+        diagramByTestId.put("s1", "@startuml\nactor User\nUser -> Service : place\n@enduml");
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION,
+            false, java.time.Instant.EPOCH, java.time.Instant.EPOCH, HtmlCustomization.NONE, wtf);
+
+        assertParity("report-wholetestflow.html", actual);
+    }
+
+    @Test
     void browserHtmlReport_diagramToolbarToggles_isByteForByteIdenticalToDotNetGolden() throws IOException {
         Scenario scenario = Scenario.builder("Saves order", "s1", ExecutionStatus.PASSED)
             .isHappyPath(true).durationMs(100)
@@ -633,9 +668,11 @@ class GoldenHtmlParityTest {
 
         String golden = readGolden(goldenName);
         assertEquals(mask(golden), mask(actual),
-            "HTML differs outside the puml-data block — see " + dump.toAbsolutePath());
+            "HTML differs outside the puml-data / data-flame-z payloads — see " + dump.toAbsolutePath());
         assertEquals(decodePumlData(golden), decodePumlData(actual),
             "puml-data decodes differently between golden and actual (" + goldenName + ")");
+        assertEquals(decodeFlameZ(golden), decodeFlameZ(actual),
+            "data-flame-z decodes differently between golden and actual (" + goldenName + ")");
     }
 
     private static String readGolden(String name) {
@@ -647,15 +684,27 @@ class GoldenHtmlParityTest {
         }
     }
 
-    /** Replaces the puml-data script's JSON body with a placeholder so the rest can be byte-compared. */
+    /** Replaces the gzip payloads (puml-data island + every {@code data-flame-z}) with placeholders so
+     *  the rest can be byte-compared (gzip is not byte-stable across runtimes). */
     private static String mask(String html) {
-        int start = html.indexOf(PUML_OPEN);
+        String masked = FLAME_Z.matcher(html).replaceAll("data-flame-z=\"__FLAME_Z__\"");
+        int start = masked.indexOf(PUML_OPEN);
         if (start < 0) {
-            return html;
+            return masked;
         }
         int contentStart = start + PUML_OPEN.length();
-        int end = html.indexOf("</script>", contentStart);
-        return html.substring(0, contentStart) + "__PUML_DATA__" + html.substring(end);
+        int end = masked.indexOf("</script>", contentStart);
+        return masked.substring(0, contentStart) + "__PUML_DATA__" + masked.substring(end);
+    }
+
+    /** The decoded (base64+gunzip) flame-chart JSON payloads, in document order. */
+    private static List<String> decodeFlameZ(String html) {
+        List<String> decoded = new ArrayList<>();
+        Matcher m = FLAME_Z.matcher(html);
+        while (m.find()) {
+            decoded.add(gunzip(Base64.getDecoder().decode(m.group(1))));
+        }
+        return decoded;
     }
 
     /** Extracts the puml-data JSON, base64-decodes + gunzips each value to its raw PlantUML. */

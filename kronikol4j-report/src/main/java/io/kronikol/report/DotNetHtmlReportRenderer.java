@@ -1,6 +1,11 @@
 package io.kronikol.report;
 
 import io.kronikol.report.html.HtmlEscaper;
+import io.kronikol.report.flow.InternalFlowRenderer;
+import io.kronikol.report.flow.InternalFlowSegment;
+import io.kronikol.report.flow.WholeTestFlowContent;
+import io.kronikol.report.flow.WholeTestFlowInput;
+import io.kronikol.report.flow.WholeTestFlowVisualization;
 import io.kronikol.report.model.CiMetadata;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
@@ -155,17 +160,31 @@ public final class DotNetHtmlReportRenderer {
                                 String componentDiagram, String title, String version,
                                 boolean includeTestRunData, Instant startTime, Instant endTime,
                                 HtmlCustomization custom) {
+        return render(features, diagramByTestId, componentDiagram, title, version,
+            includeTestRunData, startTime, endTime, custom, WholeTestFlowInput.NONE);
+    }
+
+    /**
+     * As {@link #render(List, Map, String, String, String, boolean, Instant, Instant, HtmlCustomization)},
+     * with whole-test-flow visualizations (activity diagrams + flame charts) from the captured internal
+     * flow segments.
+     */
+    public static String render(List<Feature> features, Map<String, String> diagramByTestId,
+                                String componentDiagram, String title, String version,
+                                boolean includeTestRunData, Instant startTime, Instant endTime,
+                                HtmlCustomization custom, WholeTestFlowInput wtfInput) {
         if (custom.generateBlankOnFailedTests() && anyScenarioFailed(features)) {
             return ""; // .NET WriteFile(string.Empty, …) — a deliberately blank report
         }
         boolean hasComponent = componentDiagram != null && !componentDiagram.isEmpty();
         Map<String, String> diagramData = new LinkedHashMap<>();
         StringBuilder head = new StringBuilder(300_000);
-        appendHead(head, title, version, hasComponent, custom);
+        appendHead(head, title, version, hasComponent, custom, wtfInput);
 
         StringBuilder body = new StringBuilder(8_192);
         appendBody(body, title, version, features, diagramByTestId == null ? Map.of() : diagramByTestId,
-            hasComponent ? componentDiagram : null, diagramData, includeTestRunData, startTime, endTime, custom);
+            hasComponent ? componentDiagram : null, diagramData, includeTestRunData, startTime, endTime, custom,
+            wtfInput);
 
         StringBuilder html = new StringBuilder(head.length() + body.length() + 1_024);
         html.append(head).append(body);
@@ -238,7 +257,16 @@ public final class DotNetHtmlReportRenderer {
     // ----------------------------------------------------------------------------------- head -----
 
     private static void appendHead(StringBuilder sb, String title, String version,
-                                   boolean hasComponentDiagram, HtmlCustomization custom) {
+                                   boolean hasComponentDiagram, HtmlCustomization custom,
+                                   WholeTestFlowInput wtfInput) {
+        // .NET gates the interactive internal-flow scripts/styles (incl. the flame-chart render script
+        // the whole-test-flow views need) on internalFlowTracking. internalFlowDataScript (the popup's
+        // window.__iflowSegments data) is a separate input, empty here.
+        boolean iflow = wtfInput.internalFlowTracking();
+        String internalFlowPopupStyles = iflow ? asset("internal-flow-popup-styles.css") : "";
+        String flameChartRenderScript = iflow ? asset("flame-chart-render-script.js") : "";
+        String internalFlowPopupScript = iflow ? asset("internal-flow-popup-script.js") : "";
+        String toggleScript = iflow ? asset("toggle-script.js") : "";
         String plantUmlBrowserScript =
             asset("plantuml-browser-render-script.js").replace("__PLANTUML_CDN_BASE__", PLANTUML_CDN_BASE);
         String faviconHref = custom.customFaviconBase64() != null ? custom.customFaviconBase64() : FAVICON_DATA_URI;
@@ -262,7 +290,7 @@ public final class DotNetHtmlReportRenderer {
         sb.append("            ").append(asset("context-menu-styles.css")).append(NL);
         sb.append("            ").append(asset("inline-svg-styles.css")).append(NL);
         sb.append("            ").append(asset("collapsible-notes-styles.css")).append(NL);
-        sb.append("            ").append(NL);                              // internalFlowPopupStyles = ""
+        sb.append("            ").append(internalFlowPopupStyles).append(NL);   // internalFlowPopupStyles
         sb.append("        </style>").append(NL);
         String customCssBlock = custom.customCss() != null ? "<style>" + custom.customCss() + "</style>" : "";
         sb.append("        ").append(customCssBlock).append(NL);            // customCssBlock
@@ -298,10 +326,10 @@ public final class DotNetHtmlReportRenderer {
         sb.append("        ").append(plantUmlBrowserScript).append(NL);
         sb.append("        ").append(asset("collapsible-notes-script.js")).append(NL);
         sb.append("        ").append(asset("context-menu-script.js")).append(NL);
-        sb.append("        ").append(NL);                                  // flameChartRenderScript = ""
+        sb.append("        ").append(flameChartRenderScript).append(NL);   // flameChartRenderScript
         sb.append("        ").append(NL);                                  // internalFlowDataScript = ""
-        sb.append("        ").append(NL);                                  // internalFlowPopupScript = ""
-        sb.append("        ").append(NL);                                  // toggleScript = ""
+        sb.append("        ").append(internalFlowPopupScript).append(NL);  // internalFlowPopupScript
+        sb.append("        ").append(toggleScript).append(NL);             // toggleScript
         sb.append("    </head>").append(NL);
         sb.append("    <body>");                                          // no trailing newline
     }
@@ -311,7 +339,8 @@ public final class DotNetHtmlReportRenderer {
     private static void appendBody(StringBuilder body, String title, String version, List<Feature> features,
                                    Map<String, String> diagramByTestId, String componentDiagram,
                                    Map<String, String> diagramData, boolean includeTestRunData,
-                                   Instant startTime, Instant endTime, HtmlCustomization custom) {
+                                   Instant startTime, Instant endTime, HtmlCustomization custom,
+                                   WholeTestFlowInput wtfInput) {
         if (custom.customLogoHtml() != null) {
             body.append("<div class=\"custom-logo\">").append(custom.customLogoHtml()).append("</div>");
         }
@@ -348,6 +377,7 @@ public final class DotNetHtmlReportRenderer {
             body.append("</div>"); // close header-row (opened in the test-execution-summary block)
         }
         DiagramToggles toggles = computeDiagramToggles(diagramByTestId);
+        int median = medianSpanCount(wtfInput);
         appendToolbar(body, hasDurations, componentDiagram != null, toggles);
         appendTimeline(body, features, hasDurations);
 
@@ -428,7 +458,7 @@ public final class DotNetHtmlReportRenderer {
                 }
                 counter = appendScenario(body, feature, scenario, diagramByTestId,
                     scenarioDependencies, scenarioSearchTerms, diagramData, counter, custom.showStepNumbers(),
-                    toggles);
+                    toggles, wtfInput, median);
             }
             if (ruleOpen) {
                 body.append("</details>"); // close last rule
@@ -780,7 +810,7 @@ public final class DotNetHtmlReportRenderer {
                                       Map<String, Set<String>> scenarioDependencies,
                                       Map<String, Set<String>> scenarioSearchTerms,
                                       Map<String, String> diagramData, int counter, boolean showStepNumbers,
-                                      DiagramToggles toggles) {
+                                      DiagramToggles toggles, WholeTestFlowInput wtfInput, int medianSpanCount) {
         boolean failed = scenario.status() == ExecutionStatus.FAILED;
         boolean skipped = scenario.status() == ExecutionStatus.SKIPPED;
 
@@ -869,26 +899,103 @@ public final class DotNetHtmlReportRenderer {
         appendScenarioAttachments(body, scenario.attachments());
 
         String diagram = diagramByTestId.get(scenario.testId());
+        WholeTestFlowContent wtf = resolveWholeTestFlow(scenario.testId(), wtfInput, diagramData);
         boolean hasSequenceDiagrams = diagram != null;
-        if (hasSequenceDiagrams) {
+        boolean hasWholeTestFlow = wtf != null;
+        boolean hasActivity = hasWholeTestFlow && wtf.hasActivity();
+        boolean hasFlame = hasWholeTestFlow && wtf.hasFlame();
+        String spanWarning = hasWholeTestFlow && medianSpanCount > 0
+            && wtf.spanCount() >= medianSpanCount * 10 && wtf.spanCount() > 100
+            ? "<span class=\"span-count-warning\">(Warning: " + nFormat(wtf.spanCount())
+                + " spans. This might indicate a problem/recursive loop in your test.)</span>"
+            : "";
+
+        if (hasSequenceDiagrams || hasWholeTestFlow) {
             body.append("<details class=\"example-diagrams\" open>");
-            body.append("<summary class=\"h4\">Sequence Diagrams</summary>");
-            appendSeqDiagramToggle(body, toggles);
-            counter = appendSequenceDiagram(body, diagram, diagramData, counter);
+            if (hasWholeTestFlow && hasSequenceDiagrams) {
+                appendMultiViewToolbar(body, true, hasActivity, hasFlame, spanWarning, toggles);
+            } else if (hasSequenceDiagrams) {
+                body.append("<summary class=\"h4\">Sequence Diagrams</summary>");
+                appendSeqDiagramToggle(body, toggles);
+            } else if (hasActivity && hasFlame) {
+                appendMultiViewToolbar(body, false, true, true, spanWarning, toggles);
+            } else if (hasActivity) {
+                body.append("<summary class=\"h4\">Activity Diagrams</summary>");
+            } else {
+                body.append("<summary class=\"h4\">Flame Chart</summary>");
+            }
+
+            if (hasSequenceDiagrams) {
+                boolean seqWrap = hasWholeTestFlow;
+                if (seqWrap) {
+                    body.append("<div class=\"diagram-view diagram-view-seq\">");
+                }
+                counter = appendSequenceDiagram(body, diagram, diagramData, counter);
+                if (seqWrap) {
+                    body.append("</div>");
+                }
+            }
+
+            if (hasWholeTestFlow) {
+                boolean hideActivity = hasSequenceDiagrams;
+                boolean hideFlame = hasSequenceDiagrams || (hasActivity && !hasSequenceDiagrams);
+                if (hasActivity) {
+                    body.append("<div class=\"diagram-view diagram-view-activity\"")
+                        .append(hideActivity ? " style=\"display:none\"" : "").append(">")
+                        .append(wtf.activityHtml()).append("</div>");
+                }
+                if (hasFlame) {
+                    body.append("<div class=\"diagram-view diagram-view-flame\"")
+                        .append(hideFlame ? " style=\"display:none\"" : "").append(">")
+                        .append(wtf.flameHtml()).append("</div>");
+                }
+            }
             body.append("</details>");
         }
         body.append("</details>");
         return counter;
     }
 
+    /** Mirrors .NET {@code int.ToString("N0")} (invariant thousands grouping) for the span-count warning. */
+    private static String nFormat(int n) {
+        return String.format(Locale.US, "%,d", n);
+    }
+
     /** The shared sequence-diagram {@code diagram-toggle} bar (Details radio + Headers toggle, plus the
      *  conditional assertion/step/database toggles). */
     private static void appendSeqDiagramToggle(StringBuilder body, DiagramToggles toggles) {
         body.append("<div class=\"diagram-toggle\">");
+        appendDiagramDetailsRadio(body, toggles);
+        body.append("</div>");
+    }
+
+    /** The Details radio + Headers toggle + assertion/step/database toggles, shared by the single-view
+     *  {@code diagram-toggle} bar and the multi-view (Diagrams) toolbar. */
+    private static void appendDiagramDetailsRadio(StringBuilder body, DiagramToggles toggles) {
         body.append("<span class=\"diagram-toggle-spacer\"></span><span class=\"details-radio\"><span class=\"details-radio-label\">Details:</span><button class=\"details-radio-btn\" data-state=\"expanded\" onclick=\"window._setAllNotes(this,'expanded')\">Expand</button><button class=\"details-radio-btn\" data-state=\"collapsed\" onclick=\"window._setAllNotes(this,'collapsed')\">Collapse</button><button class=\"details-radio-btn details-active\" data-state=\"truncated\" onclick=\"window._setAllNotes(this,'truncated')\">Truncate</button>")
             .append(truncateLinesSelect("window._setScenarioTruncateLines(this)"))
             .append("<span class=\"truncate-lines-label\">lines</span></span><button class=\"details-radio-btn toggle-btn details-active\" data-toggle=\"headers\" data-shown=\"true\" onclick=\"window._toggleScenarioHeaders(this)\">Headers Shown</button>");
         appendDiagramToggleButtons(body, toggles, "Scenario");
+    }
+
+    /** The seq/activity/flame {@code diagram-toggle-btn} buttons + the spanWarning + details-radio for
+     *  the multi-view (Diagrams) toolbar. {@code dtypes} lists the active toggle buttons in order. */
+    private static void appendMultiViewToolbar(StringBuilder body, boolean showSeq, boolean showActivity,
+                                               boolean showFlame, String spanWarning, DiagramToggles toggles) {
+        body.append("<summary class=\"h4\">Diagrams</summary>");
+        body.append("<div class=\"diagram-toggle\">");
+        if (showSeq) {
+            body.append("<button class=\"diagram-toggle-btn diagram-toggle-active\" data-dtype=\"seq\">Sequence Diagrams</button>");
+        }
+        if (showActivity) {
+            body.append("<button class=\"diagram-toggle-btn").append(showSeq ? "" : " diagram-toggle-active")
+                .append("\" data-dtype=\"activity\">Activity Diagrams</button>");
+        }
+        if (showFlame) {
+            body.append("<button class=\"diagram-toggle-btn\" data-dtype=\"flame\">Flame Chart</button>");
+        }
+        body.append(spanWarning);
+        appendDiagramDetailsRadio(body, toggles);
         body.append("</div>");
     }
 
@@ -1906,6 +2013,71 @@ public final class DotNetHtmlReportRenderer {
             throw new UncheckedIOException(e);
         }
         return Base64.getEncoder().encodeToString(out.toByteArray());
+    }
+
+    /** Resolves a test's whole-test-flow content (.NET {@code ResolveWholeTestFlowContent} —
+     *  {@code GetWholeTestFlowContent}). Returns null when the test has no segment / no spans. The
+     *  activity diagram registers its PlantUML into {@code diagramData} (the puml-data island); the
+     *  flame chart inlines its gzipped JSON as a {@code data-flame-z} attribute. */
+    private static WholeTestFlowContent resolveWholeTestFlow(String testId, WholeTestFlowInput wtfInput,
+                                                             Map<String, String> diagramData) {
+        if (!wtfInput.isActive()) {
+            return null;
+        }
+        InternalFlowSegment segment = wtfInput.segments().get("iflow-test-" + testId);
+        if (segment == null || segment.spans().isEmpty()) {
+            return null;
+        }
+        WholeTestFlowVisualization vis = wtfInput.visualization();
+        String activityHtml = "";
+        String flameHtml = "";
+        if (vis == WholeTestFlowVisualization.ACTIVITY_DIAGRAM || vis == WholeTestFlowVisualization.BOTH) {
+            activityHtml = renderWholeTestActivityHtml(segment, diagramData);
+        }
+        if (vis == WholeTestFlowVisualization.FLAME_CHART || vis == WholeTestFlowVisualization.BOTH) {
+            List<InternalFlowRenderer.BoundaryMarker> markers =
+                wtfInput.boundaryMarkers().getOrDefault(testId, List.of());
+            String flameJson = InternalFlowRenderer.flameJson(
+                InternalFlowRenderer.getFlameChartDataWithMarkers(segment, markers));
+            flameHtml = "<div class=\"iflow-flame\" data-diagram-type=\"flamechart\" data-flame-z=\""
+                + compressToBase64(flameJson) + "\"></div>";
+        }
+        return new WholeTestFlowContent(activityHtml, flameHtml, segment.spans().size());
+    }
+
+    /** The whole-test activity diagram HTML (.NET {@code RenderWholeTestActivityDiagramHtml}): one
+     *  {@code plantuml-browser iflow-diagram} div per batch, each registered into {@code diagramData}
+     *  under a named {@code iflow-puml-whole-{testId}[-{i}]} id (these do not use the puml-{n} counter). */
+    private static String renderWholeTestActivityHtml(InternalFlowSegment segment, Map<String, String> diagramData) {
+        List<String> batches = InternalFlowRenderer.renderActivityDiagramBatched(segment, 100);
+        if (batches.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < batches.size(); i++) {
+            String id = batches.size() == 1
+                ? "iflow-puml-whole-" + segment.testId()
+                : "iflow-puml-whole-" + segment.testId() + "-" + i;
+            diagramData.put(id, compressToBase64(batches.get(i)));
+            sb.append("<div class=\"plantuml-browser iflow-diagram\" id=\"").append(id)
+                .append("\" data-diagram-type=\"plantuml\"></div>");
+        }
+        return sb.toString();
+    }
+
+    /** The lower-median span count across whole-test segments (.NET outlier-warning baseline). */
+    private static int medianSpanCount(WholeTestFlowInput wtfInput) {
+        List<Integer> counts = new ArrayList<>();
+        for (InternalFlowSegment s : wtfInput.segments().values()) {
+            if (!s.spans().isEmpty()) {
+                counts.add(s.spans().size());
+            }
+        }
+        if (counts.isEmpty()) {
+            return 0;
+        }
+        counts.sort(Comparator.naturalOrder());
+        return counts.get((counts.size() - 1) / 2);
     }
 
     /** Compact, {@code System.Text.Json}-style serialization of the {@code puml-data} map: the default
