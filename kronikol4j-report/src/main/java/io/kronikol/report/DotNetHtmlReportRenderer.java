@@ -1,9 +1,11 @@
 package io.kronikol.report;
 
 import io.kronikol.report.html.HtmlEscaper;
+import io.kronikol.report.model.CiMetadata;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.FileAttachment;
+import io.kronikol.report.model.HtmlCustomization;
 import io.kronikol.report.model.InlineParameterValue;
 import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
@@ -141,14 +143,29 @@ public final class DotNetHtmlReportRenderer {
     public static String render(List<Feature> features, Map<String, String> diagramByTestId,
                                 String componentDiagram, String title, String version,
                                 boolean includeTestRunData, Instant startTime, Instant endTime) {
+        return render(features, diagramByTestId, componentDiagram, title, version,
+            includeTestRunData, startTime, endTime, HtmlCustomization.NONE);
+    }
+
+    /**
+     * As {@link #render(List, Map, String, String, String, boolean, Instant, Instant)}, with optional
+     * HTML customization (CI metadata, custom CSS/favicon/logo, step numbers, generate-blank-on-failure).
+     */
+    public static String render(List<Feature> features, Map<String, String> diagramByTestId,
+                                String componentDiagram, String title, String version,
+                                boolean includeTestRunData, Instant startTime, Instant endTime,
+                                HtmlCustomization custom) {
+        if (custom.generateBlankOnFailedTests() && anyScenarioFailed(features)) {
+            return ""; // .NET WriteFile(string.Empty, …) — a deliberately blank report
+        }
         boolean hasComponent = componentDiagram != null && !componentDiagram.isEmpty();
         Map<String, String> diagramData = new LinkedHashMap<>();
         StringBuilder head = new StringBuilder(300_000);
-        appendHead(head, title, version, hasComponent);
+        appendHead(head, title, version, hasComponent, custom);
 
         StringBuilder body = new StringBuilder(8_192);
         appendBody(body, title, version, features, diagramByTestId == null ? Map.of() : diagramByTestId,
-            hasComponent ? componentDiagram : null, diagramData, includeTestRunData, startTime, endTime);
+            hasComponent ? componentDiagram : null, diagramData, includeTestRunData, startTime, endTime, custom);
 
         StringBuilder html = new StringBuilder(head.length() + body.length() + 1_024);
         html.append(head).append(body);
@@ -161,13 +178,25 @@ public final class DotNetHtmlReportRenderer {
         return html.toString();
     }
 
+    private static boolean anyScenarioFailed(List<Feature> features) {
+        for (Feature f : features) {
+            for (Scenario s : f.scenarios()) {
+                if (s.status() == ExecutionStatus.FAILED) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     // ----------------------------------------------------------------------------------- head -----
 
     private static void appendHead(StringBuilder sb, String title, String version,
-                                   boolean hasComponentDiagram) {
+                                   boolean hasComponentDiagram, HtmlCustomization custom) {
         String plantUmlBrowserScript =
             asset("plantuml-browser-render-script.js").replace("__PLANTUML_CDN_BASE__", PLANTUML_CDN_BASE);
-        String faviconLink = "<link rel=\"icon\" href=\"" + FAVICON_DATA_URI + "\">";
+        String faviconHref = custom.customFaviconBase64() != null ? custom.customFaviconBase64() : FAVICON_DATA_URI;
+        String faviconLink = "<link rel=\"icon\" href=\"" + faviconHref + "\">";
         String toggleTimelineFunction = hasComponentDiagram
             ? TOGGLE_TIMELINE_HEAD + asset("report-deactivate-component-diagram.js") + NL + "}"
             : TOGGLE_TIMELINE_HEAD + NL + "}";
@@ -189,7 +218,8 @@ public final class DotNetHtmlReportRenderer {
         sb.append("            ").append(asset("collapsible-notes-styles.css")).append(NL);
         sb.append("            ").append(NL);                              // internalFlowPopupStyles = ""
         sb.append("        </style>").append(NL);
-        sb.append("        ").append(NL);                                  // customCssBlock = ""
+        String customCssBlock = custom.customCss() != null ? "<style>" + custom.customCss() + "</style>" : "";
+        sb.append("        ").append(customCssBlock).append(NL);            // customCssBlock
         sb.append("        ").append(faviconLink).append(NL);
         sb.append("        <script>").append(NL);
         sb.append("            ").append(asset("advanced-search.js")).append(NL);
@@ -235,10 +265,13 @@ public final class DotNetHtmlReportRenderer {
     private static void appendBody(StringBuilder body, String title, String version, List<Feature> features,
                                    Map<String, String> diagramByTestId, String componentDiagram,
                                    Map<String, String> diagramData, boolean includeTestRunData,
-                                   Instant startTime, Instant endTime) {
+                                   Instant startTime, Instant endTime, HtmlCustomization custom) {
+        if (custom.customLogoHtml() != null) {
+            body.append("<div class=\"custom-logo\">").append(custom.customLogoHtml()).append("</div>");
+        }
         body.append("<h1>").append(title).append("</h1>");
         if (includeTestRunData) {
-            appendTestRunDataSummary(body, features, version, startTime, endTime);
+            appendTestRunDataSummary(body, features, version, startTime, endTime, custom.ciMetadata());
         }
 
         // Per-scenario dependencies + diagram search terms (drives data-* attributes + filters).
@@ -375,7 +408,8 @@ public final class DotNetHtmlReportRenderer {
      *  Summary (which opens {@code <div class="header-row">}, closed after the filtering box) and the
      *  pie chart. */
     private static void appendTestRunDataSummary(StringBuilder body, List<Feature> features,
-                                                 String version, Instant startTime, Instant endTime) {
+                                                 String version, Instant startTime, Instant endTime,
+                                                 CiMetadata ci) {
         List<Scenario> scenarios = features.stream().flatMap(f -> f.scenarios().stream()).toList();
         long passed = scenarios.stream().filter(s -> s.status() == ExecutionStatus.PASSED).count();
         long skipped = scenarios.stream().filter(s -> s.status() == ExecutionStatus.SKIPPED).count();
@@ -465,7 +499,39 @@ public final class DotNetHtmlReportRenderer {
             .append("    </table>").append(NL)
             .append("</div>");
 
+        if (ci != null) {
+            body.append("<div class=\"ci-chart-group\">");
+            appendCiMetadata(body, ci);
+        }
         body.append(generatePieChartSvg((int) passed, (int) failed, (int) skipped, (int) bypassed));
+        if (ci != null) {
+            body.append("</div>"); // close ci-chart-group
+        }
+    }
+
+    /** The CI metadata table (Provider header + Build #/Branch/Commit/Pipeline/Repository rows). */
+    private static void appendCiMetadata(StringBuilder body, CiMetadata ci) {
+        body.append("<div class=\"ci-metadata\"><table>");
+        body.append("<tr><td colspan=\"2\" class=\"column-header\">CI (").append(ci.provider()).append(")</td></tr>");
+        if (ci.buildNumber() != null) {
+            body.append("<tr><td>Build #:</td><td>").append(HtmlEscaper.encode(ci.buildNumber())).append("</td></tr>");
+        }
+        if (ci.branch() != null) {
+            body.append("<tr><td>Branch:</td><td>").append(HtmlEscaper.encode(ci.branch())).append("</td></tr>");
+        }
+        if (ci.commitSha() != null) {
+            String shortSha = ci.commitSha().length() > 7 ? ci.commitSha().substring(0, 7) : ci.commitSha();
+            body.append("<tr><td>Commit:</td><td><code title=\"").append(HtmlEscaper.encode(ci.commitSha()))
+                .append("\">").append(HtmlEscaper.encode(shortSha)).append("</code></td></tr>");
+        }
+        if (ci.pipelineUrl() != null) {
+            body.append("<tr><td>Pipeline:</td><td><a href=\"").append(HtmlEscaper.encode(ci.pipelineUrl()))
+                .append("\" target=\"_blank\" rel=\"noopener noreferrer\">View Run</a></td></tr>");
+        }
+        if (ci.repository() != null) {
+            body.append("<tr><td>Repository:</td><td>").append(HtmlEscaper.encode(ci.repository())).append("</td></tr>");
+        }
+        body.append("</table></div>");
     }
 
     /** Total step count (recursive) + status tally into {@code byStatus} = [passed, failed, skipped]

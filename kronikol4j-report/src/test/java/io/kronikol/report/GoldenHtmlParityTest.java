@@ -3,8 +3,11 @@ package io.kronikol.report;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.kronikol.report.model.CiEnvironment;
+import io.kronikol.report.model.CiMetadata;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
+import io.kronikol.report.model.HtmlCustomization;
 import io.kronikol.report.model.FileAttachment;
 import io.kronikol.report.model.InlineParameterValue;
 import io.kronikol.report.model.Scenario;
@@ -375,6 +378,28 @@ class GoldenHtmlParityTest {
             true, Instant.parse("2024-01-15T10:00:00Z"), Instant.parse("2024-01-15T10:00:05Z"));
 
         assertParity("report-summary.html", actual);
+    }
+
+    @Test
+    void summaryBrowserHtmlReport_ciMetadata_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        Scenario s1 = Scenario.builder("Login succeeds", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(100)
+            .steps(List.of(new ScenarioStep("When", "the user logs in", ExecutionStatus.PASSED, 30L,
+                List.of(), List.of())))
+            .build();
+        Scenario s2 = Scenario.builder("Login fails", "s2", ExecutionStatus.FAILED)
+            .durationMs(50).error("bad password").build();
+        Feature feature = new Feature("Login", List.of(s1, s2));
+        CiMetadata ci = new CiMetadata(CiEnvironment.GITHUB_ACTIONS, "42", "main", "abc1234def5678",
+            "https://github.com/acme/repo/actions/runs/99", "acme/repo", "99");
+        HtmlCustomization custom = new HtmlCustomization(ci, null, null, null, false, false);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION,
+            true, Instant.parse("2024-01-15T10:00:00Z"), Instant.parse("2024-01-15T10:00:05Z"), custom);
+
+        assertParity("report-cimetadata.html", actual);
     }
 
     @Test

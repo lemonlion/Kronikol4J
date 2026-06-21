@@ -95,6 +95,10 @@ CaptureHtmlPrefixGroup();
 // all examples match (AllDiagramsIdentical), else one diagram per example.
 CaptureHtmlParamDiagrams();
 
+// CI metadata block — the ci-chart-group wrapping the ci-metadata table (Provider/Build/Branch/
+// Commit/Pipeline/Repository) and the pie chart, in the test-run-data summary.
+CaptureHtmlCiMetadata();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -337,6 +341,35 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlCiMetadata()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // includeTestRunData=true + ciMetadata → the ci-chart-group wrapping the ci-metadata table + pie.
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Login succeeds", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(100),
+        Steps = [ new ScenarioStep { Keyword = "When", Text = "the user logs in", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(30) } ]
+    };
+    var s2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Login fails", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(50), ErrorMessage = "bad password"
+    };
+    var feature = new Feature { DisplayName = "Login", Scenarios = [s1, s2] };
+    var ci = new CiMetadata(
+        CiEnvironment.GitHubActions, "42", "main", "abc1234def5678",
+        "https://github.com/acme/repo/actions/runs/99", "acme/repo", "99");
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-cimetadata.html", "Kronikol Run", includeTestRunData: true,
+        ciMetadata: ci);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-cimetadata.html"), content);
+    Console.WriteLine($"=== report-cimetadata.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlSummary()
