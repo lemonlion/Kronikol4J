@@ -925,8 +925,16 @@ public final class DotNetHtmlReportRenderer {
             body.append("<td>").append(ri + 1).append("</td>");
             if (scalarColumns) {
                 for (String name : group.parameterNames()) {
+                    // No ExampleRawValues in the Java model (the .NET reflection R3/R4 path is not
+                    // cross-runtime byte-parity-able), so each cell takes the string-based R3/R4 path:
+                    // a record ToString() shape renders as a cell-subtable / param-expand, else scalar.
                     String val = s.exampleValues() == null ? "" : s.exampleValues().getOrDefault(name, "");
-                    body.append("<td class=\"mono\">").append(formatDisplayValue(val)).append("</td>");
+                    StringBuilder tdBody = new StringBuilder();
+                    if (ParameterValueRenderer.tryRenderFromParsedString(tdBody, val)) {
+                        body.append("<td>").append(tdBody).append("</td>");
+                    } else {
+                        body.append("<td class=\"mono\">").append(formatDisplayValue(val)).append("</td>");
+                    }
                 }
             } else {
                 String displayText = s.exampleDisplayName() != null ? s.exampleDisplayName() : s.name();

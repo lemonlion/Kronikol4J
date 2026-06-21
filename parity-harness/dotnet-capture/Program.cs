@@ -74,6 +74,11 @@ CaptureHtmlCombinedTable();
 // summary; large → expandable button + JSON), exercising the string-based ParameterParser.
 CaptureHtmlComplexParams();
 
+// Parameterized table cells — ExampleValues whose strings are .NET record ToString() shapes, so the
+// string-based R3 (cell-subtable) / R4 (param-expand) path fires (no ExampleRawValues set), plus a
+// nested record (recursion) and a collection type name (TryCleanCollectionTypeName) and a scalar.
+CaptureHtmlParamComplexCells();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -557,6 +562,53 @@ void CaptureHtmlComplexParams()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-complexparams.html"), content);
     Console.WriteLine($"=== report-complexparams.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlParamComplexCells()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // Two examples sharing OutlineId "Recipes" with five scalar-keyed ExampleValues whose strings are
+    // .NET record ToString() shapes. ExampleRawValues is NOT set, so each cell takes the string-based
+    // path: small (R3 cell-subtable), big (R4 param-expand details), nested record (recursion),
+    // collection type name (cleaned to List<Item>), and a plain scalar (falls to <td class="mono">).
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Bakes a cake", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50),
+        OutlineId = "Recipes",
+        ExampleValues = new()
+        {
+            ["small"] = "Item { Id = 5, Name = egg, Price = 3 }",
+            ["big"] = "Config { A = 1, B = 2, C = 3, D = 4, E = 5, F = 6 }",
+            ["nested"] = "Order { Id = 1, Who = Person { Name = Bob, Age = 30 } }",
+            ["coll"] = "Cart { Items = System.Collections.Generic.List`1[MyApp.Models.Item], Total = 10 }",
+            ["plain"] = "42"
+        },
+        Steps = [ new ScenarioStep { Keyword = "Then", Text = "it bakes", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) } ]
+    };
+    var s2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Bakes bread", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60),
+        OutlineId = "Recipes",
+        ExampleValues = new()
+        {
+            ["small"] = "Item { Id = 7, Name = ham }",
+            ["big"] = "Config { A = 9, B = 8, C = 7, D = 6, E = 5, F = 4, G = 3 }",
+            ["nested"] = "Order { Id = 2, Who = Person { Name = Sue, Age = 25 } }",
+            ["coll"] = "Cart { Items = System.Collections.Generic.List`1[MyApp.Models.Item], Total = 20 }",
+            ["plain"] = "99"
+        },
+        Steps = [ new ScenarioStep { Keyword = "Then", Text = "it bakes", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) } ]
+    };
+    var feature = new Feature { DisplayName = "Recipes", Scenarios = [s1, s2] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-paramcells.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-paramcells.html"), content);
+    Console.WriteLine($"=== report-paramcells.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

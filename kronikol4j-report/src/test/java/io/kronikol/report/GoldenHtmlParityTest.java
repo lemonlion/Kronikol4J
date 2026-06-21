@@ -214,6 +214,39 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void parameterizedBrowserHtmlReport_stringBasedComplexCells_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();
+        ev1.put("small", "Item { Id = 5, Name = egg, Price = 3 }");
+        ev1.put("big", "Config { A = 1, B = 2, C = 3, D = 4, E = 5, F = 6 }");
+        ev1.put("nested", "Order { Id = 1, Who = Person { Name = Bob, Age = 30 } }");
+        ev1.put("coll", "Cart { Items = System.Collections.Generic.List`1[MyApp.Models.Item], Total = 10 }");
+        ev1.put("plain", "42");
+        LinkedHashMap<String, String> ev2 = new LinkedHashMap<>();
+        ev2.put("small", "Item { Id = 7, Name = ham }");
+        ev2.put("big", "Config { A = 9, B = 8, C = 7, D = 6, E = 5, F = 4, G = 3 }");
+        ev2.put("nested", "Order { Id = 2, Who = Person { Name = Sue, Age = 25 } }");
+        ev2.put("coll", "Cart { Items = System.Collections.Generic.List`1[MyApp.Models.Item], Total = 20 }");
+        ev2.put("plain", "99");
+        Scenario s1 = Scenario.builder("Bakes a cake", "s1", ExecutionStatus.PASSED)
+            .durationMs(50).outlineId("Recipes").exampleValues(ev1)
+            .steps(List.of(new ScenarioStep("Then", "it bakes", ExecutionStatus.PASSED, 10L,
+                List.of(), List.of())))
+            .build();
+        Scenario s2 = Scenario.builder("Bakes bread", "s2", ExecutionStatus.PASSED)
+            .durationMs(60).outlineId("Recipes").exampleValues(ev2)
+            .steps(List.of(new ScenarioStep("Then", "it bakes", ExecutionStatus.PASSED, 10L,
+                List.of(), List.of())))
+            .build();
+        Feature feature = new Feature("Recipes", List.of(s1, s2));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-paramcells.html", actual);
+    }
+
+    @Test
     void summaryBrowserHtmlReport_includeTestRunData_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         Scenario login1 = Scenario.builder("Login succeeds", "s1", ExecutionStatus.PASSED)

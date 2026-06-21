@@ -12,11 +12,13 @@ import java.util.Set;
  * Groups parameterized test scenarios for the report's parameter table (.NET {@code ParameterGrouper}).
  *
  * <p>Scope: the Java {@link Scenario} model carries {@code outlineId} / {@code exampleValues} /
- * {@code exampleDisplayName} but not the .NET {@code ExampleRawValues}/{@code ExampleFlatValues}. So
- * grouping is by the framework-provided {@code outlineId} and the table is rendered with the
- * {@code ScalarColumns} (or {@code Fallback}) rule. The .NET display-name-prefix grouping (via
- * {@code ParameterParser}), R2 flattened-object detection, the flatten toggle and complex-object
- * cells are not representable in the Java model and are intentionally out of scope.
+ * {@code exampleDisplayName} but not the .NET {@code ExampleRawValues} (a live {@code object} graph —
+ * the reflection R2/R3/R4 paths over it are runtime-specific and not cross-runtime byte-parity-able).
+ * So grouping is by the framework-provided {@code outlineId} and the table is rendered with the
+ * {@code ScalarColumns} (or {@code Fallback}) rule. Complex-object cells whose {@code exampleValues}
+ * string is a record {@code ToString()} shape ARE rendered (R3 sub-table / R4 expandable) via the
+ * string-based {@link ParameterValueRenderer}. The .NET display-name-prefix grouping (via
+ * {@code ParameterParser}) and the string-based R2 flatten toggle are handled separately.
  */
 final class ParameterGrouper {
 
