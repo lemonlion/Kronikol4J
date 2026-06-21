@@ -357,6 +357,32 @@ class GoldenHtmlParityTest {
         assertParity("report-combinedtable.html", actual);
     }
 
+    @Test
+    void complexParamsBrowserHtmlReport_textRefToComplexInline_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        ScenarioStep step = ScenarioStep.builder("Then", "small and large", ExecutionStatus.PASSED)
+            .durationMs(25)
+            .textSegments(List.of(
+                StepTextSegment.literal("small "),
+                StepTextSegment.tableRef("item"),
+                StepTextSegment.literal(" large "),
+                StepTextSegment.tableRef("config")))
+            .parameters(List.of(
+                StepParameter.inline("item", new InlineParameterValue(
+                    "Item { Id = 5, Name = egg }", null, VerificationStatus.NOT_APPLICABLE)),
+                StepParameter.inline("config", new InlineParameterValue(
+                    "Config { A = 1, B = 2, C = 3, D = 4, E = 5 }", null, VerificationStatus.NOT_APPLICABLE))))
+            .build();
+        Scenario scenario = Scenario.builder("Order is placed", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500).steps(List.of(step)).build();
+        Feature feature = new Feature("Orders", List.of(scenario));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-complexparams.html", actual);
+    }
+
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
     private static void assertParity(String goldenName, String actual) throws IOException {
         Path dump = Path.of("build", "parity", goldenName.replace(".html", ".actual.html"));

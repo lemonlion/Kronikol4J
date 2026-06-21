@@ -41,5 +41,6 @@ parity-harness/dotnet-capture/fixtures/report-stepsegments.html
 parity-harness/dotnet-capture/fixtures/report-stepparams.html
 parity-harness/dotnet-capture/fixtures/report-steptables.html
 parity-harness/dotnet-capture/fixtures/report-combinedtable.html
+parity-harness/dotnet-capture/fixtures/report-complexparams.html
 parity-harness/dotnet-capture/fixtures/stylesheets.css
 parity-harness/dotnet-capture/fixtures/assets/

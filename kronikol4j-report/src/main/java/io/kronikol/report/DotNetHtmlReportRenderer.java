@@ -1341,7 +1341,7 @@ public final class DotNetHtmlReportRenderer {
             body.append("<span class=\"step-keyword\">").append(HtmlEscaper.encode(step.keyword())).append("</span> ");
         }
         if (!step.textSegments().isEmpty()) {
-            appendStepTextSegments(body, step.textSegments());
+            appendStepTextSegments(body, step);
         } else {
             body.append("<span class=\"step-text\">").append(HtmlEscaper.encode(step.text())).append("</span>");
         }
@@ -1396,9 +1396,9 @@ public final class DotNetHtmlReportRenderer {
     /** Ports .NET RenderStep's structured-text-segment branch: literal prose interleaved with inline
      *  parameter values (highlighted by verification status). The tabular/tree reference path falls
      *  back to its formatted value / plain text until the tabular-parameter feature is ported. */
-    private static void appendStepTextSegments(StringBuilder body, List<StepTextSegment> segments) {
+    private static void appendStepTextSegments(StringBuilder body, ScenarioStep step) {
         body.append("<span class=\"step-text\">");
-        for (StepTextSegment seg : segments) {
+        for (StepTextSegment seg : step.textSegments()) {
             if (seg.parameter() != null) {
                 String statusClass = paramStatusClass(seg.parameter().status());
                 String display = seg.parameter().expectation() != null
@@ -1409,13 +1409,7 @@ public final class DotNetHtmlReportRenderer {
                 body.append("<span class=\"step-param-inline ").append(statusClass).append("\"")
                     .append(titleAttr).append(">").append(display).append("</span>");
             } else if (seg.tableReference() != null) {
-                if (seg.tableReferenceFormattedValue() != null) {
-                    body.append("<span class=\"step-param-inline param-na\" title=\"")
-                        .append(HtmlEscaper.encode(seg.tableReference())).append("\">")
-                        .append(HtmlEscaper.encode(seg.tableReferenceFormattedValue())).append("</span>");
-                } else {
-                    body.append(HtmlEscaper.encode(seg.tableReference()));
-                }
+                appendTableReferenceSegment(body, step, seg);
             } else if (seg.text() != null) {
                 body.append(HtmlEscaper.encode(seg.text()));
             }
@@ -1423,8 +1417,55 @@ public final class DotNetHtmlReportRenderer {
         body.append("</span>");
     }
 
-    /** Ports .NET {@code RenderParameter}. Inline parameters render as a highlighted span; tabular and
-     *  tree parameters are ported in the following increments. */
+    /** Port of the .NET RenderStep text-segment table-reference branch: the reference resolves against
+     *  the step's StepParameters — complex inline → an inline summary span or an expandable button;
+     *  simple inline → a span; tabular/tree → a button; otherwise the formatted value or the plain text. */
+    private static void appendTableReferenceSegment(StringBuilder body, ScenarioStep step, StepTextSegment seg) {
+        StepParameter matching = findParam(step.parameters(), seg.tableReference());
+        String ref = HtmlEscaper.encode(seg.tableReference());
+        if (matching != null && matching.kind() == StepParameter.Kind.INLINE && matching.inlineValue() != null
+                && ParameterParser.isComplexObjectString(matching.inlineValue().value())) {
+            String complexVal = matching.inlineValue().value();
+            if (ParameterParser.isSmallComplexValue(complexVal)) {
+                String inlineDisplay = ParameterParser.formatComplexValueInline(complexVal);
+                body.append("<span class=\"step-param-inline param-na\" title=\"").append(ref).append("\">")
+                    .append(HtmlEscaper.encode(inlineDisplay != null ? inlineDisplay : complexVal)).append("</span>");
+            } else {
+                String json = ParameterParser.formatComplexValueAsJson(complexVal);
+                body.append("</span>");
+                body.append("<button class=\"step-table-ref\" onclick=\"toggle_table_ref(this)\" data-param=\"")
+                    .append(ref).append("\" data-value=\"").append(HtmlEscaper.encode(json != null ? json : complexVal))
+                    .append("\">").append(ref).append("</button>");
+                body.append("<span class=\"step-text\">");
+            }
+        } else if (matching != null && matching.kind() == StepParameter.Kind.INLINE && matching.inlineValue() != null) {
+            body.append("<span class=\"step-param-inline param-na\" title=\"").append(ref).append("\">")
+                .append(formatDisplayValue(matching.inlineValue().value())).append("</span>");
+        } else if (matching != null
+                && (matching.kind() == StepParameter.Kind.TABULAR || matching.kind() == StepParameter.Kind.TREE)) {
+            body.append("</span>");
+            body.append("<button class=\"step-table-ref\" onclick=\"toggle_table_ref(this)\" data-param=\"")
+                .append(ref).append("\">").append(ref).append("</button>");
+            body.append("<span class=\"step-text\">");
+        } else if (seg.tableReferenceFormattedValue() != null) {
+            body.append("<span class=\"step-param-inline param-na\" title=\"").append(ref).append("\">")
+                .append(HtmlEscaper.encode(seg.tableReferenceFormattedValue())).append("</span>");
+        } else {
+            body.append(ref);
+        }
+    }
+
+    private static StepParameter findParam(List<StepParameter> params, String name) {
+        for (StepParameter p : params) {
+            if (p.name() != null && p.name().equals(name)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    /** Ports .NET {@code RenderParameter}: inline → highlighted span; tabular → step-param-table;
+     *  tree → step-param-tree. */
     private static void appendParameter(StringBuilder body, StepParameter param) {
         switch (param.kind()) {
             case INLINE -> {

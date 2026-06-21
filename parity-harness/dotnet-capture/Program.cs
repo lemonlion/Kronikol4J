@@ -70,6 +70,10 @@ CaptureHtmlStepTables();
 // Rich step rendering — the combined setup+assertion tabular table (key-aligned).
 CaptureHtmlCombinedTable();
 
+// Rich step rendering — TextSegments table-references to complex inline params (small → inline
+// summary; large → expandable button + JSON), exercising the string-based ParameterParser.
+CaptureHtmlComplexParams();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -516,6 +520,43 @@ void CaptureHtmlCombinedTable()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-combinedtable.html"), content);
     Console.WriteLine($"=== report-combinedtable.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlComplexParams()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Order is placed", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500),
+        Steps =
+        [
+            new ScenarioStep
+            {
+                Keyword = "Then", Text = "small and large", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(25),
+                TextSegments =
+                [
+                    StepTextSegment.Literal("small "),
+                    StepTextSegment.TableRef("item"),
+                    StepTextSegment.Literal(" large "),
+                    StepTextSegment.TableRef("config")
+                ],
+                Parameters =
+                [
+                    new StepParameter { Name = "item", Kind = StepParameterKind.Inline, InlineValue = new InlineParameterValue("Item { Id = 5, Name = egg }", null, VerificationStatus.NotApplicable) },
+                    new StepParameter { Name = "config", Kind = StepParameterKind.Inline, InlineValue = new InlineParameterValue("Config { A = 1, B = 2, C = 3, D = 4, E = 5 }", null, VerificationStatus.NotApplicable) }
+                ]
+            }
+        ]
+    };
+    var feature = new Feature { DisplayName = "Orders", Scenarios = [scenario] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-complexparams.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-complexparams.html"), content);
+    Console.WriteLine($"=== report-complexparams.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()
