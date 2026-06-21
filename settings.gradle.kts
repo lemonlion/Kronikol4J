@@ -34,4 +34,5 @@ include(
     "kronikol4j-azure",
     "kronikol4j-gcp",
     "kronikol4j-gradle-plugin",
+    "kronikol4j-assertj-agent",
 )

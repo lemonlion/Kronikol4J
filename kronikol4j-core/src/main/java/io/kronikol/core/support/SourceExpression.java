@@ -36,6 +36,19 @@ public final class SourceExpression {
             .orElse(null));
     }
 
+    /**
+     * The source line of the first stack frame whose class name does not start with any of
+     * {@code excludedPrefixes} — for the assertion agent, which runs inside AssertJ and must skip
+     * the AssertJ + agent frames to find the user's test line.
+     */
+    public static String forCallerOutsidePackages(Set<String> excludedPrefixes) {
+        return StackWalker.getInstance().walk(frames -> frames
+            .filter(f -> excludedPrefixes.stream().noneMatch(p -> f.getClassName().startsWith(p)))
+            .findFirst()
+            .map(f -> readLine(f.getClassName(), f.getFileName(), f.getLineNumber()))
+            .orElse(null));
+    }
+
     /** Reads the given 1-based line from the source file for {@code className}, or {@code null}. */
     public static String readLine(String className, String fileName, int lineNumber) {
         if (fileName == null || lineNumber < 1) {
