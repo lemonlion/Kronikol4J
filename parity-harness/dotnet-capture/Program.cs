@@ -3,11 +3,25 @@
 // The Java parity tests assert (after normalising only the trailing newline) byte-equality.
 
 using System.Net;
+using Kronikol.ComponentDiagram;
 using Kronikol.PlantUml;
 using Kronikol.Tracking;
 
 var outDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "fixtures"));
 Directory.CreateDirectory(outDir);
+
+// Component diagram (browser path → useC4:false), default options (DependencyType arrow colours).
+CaptureComponent("component", FanOut());
+
+void CaptureComponent(string name, List<RequestResponseLog> logs)
+{
+    var rels = ComponentDiagramGenerator.ExtractRelationships(logs);
+    var puml = ComponentDiagramGenerator.GeneratePlantUml(rels, new ComponentDiagramOptions(), useC4: false);
+    File.WriteAllText(Path.Combine(outDir, $"{name}.puml"), puml.ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== {name} ({puml.Length} chars) ===");
+    Console.WriteLine(puml);
+    Console.WriteLine();
+}
 
 Capture("simple-http", SimpleHttp(), arrowColors: false);
 Capture("simple-http-colored", SimpleHttp(), arrowColors: true);

@@ -3,6 +3,7 @@ package io.kronikol.diagram.plantuml;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.kronikol.core.constants.DependencyCategories;
+import io.kronikol.diagram.component.ComponentDiagramGenerator;
 import io.kronikol.core.tracking.Method;
 import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseMetaType;
@@ -104,6 +105,14 @@ class PlantUmlParityTest {
         // Combined arrow + participant colours across three shapes (entity/database/collections).
         assertParity("participant-colors-fanout",
             PlantUmlCreator.create(fanOutCorpus(), true, true).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void componentDiagram() throws IOException {
+        // Run-level component diagram (browser/non-C4 mode) over the fan-out corpus: deterministic
+        // first-seen participant order, per-type shapes + arrow colours, aggregated call/test counts.
+        var relationships = ComponentDiagramGenerator.extractRelationships(fanOutCorpus());
+        assertParity("component", ComponentDiagramGenerator.generatePlantUml(relationships));
     }
 
     // --- corpora (built identically to parity-harness/dotnet-capture/Program.cs) ---

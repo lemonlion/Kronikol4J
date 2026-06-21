@@ -2,6 +2,31 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.7] — unreleased
+
+Adds the **component diagram** — the second diagram type (closing a Phase-2 gap). Full suite green
+on JDK 17–25.
+
+### Added
+- **`io.kronikol.diagram.component.ComponentDiagramGenerator`** — the run-level view of which
+  participants call which services, aggregated across all tests. `extractRelationships(logs)` groups
+  requests by `(caller, service, protocol)` with per-relationship call/test counts and method sets;
+  `generatePlantUml(relationships)` emits the .NET browser (non-C4) component diagram — the
+  skinparam preamble, `rectangle`/`database`/`collections`/`queue` shapes (a person for pure
+  callers, a "Software System" for HTTP/unknown services), and `-[#colour]->` arrows labelled
+  `"PROTO: methods - N calls across M tests"`.
+- Captured byte-for-byte from real .NET (`parity-harness` `component` scenario);
+  `PlantUmlParityTest.componentDiagram` asserts exact equality, plus `ComponentDiagramGeneratorTest`
+  for the aggregation maths and per-type shapes.
+
+### Parity hardening (.NET side)
+- The .NET `ComponentDiagramGenerator` participant order was non-deterministic (`HashSet` iteration,
+  JAVA_PORT_PLAN §6.5 HIGH hazard). Pinned to deterministic first-seen order (callers then services)
+  — behaviour-preserving (the order it already emitted) — so the golden fixture is reproducible.
+
+> Generator-level for now; embedding the component diagram into the HTML report is a follow-up
+> (as participant colours were generator-first, then wired through `ReportOptions`).
+
 ## [0.1.6] — unreleased
 
 Aligns the diagram-rendering defaults with .NET across the board. Full suite green on JDK 17–25.

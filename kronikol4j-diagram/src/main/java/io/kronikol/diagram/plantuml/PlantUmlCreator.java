@@ -179,7 +179,7 @@ public final class PlantUmlCreator {
 
     /** Camelizes then sanitizes a participant name into a PlantUML alias (mirrors .NET {@code
      *  SanitizeAlias}). E.g. {@code "OrderService" -> "orderService"}, {@code "Test" -> "test"}. */
-    static String alias(String name) {
+    public static String alias(String name) {
         String sanitized = camelize(name).replaceAll("[^a-zA-Z0-9_]", "_");
         if (sanitized.isEmpty() || Character.isDigit(sanitized.charAt(0))) {
             sanitized = "_" + sanitized;
