@@ -62,7 +62,12 @@ void CaptureHtml()
     Dump("toggle-script.js", DiagramContextMenu.GetToggleScript());
     Dump("flame-chart-render-script.js", DiagramContextMenu.GetFlameChartRenderScript());
     Dump("collapsible-notes-script.js", DiagramContextMenu.GetCollapsibleNotesScript());
-    Console.WriteLine("=== dumped 9 DiagramContextMenu assets ===");
+    // Interpolated: dump the rendered script, then templatize the CDN back to a placeholder.
+    var cdn = "https://cdn.jsdelivr.net/gh/lemonlion/plantuml-js-plantuml_limit_size_98304@v1.2026.3beta6-patched";
+    var browserScript = DiagramContextMenu.GetPlantUmlBrowserRenderScript().ReplaceLineEndings("\n")
+        .Replace(cdn, "__PLANTUML_CDN_BASE__");
+    File.WriteAllText(Path.Combine(assetDir, "plantuml-browser-render-script.js"), browserScript);
+    Console.WriteLine("=== dumped 9 + browser-render assets ===");
 }
 
 void CaptureReportData()
