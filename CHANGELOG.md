@@ -2,6 +2,22 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.10] — unreleased
+
+Wires the report-data serializers into the run: a standalone report now emits the machine-readable
+`TestRunReport.{json,xml,yaml}` files alongside `TestRunReport.html`. Full suite green on JDK 17–25.
+
+### Added
+- **Report-data emission** — `ReportFinalizer` writes `TestRunReport.<ext>` for each requested
+  {@code ReportDataFormat}, built from the run's features + tracked logs (per-test diagrams +
+  httpInteractions). Opt in via `ReportOptions.withDataFormats(…)` or, zero-touch through the
+  JUnit 5 / TestNG listeners, `-Dkronikol.report.dataFormats=xml,yaml`.
+- Run timing is captured in `RunResults` (start = first recorded scenario); the `KronikolVersion`
+  comes from the jar manifest (`"unknown"` in dev, matching .NET's fallback). `ReportOptions` gains a
+  `dataFormats` set (back-compatible — the two-arg colour shape is unchanged).
+
+The HTML report (`TestRunReport.html`) is still always emitted; the data files are opt-in.
+
 ## [0.1.9] — unreleased
 
 Ports the full report-data model and adds byte-for-byte JSON/XML/YAML report-data serializers

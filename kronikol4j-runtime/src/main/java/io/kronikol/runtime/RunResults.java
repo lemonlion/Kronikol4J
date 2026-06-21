@@ -2,6 +2,7 @@ package io.kronikol.runtime;
 
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.Scenario;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,13 +17,24 @@ public final class RunResults {
 
     private static final Map<String, List<Scenario>> BY_FEATURE = new LinkedHashMap<>();
     private static final Object LOCK = new Object();
+    private static Instant startedAt;
 
     private RunResults() {
     }
 
     public static void record(String featureName, Scenario scenario) {
         synchronized (LOCK) {
+            if (startedAt == null) {
+                startedAt = Instant.now(); // run start = first recorded scenario
+            }
             BY_FEATURE.computeIfAbsent(featureName, k -> new ArrayList<>()).add(scenario);
+        }
+    }
+
+    /** When the run started (the first {@link #record} call), or {@code now} if nothing was recorded. */
+    public static Instant startedAt() {
+        synchronized (LOCK) {
+            return startedAt != null ? startedAt : Instant.now();
         }
     }
 
@@ -43,6 +55,7 @@ public final class RunResults {
     public static void clear() {
         synchronized (LOCK) {
             BY_FEATURE.clear();
+            startedAt = null;
         }
     }
 }

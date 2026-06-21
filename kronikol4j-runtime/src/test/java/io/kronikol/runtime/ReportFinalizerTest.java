@@ -9,6 +9,7 @@ import io.kronikol.core.tracking.RequestResponseLogger;
 import io.kronikol.core.tracking.RequestResponseType;
 import io.kronikol.core.tracking.StatusCode;
 import io.kronikol.report.ReportOptions;
+import io.kronikol.report.data.ReportDataFormat;
 import io.kronikol.report.merge.FragmentJson;
 import io.kronikol.report.merge.ReportFragment.ScenarioFragment;
 import io.kronikol.report.model.Feature;
@@ -18,6 +19,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -112,6 +114,43 @@ class ReportFinalizerTest {
         } finally {
             System.clearProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY);
             System.clearProperty(ReportOptions.ARROW_COLORS_PROPERTY);
+        }
+    }
+
+    @Test
+    void finalizeEmitsRequestedDataFiles(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run",
+            ReportOptions.defaults().withDataFormats(Set.of(ReportDataFormat.XML, ReportDataFormat.YAML)));
+
+        assertThat(dir.resolve("TestRunReport.html")).exists();
+        assertThat(dir.resolve("TestRunReport.json")).doesNotExist(); // not requested
+        assertThat(Files.readString(dir.resolve("TestRunReport.xml")))
+            .startsWith("<TestRunReport>")
+            .contains("<Name>Checkout succeeds</Name>")
+            .contains("<HttpInteraction>")        // the tracked interaction
+            .contains("<Diagram>");                // the per-test diagram
+        assertThat(Files.readString(dir.resolve("TestRunReport.yaml")))
+            .startsWith("KronikolVersion:")
+            .contains("- Name: Checkout succeeds")
+            .contains("HttpInteractions:");
+    }
+
+    @Test
+    void finalizeRunToDefaultReadsDataFormatsSystemProperty(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+        System.setProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY, dir.toString());
+        System.setProperty(ReportOptions.DATA_FORMATS_PROPERTY, "yaml");
+        try {
+            ReportFinalizer.finalizeRunToDefault("Run");
+            assertThat(dir.resolve("TestRunReport.yaml")).exists();
+            assertThat(dir.resolve("TestRunReport.xml")).doesNotExist();
+        } finally {
+            System.clearProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY);
+            System.clearProperty(ReportOptions.DATA_FORMATS_PROPERTY);
         }
     }
 

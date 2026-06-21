@@ -24,4 +24,10 @@ public record ReportData(
     List<Feature> features,
     Map<String, List<String>> diagramsByTestId,
     Map<String, List<RequestResponseLog>> logsByTestId) {
+
+    /** The Kronikol4J version from the jar manifest, or {@code "unknown"} (matching .NET's fallback). */
+    public static String defaultKronikolVersion() {
+        String version = ReportData.class.getPackage().getImplementationVersion();
+        return version != null ? version : "unknown";
+    }
 }

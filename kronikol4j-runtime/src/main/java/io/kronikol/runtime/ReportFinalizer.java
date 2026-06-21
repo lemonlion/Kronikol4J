@@ -1,17 +1,28 @@
 package io.kronikol.runtime;
 
+import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseLogger;
+import io.kronikol.diagram.model.PlantUmlForTest;
+import io.kronikol.diagram.plantuml.PlantUmlCreator;
 import io.kronikol.report.HtmlReportGenerator;
 import io.kronikol.report.HtmlReportGenerator.GeneratedReport;
 import io.kronikol.report.ReportOptions;
+import io.kronikol.report.data.ReportData;
+import io.kronikol.report.data.ReportDataFormat;
 import io.kronikol.report.merge.FragmentJson;
 import io.kronikol.report.merge.ReportFragment;
+import io.kronikol.report.model.Feature;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Generates the report at end-of-run from the collected {@link RunResults} and the accumulated
@@ -39,14 +50,43 @@ public final class ReportFinalizer {
         return finalizeRun(outputDir, title, ReportOptions.defaults());
     }
 
-    /** As {@link #finalizeRun(Path, String)}, honouring the diagram colour {@code options}. */
+    /** As {@link #finalizeRun(Path, String)}, honouring the diagram colour {@code options} and emitting
+     *  the requested machine-readable {@code TestRunReport.<ext>} data files alongside the HTML. */
     public static GeneratedReport finalizeRun(Path outputDir, String title, ReportOptions options)
             throws IOException {
         if (RunResults.isEmpty()) {
             return null;
         }
-        return HtmlReportGenerator.generate(
-            RunResults.toFeatures(), RequestResponseLogger.getAllLogs(), outputDir, title, options);
+        List<Feature> features = RunResults.toFeatures();
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        GeneratedReport report = HtmlReportGenerator.generate(features, logs, outputDir, title, options);
+        writeReportData(outputDir, features, logs, options);
+        return report;
+    }
+
+    /** Emits {@code TestRunReport.<ext>} for each requested {@link ReportDataFormat} (none by default). */
+    private static void writeReportData(Path outputDir, List<Feature> features,
+                                        List<RequestResponseLog> logs, ReportOptions options) throws IOException {
+        if (options.dataFormats().isEmpty()) {
+            return;
+        }
+        Map<String, List<String>> diagrams = new LinkedHashMap<>();
+        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.arrowColors(), options.participantColors())) {
+            if (!p.diagrams().isEmpty()) {
+                diagrams.put(p.testId(), p.diagrams());
+            }
+        }
+        Map<String, List<RequestResponseLog>> logsByTestId = new LinkedHashMap<>();
+        for (RequestResponseLog log : logs) {
+            logsByTestId.computeIfAbsent(log.testId(), k -> new ArrayList<>()).add(log);
+        }
+        ReportData data = new ReportData(ReportData.defaultKronikolVersion(),
+            RunResults.startedAt(), Instant.now(), features, diagrams, logsByTestId);
+        Files.createDirectories(outputDir);
+        for (ReportDataFormat format : options.dataFormats()) {
+            Files.writeString(outputDir.resolve("TestRunReport." + format.extension()),
+                format.serialize(data), StandardCharsets.UTF_8);
+        }
     }
 
     /**
