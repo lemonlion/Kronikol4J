@@ -2,6 +2,25 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.2] — unreleased
+
+Rounds out the roadmap extensions: a Spock test-framework adapter and two more database trackers.
+**28 modules**, full suite green on JDK 17–25.
+
+### Test frameworks
+- **kronikol4j-spock** — a global Spock extension (`IGlobalExtension`, ServiceLoader-registered) that
+  scopes each feature-iteration's identity and records its `Scenario`, and maps Spock blocks to
+  phases (`given`/`setup`/`where` → Setup, `when`/`then`/`expect` → Action; `SpockBlock`). Verified
+  by a **real Spock spec** that asserts the live identity scope and SETUP→ACTION phase transitions
+  (the spec forces Groovy 4.0.28 so the Groovy compiler runs on the JDK 25 toolchain).
+
+### Tracking adapters
+- **kronikol4j-cassandra** — records Apache Cassandra CQL operations as tracked interactions
+  (`Cassandra` category → `database` shape). A Java-native category (no .NET counterpart), added to
+  `DependencyCategories` and the palette.
+- **kronikol4j-elasticsearch** — records Elasticsearch / OpenSearch operations
+  (`Elasticsearch` category → `database` shape; the category already mirrored .NET).
+
 ## [0.1.1] — unreleased
 
 Closes the two roadmap gaps flagged in 0.1.0 (assertion Tier 2 and the golden-file parity harness)

@@ -21,6 +21,8 @@ public final class DependencyCategories {
     public static final String MYSQL = "MySQL";
     public static final String BIG_QUERY = "BigQuery";
     public static final String ELASTICSEARCH = "Elasticsearch";
+    /** Java-native addition (no .NET counterpart); renders as a {@code database} participant. */
+    public static final String CASSANDRA = "Cassandra";
     public static final String DATABASE = "Database";
 
     // Caches

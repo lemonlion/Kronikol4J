@@ -35,4 +35,7 @@ include(
     "kronikol4j-gcp",
     "kronikol4j-gradle-plugin",
     "kronikol4j-assertj-agent",
+    "kronikol4j-cassandra",
+    "kronikol4j-elasticsearch",
+    "kronikol4j-spock",
 )

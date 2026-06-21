@@ -66,7 +66,9 @@ public final class DependencyPalette {
         Map.entry("mysql", DependencyType.DATABASE),
         Map.entry("sqlite", DependencyType.DATABASE),
         Map.entry("oracle", DependencyType.DATABASE),
-        Map.entry("clickhouse", DependencyType.DATABASE));
+        Map.entry("clickhouse", DependencyType.DATABASE),
+        // Java-native addition (no .NET counterpart): the Cassandra tracker renders as a database.
+        Map.entry("cassandra", DependencyType.DATABASE));
 
     /** Resolves a category to its type. {@code null}/empty → {@code HTTP_API}; unknown → {@code UNKNOWN}. */
     public static DependencyType resolve(String category) {
