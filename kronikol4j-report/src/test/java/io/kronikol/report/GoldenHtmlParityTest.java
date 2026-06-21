@@ -98,6 +98,24 @@ class GoldenHtmlParityTest {
         assertParity("report-steps.html", actual);
     }
 
+    @Test
+    void statusesBrowserHtmlReport_skippedAndBypassed_isByteForByteIdenticalToDotNetGolden() throws IOException {
+        Scenario passed = Scenario.builder("Checkout passes", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500).build();
+        Scenario skipped = Scenario.builder("Checkout is skipped", "s2", ExecutionStatus.SKIPPED)
+            .durationMs(800).build();
+        Scenario bypassed = Scenario.builder("Checkout is bypassed", "s3", ExecutionStatus.INCONCLUSIVE)
+            .durationMs(600).build();
+        Feature feature = new Feature("Checkout", List.of(passed, skipped, bypassed));
+        Map<String, String> diagramByTestId = Map.of(
+            "s1", "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml");
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-statuses.html", actual);
+    }
+
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
     private static void assertParity(String goldenName, String actual) throws IOException {
         Path dump = Path.of("build", "parity", goldenName.replace(".html", ".actual.html"));

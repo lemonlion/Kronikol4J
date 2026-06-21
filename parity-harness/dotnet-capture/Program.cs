@@ -31,6 +31,10 @@ CaptureHtmlRich();
 // scenario-background/scenario-steps <details>, RenderStep status/keyword/duration and sub-step recursion.
 CaptureHtmlSteps();
 
+// Skipped + bypassed scenarios alongside a passed one: data-status values, h3 summary classes,
+// status tooltips, and the mixed-status timeline bars (passed/skipped/bypassed).
+CaptureHtmlStatuses();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -146,6 +150,38 @@ void CaptureHtmlSteps()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-steps.html"), content);
     Console.WriteLine($"=== report-steps.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlStatuses()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var passed = new Scenario
+    {
+        Id = "s1", DisplayName = "Checkout passes", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500)
+    };
+    var skipped = new Scenario
+    {
+        Id = "s2", DisplayName = "Checkout is skipped", IsHappyPath = false,
+        Result = ExecutionResult.Skipped, Duration = TimeSpan.FromMilliseconds(800)
+    };
+    var bypassed = new Scenario
+    {
+        Id = "s3", DisplayName = "Checkout is bypassed", IsHappyPath = false,
+        Result = ExecutionResult.Bypassed, Duration = TimeSpan.FromMilliseconds(600)
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [passed, skipped, bypassed] };
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", "",
+            "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml")
+    };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-statuses.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-statuses.html"), content);
+    Console.WriteLine($"=== report-statuses.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()
