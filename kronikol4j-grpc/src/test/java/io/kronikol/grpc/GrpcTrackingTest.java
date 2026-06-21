@@ -39,7 +39,7 @@ class GrpcTrackingTest {
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml)
             .contains("entity \"OrderService\" as orderService")
-            .contains("test -> orderService: Checkout: /")
-            .contains("orderService --> test: OK");
+            .contains("test -[#438DD5]> orderService: Checkout: /")
+            .contains("orderService -[#438DD5]-> test: OK");
     }
 }

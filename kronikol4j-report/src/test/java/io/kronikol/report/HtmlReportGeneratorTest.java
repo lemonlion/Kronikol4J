@@ -71,7 +71,7 @@ class HtmlReportGeneratorTest {
             .contains("id=\"kronikol-diagrams\"")                        // JSON diagram data map
             .contains("plantuml.js")                                     // PlantUML-WASM from the CDN
             .contains("plantumlLoad")                                    // the bundled browser renderer
-            .contains("test -&gt; orderService: POST: /checkout")        // raw PlantUML, HTML-escaped
+            .contains("test -[#438DD5]&gt; orderService: POST: /checkout") // raw PlantUML (coloured), HTML-escaped
             .endsWith("</html>\n");
     }
 
@@ -91,14 +91,17 @@ class HtmlReportGeneratorTest {
     }
 
     @Test
-    void defaultGenerateLeavesDiagramsUncoloured(@TempDir Path dir) throws IOException {
+    void defaultGenerateColoursArrowsButNotParticipants(@TempDir Path dir) throws IOException {
         trackCheckout();
         var features = List.of(new Feature("Checkout",
             List.of(Scenario.passed("Checkout succeeds", "t1"))));
 
         var report = HtmlReportGenerator.generate(features, RequestResponseLogger.getAllLogs(), dir, "Demo Run");
 
-        assertThat(Files.readString(report.htmlFile())).doesNotContain("#438DD5"); // back-compatible default
+        // The .NET defaults: arrows coloured per dependency type, participants left uncoloured.
+        assertThat(Files.readString(report.htmlFile()))
+            .contains("-[#438DD5]")
+            .doesNotContain("orderService #438DD5");
     }
 
     @Test

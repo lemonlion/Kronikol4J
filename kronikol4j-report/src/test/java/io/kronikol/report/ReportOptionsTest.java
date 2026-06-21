@@ -7,21 +7,19 @@ import org.junit.jupiter.api.Test;
 class ReportOptionsTest {
 
     @Test
-    void defaultsAreNoColour() {
+    void defaultsMatchDotNet() {
         ReportOptions defaults = ReportOptions.defaults();
-        assertThat(defaults.arrowColors()).isFalse();
-        assertThat(defaults.participantColors()).isFalse();
+        assertThat(defaults.arrowColors()).isTrue();         // .NET: arrows coloured per dependency
+        assertThat(defaults.participantColors()).isFalse();  // .NET: participants uncoloured
     }
 
     @Test
     void withersAreIndependentAndImmutable() {
-        ReportOptions base = ReportOptions.defaults();
-        ReportOptions arrows = base.withArrowColors(true);
-        ReportOptions both = arrows.withParticipantColors(true);
+        ReportOptions base = new ReportOptions(true, false);
 
-        assertThat(base).isEqualTo(ReportOptions.defaults());     // unchanged
-        assertThat(arrows).isEqualTo(new ReportOptions(true, false));
-        assertThat(both).isEqualTo(new ReportOptions(true, true));
+        assertThat(base.withParticipantColors(true)).isEqualTo(new ReportOptions(true, true));
+        assertThat(base.withArrowColors(false)).isEqualTo(new ReportOptions(false, false));
+        assertThat(base).isEqualTo(new ReportOptions(true, false)); // original unchanged (immutable)
     }
 
     @Test
@@ -37,8 +35,8 @@ class ReportOptionsTest {
     }
 
     @Test
-    void absentSystemPropertiesDefaultToOff() {
-        // Neither property set in this test → both false.
+    void absentSystemPropertiesFallBackToDotNetDefaults() {
+        // Neither property set in this test → the .NET defaults (arrows on, participants off).
         assertThat(ReportOptions.fromSystemProperties()).isEqualTo(ReportOptions.defaults());
     }
 }

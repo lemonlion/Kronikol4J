@@ -38,12 +38,12 @@ public final class PlantUmlCreator {
     private PlantUmlCreator() {
     }
 
-    /** Groups logs by test and builds one diagram per test (arrows uncoloured). */
+    /** Groups logs by test and builds one diagram per test, colouring arrows per the .NET default. */
     public static List<PlantUmlForTest> create(List<RequestResponseLog> logs) {
-        return create(logs, false);
+        return create(logs, true);
     }
 
-    /** As {@link #create(List)}, with optional per-dependency-type arrow colouring (.NET default: on). */
+    /** As {@link #create(List)}, choosing per-dependency-type arrow colouring (participants uncoloured). */
     public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, boolean arrowColors) {
         return create(logs, arrowColors, false);
     }

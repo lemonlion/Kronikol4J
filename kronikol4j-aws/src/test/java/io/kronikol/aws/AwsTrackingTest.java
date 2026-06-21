@@ -31,7 +31,7 @@ class AwsTrackingTest {
 
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml).contains("database \"FileStore\" as fileStore")
-            .contains("test -> fileStore: PUT: /");
+            .contains("test -[#2ECC71]> fileStore: PUT: /");
     }
 
     @Test
@@ -39,7 +39,7 @@ class AwsTrackingTest {
         AwsTracking.dynamoDb(AwsTrackingOptions.forService("OrdersTable"), "PutItem", "orders", "{\"id\":1}");
         String uml = PlantUmlCreator.create(RequestResponseLogger.getAllLogs()).get(0).diagrams().get(0);
         assertThat(uml).contains("database \"OrdersTable\" as ordersTable")
-            .contains("test -> ordersTable: PUTITEM: /");
+            .contains("test -[#E74C3C]> ordersTable: PUTITEM: /");
     }
 
     @Test
@@ -52,6 +52,6 @@ class AwsTrackingTest {
 
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml).contains("queue \"OrderQueue\" as orderQueue")
-            .contains("test -> orderQueue: SEND: /");
+            .contains("test -[#9B59B6]> orderQueue: SEND: /");
     }
 }

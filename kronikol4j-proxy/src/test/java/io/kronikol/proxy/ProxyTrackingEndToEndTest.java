@@ -56,8 +56,8 @@ class ProxyTrackingEndToEndTest {
         assertThat(uml)
             // a null dependency category resolves to HttpApi -> entity (parity with .NET)
             .contains("entity \"OrderService\" as orderService")
-            .contains("test -> orderService: checkout: /OrderService/checkout")
-            .contains("orderService --> test: OK");
+            .contains("test -[#438DD5]> orderService: checkout: /OrderService/checkout")
+            .contains("orderService -[#438DD5]-> test: OK");
     }
 
     @Test

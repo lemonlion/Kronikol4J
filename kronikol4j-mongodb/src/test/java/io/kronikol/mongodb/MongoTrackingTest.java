@@ -33,6 +33,6 @@ class MongoTrackingTest {
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml)
             .contains("database \"OrderStore\" as orderStore")
-            .contains("test -> orderStore: FIND: /");
+            .contains("test -[#E74C3C]> orderStore: FIND: /");
     }
 }

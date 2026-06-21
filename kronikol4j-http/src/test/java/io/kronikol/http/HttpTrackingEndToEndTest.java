@@ -44,8 +44,8 @@ class HttpTrackingEndToEndTest {
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml)
             .contains("entity \"OrderService\" as orderService")
-            .contains("test -> orderService: GET: /orders/42")
-            .contains("orderService --> test: OK")
+            .contains("test -[#438DD5]> orderService: GET: /orders/42")
+            .contains("orderService -[#438DD5]-> test: OK")
             .contains("\"id\": 42"); // response body pretty-printed in the note
     }
 

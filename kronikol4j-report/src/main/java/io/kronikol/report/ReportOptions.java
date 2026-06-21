@@ -16,9 +16,9 @@ public record ReportOptions(boolean arrowColors, boolean participantColors) {
     /** System property (boolean) enabling per-participant colours. */
     public static final String PARTICIPANT_COLORS_PROPERTY = "kronikol.diagram.participantColors";
 
-    /** No colouring — the back-compatible default. */
+    /** The .NET defaults: arrows coloured per dependency type, participants uncoloured. */
     public static ReportOptions defaults() {
-        return new ReportOptions(false, false);
+        return new ReportOptions(true, false);
     }
 
     public ReportOptions withArrowColors(boolean value) {
@@ -31,15 +31,18 @@ public record ReportOptions(boolean arrowColors, boolean participantColors) {
 
     /**
      * Reads {@link #ARROW_COLORS_PROPERTY} / {@link #PARTICIPANT_COLORS_PROPERTY} from system
-     * properties (each defaults to {@code false}), so a run can enable colours with
-     * {@code -Dkronikol.diagram.arrowColors=true} without any code change.
+     * properties, each falling back to the .NET {@link #defaults()} when unset — so a run keeps the
+     * .NET look out of the box and can opt out with {@code -Dkronikol.diagram.arrowColors=false}.
      */
     public static ReportOptions fromSystemProperties() {
+        ReportOptions defaults = defaults();
         return new ReportOptions(
-            boolProperty(ARROW_COLORS_PROPERTY), boolProperty(PARTICIPANT_COLORS_PROPERTY));
+            boolProperty(ARROW_COLORS_PROPERTY, defaults.arrowColors()),
+            boolProperty(PARTICIPANT_COLORS_PROPERTY, defaults.participantColors()));
     }
 
-    private static boolean boolProperty(String name) {
-        return Boolean.parseBoolean(System.getProperty(name, "false"));
+    private static boolean boolProperty(String name, boolean fallback) {
+        String value = System.getProperty(name);
+        return value == null || value.isBlank() ? fallback : Boolean.parseBoolean(value);
     }
 }

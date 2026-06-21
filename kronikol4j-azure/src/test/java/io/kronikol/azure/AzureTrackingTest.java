@@ -26,7 +26,7 @@ class AzureTrackingTest {
         AzureTracking.cosmos(AzureTrackingOptions.forService("OrdersDb"), "Upsert", "orders", "{\"id\":1}");
         String uml = PlantUmlCreator.create(RequestResponseLogger.getAllLogs()).get(0).diagrams().get(0);
         assertThat(uml).contains("database \"OrdersDb\" as ordersDb")
-            .contains("test -> ordersDb: UPSERT: /");
+            .contains("test -[#E74C3C]> ordersDb: UPSERT: /");
     }
 
     @Test
@@ -36,6 +36,6 @@ class AzureTrackingTest {
         assertThat(logs).allSatisfy(l ->
             assertThat(l.metaType()).isEqualTo(RequestResponseMetaType.EVENT));
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
-        assertThat(uml).contains("queue \"Bus\" as bus").contains("test -> bus: SEND: /");
+        assertThat(uml).contains("queue \"Bus\" as bus").contains("test -[#9B59B6]> bus: SEND: /");
     }
 }

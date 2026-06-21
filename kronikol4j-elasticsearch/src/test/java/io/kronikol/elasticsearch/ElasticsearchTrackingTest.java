@@ -33,6 +33,6 @@ class ElasticsearchTrackingTest {
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml)
             .contains("database \"SearchCluster\" as searchCluster")
-            .contains("test -> searchCluster: SEARCH: /");
+            .contains("test -[#E74C3C]> searchCluster: SEARCH: /");
     }
 }

@@ -26,7 +26,8 @@ class PlantUmlParityTest {
 
     @Test
     void simpleHttp() throws IOException {
-        assertParity("simple-http", PlantUmlCreator.create(httpExchange()).get(0).diagrams().get(0));
+        // .puml captured with arrowColors:false — pass false explicitly (the create default is now on).
+        assertParity("simple-http", PlantUmlCreator.create(httpExchange(), false).get(0).diagrams().get(0));
     }
 
     @Test
@@ -40,17 +41,17 @@ class PlantUmlParityTest {
     void multiTrace() throws IOException {
         List<RequestResponseLog> corpus = new java.util.ArrayList<>(httpExchange());
         corpus.addAll(sqlExchange("Checkout succeeds"));
-        assertParity("multi-trace", PlantUmlCreator.create(corpus).get(0).diagrams().get(0));
+        assertParity("multi-trace", PlantUmlCreator.create(corpus, false).get(0).diagrams().get(0));
     }
 
     @Test
     void sql() throws IOException {
-        assertParity("sql", PlantUmlCreator.create(sqlExchange("Lookup order")).get(0).diagrams().get(0));
+        assertParity("sql", PlantUmlCreator.create(sqlExchange("Lookup order"), false).get(0).diagrams().get(0));
     }
 
     @Test
     void event() throws IOException {
-        assertParity("event", PlantUmlCreator.create(eventExchange()).get(0).diagrams().get(0));
+        assertParity("event", PlantUmlCreator.create(eventExchange(), false).get(0).diagrams().get(0));
     }
 
     @Test
@@ -75,13 +76,13 @@ class PlantUmlParityTest {
     @Test
     void statusCodes() throws IOException {
         // 404 → "Not Found", 500 → "Internal Server Error", 302 → "Found (Redirect)".
-        assertParity("status-codes", PlantUmlCreator.create(statusCodesCorpus()).get(0).diagrams().get(0));
+        assertParity("status-codes", PlantUmlCreator.create(statusCodesCorpus(), false).get(0).diagrams().get(0));
     }
 
     @Test
     void escaping() throws IOException {
         // Backslash-doubling, no HTML-escaping in notes, unicode, and nested-JSON pretty-printing.
-        assertParity("escaping", PlantUmlCreator.create(escapingExchange()).get(0).diagrams().get(0));
+        assertParity("escaping", PlantUmlCreator.create(escapingExchange(), false).get(0).diagrams().get(0));
     }
 
     @Test

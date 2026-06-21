@@ -2,6 +2,23 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.6] — unreleased
+
+Aligns the diagram-rendering defaults with .NET across the board. Full suite green on JDK 17–25.
+
+### Changed (behaviour)
+- **Diagrams are now coloured by default**, matching the .NET `PlantUmlCreator` defaults
+  (`sequenceDiagramArrowColors = true`, `sequenceDiagramParticipantColors = false`): arrows are
+  coloured per dependency type; participants stay uncoloured.
+  - `PlantUmlCreator.create(logs)` now colours arrows (was uncoloured). Pass
+    `create(logs, false)` for the previous behaviour.
+  - `ReportOptions.defaults()` is now `(arrowColors=true, participantColors=false)`, and
+    `fromSystemProperties()` falls back to those — so reports keep the .NET look out of the box and
+    opt out with `-Dkronikol.diagram.arrowColors=false`.
+- Test suites across the diagram, adapter, report, and runtime modules were updated to assert the
+  coloured-by-default output; the byte-for-byte parity fixtures are unchanged (the uncoloured
+  scenarios now pass `arrowColors=false` explicitly, matching how those fixtures were captured).
+
 ## [0.1.5] — unreleased
 
 Wires the diagram colour modes through the report-generation API end-to-end. Full suite green on

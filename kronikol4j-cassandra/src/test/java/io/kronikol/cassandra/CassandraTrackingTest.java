@@ -33,6 +33,6 @@ class CassandraTrackingTest {
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml)
             .contains("database \"OrderStore\" as orderStore")
-            .contains("test -> orderStore: SELECT: /");
+            .contains("test -[#E74C3C]> orderStore: SELECT: /");
     }
 }

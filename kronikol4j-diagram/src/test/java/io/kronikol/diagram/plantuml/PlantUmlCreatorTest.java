@@ -56,8 +56,8 @@ class PlantUmlCreatorTest {
             .startsWith("@startuml\n!pragma teoz true")
             .contains("actor \"Test\" as test")
             .contains("entity \"OrderService\" as orderService")
-            .contains("test -> orderService: POST: /checkout")
-            .contains("orderService --> test: OK")
+            .contains("test -[#438DD5]> orderService: POST: /checkout")
+            .contains("orderService -[#438DD5]-> test: OK")
             .contains("note left")  // request note is on the left
             .endsWith("@enduml");
     }
@@ -81,7 +81,7 @@ class PlantUmlCreatorTest {
     void unknownStatusCodeRendersAsNumber() {
         RequestResponseLog resp = response().toBuilder().statusCode(StatusCode.of(599)).build();
         String uml = PlantUmlCreator.create(List.of(request(), resp)).get(0).diagrams().get(0);
-        assertThat(uml).contains("orderService --> test: 599");
+        assertThat(uml).contains("orderService -[#438DD5]-> test: 599");
     }
 
     @Test
