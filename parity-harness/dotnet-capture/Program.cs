@@ -39,6 +39,10 @@ CaptureHtmlStatuses();
 // attachments (the lightbox image variant + a plain link).
 CaptureHtmlAttachments();
 
+// Rule grouping: a null-rule (happy-path) scenario with no wrapper, two scenarios sharing a Rule,
+// and a rule change — exercising the <details class="rule"> open/close around consecutive scenarios.
+CaptureHtmlRules();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -217,6 +221,23 @@ void CaptureHtmlAttachments()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-attachments.html"), content);
     Console.WriteLine($"=== report-attachments.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlRules()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var happy = new Scenario { Id = "s0", DisplayName = "Happy checkout", IsHappyPath = true, Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500) };
+    var a = new Scenario { Id = "s1", DisplayName = "Adds item", IsHappyPath = false, Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(100), Rule = "Cart rules" };
+    var b = new Scenario { Id = "s2", DisplayName = "Browses catalog", IsHappyPath = false, Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(200), Rule = "Cart rules" };
+    var c = new Scenario { Id = "s3", DisplayName = "Checks out", IsHappyPath = false, Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(300), Rule = "Checkout rules" };
+    var feature = new Feature { DisplayName = "Shopping", Scenarios = [happy, a, b, c] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-rules.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-rules.html"), content);
+    Console.WriteLine($"=== report-rules.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

@@ -19,6 +19,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -267,9 +268,29 @@ public final class DotNetHtmlReportRenderer {
             List<Scenario> ordered = new ArrayList<>(feature.scenarios());
             ordered.sort(Comparator.comparing(Scenario::isHappyPath).reversed()
                 .thenComparing(Scenario::name));
+
+            // Group consecutive same-Rule scenarios under a <details class="rule"> (.NET rule grouping).
+            String currentRule = "__NOTSET__";
+            boolean ruleOpen = false;
             for (Scenario scenario : ordered) {
+                if (!Objects.equals(scenario.rule(), currentRule)) {
+                    if (ruleOpen) {
+                        body.append("</details>"); // close previous rule
+                    }
+                    currentRule = scenario.rule();
+                    if (currentRule != null) {
+                        body.append("<details class=\"rule\" open><summary class=\"h2-5\">")
+                            .append(HtmlEscaper.encode(currentRule)).append("</summary>");
+                        ruleOpen = true;
+                    } else {
+                        ruleOpen = false;
+                    }
+                }
                 counter = appendScenario(body, feature, scenario, diagramByTestId,
                     scenarioDependencies, scenarioSearchTerms, diagramData, counter);
+            }
+            if (ruleOpen) {
+                body.append("</details>"); // close last rule
             }
             body.append("</details>");
         }
