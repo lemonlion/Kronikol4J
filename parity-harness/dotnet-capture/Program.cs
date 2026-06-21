@@ -126,6 +126,10 @@ DumpInternalFlowCallTree();
 // Internal-flow popup segment-data script — window.__iflowSegments (CallTree + flame; no gzip).
 DumpInternalFlowSegmentData();
 
+// Interactive internal-flow popup in a full report — internalFlowTracking + window.__iflowConfig +
+// window.__iflowSegments (CallTree style → byte-comparable) in the head.
+CaptureHtmlPopup();
+
 // Internal-flow flame data — the compact System.Text.Json produced by GetFlameChartDataWithMarkers
 // (fractional percentages exercise the double formatting + banker's rounding). Single-line JSON.
 DumpInternalFlowFlame();
@@ -610,6 +614,49 @@ void DumpInternalFlowFlame()
     File.WriteAllText(Path.Combine(outDir, "iflow-flame.json"), flameJson);
     Console.WriteLine($"=== iflow-flame.json ({flameJson.Length} chars) ===");
     Console.WriteLine(flameJson);
+}
+
+void CaptureHtmlPopup()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    using var listener = new ActivityListener
+    {
+        ShouldListenTo = _ => true,
+        Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllData
+    };
+    ActivitySource.AddActivityListener(listener);
+    var t0 = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    using var reqSrc = new ActivitySource("Kronikol.Request");
+    using var svcSrc = new ActivitySource("OrderService");
+    using var dbSrc = new ActivitySource("Database");
+    var root = reqSrc.StartActivity("GET /orders")!; root.SetStartTime(t0);
+    var load = svcSrc.StartActivity("LoadOrder")!; load.SetStartTime(t0.AddMilliseconds(10));
+    var sel = dbSrc.StartActivity("SELECT")!; sel.SetStartTime(t0.AddMilliseconds(15)); sel.SetEndTime(t0.AddMilliseconds(35)); sel.Stop();
+    load.SetEndTime(t0.AddMilliseconds(50)); load.Stop();
+    var val = svcSrc.StartActivity("Validate")!; val.SetStartTime(t0.AddMilliseconds(60)); val.SetEndTime(t0.AddMilliseconds(90)); val.Stop();
+    root.SetEndTime(t0.AddMilliseconds(100)); root.Stop();
+    var rrid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    var segment = new InternalFlowSegment(rrid, RequestResponseType.Request, "s1",
+        new DateTimeOffset(t0, TimeSpan.Zero), new DateTimeOffset(t0.AddMilliseconds(100), TimeSpan.Zero),
+        new[] { root, load, sel, val });
+    var perDiagram = new Dictionary<string, InternalFlowSegment> { ["iflow-" + rrid] = segment };
+    // CallTree style → the window.__iflowSegments script has no gzip and is wholly byte-comparable.
+    var idScript = DiagramContextMenu.GetInternalFlowConfigScript(InternalFlowHasDataBehavior.ShowLinkOnHover)
+        + InternalFlowHtmlGenerator.GenerateSegmentDataScript(perDiagram, InternalFlowDiagramStyle.CallTree,
+            showFlameChart: true, InternalFlowFlameChartPosition.BehindWithToggle,
+            InternalFlowNoDataBehavior.HideLink, InternalFlowSpanGranularity.AutoInstrumentation, null);
+
+    var scenario = new Scenario { Id = "s1", DisplayName = "Order flow", IsHappyPath = true, Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(100) };
+    var feature = new Feature { DisplayName = "Orders", Scenarios = [scenario] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-popup.html", "Kronikol Run", includeTestRunData: false,
+        internalFlowTracking: true, internalFlowDataScript: idScript);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-popup.html"), content);
+    Console.WriteLine($"=== report-popup.html ({content.Length} chars) ===");
 }
 
 void DumpInternalFlowSegmentData()

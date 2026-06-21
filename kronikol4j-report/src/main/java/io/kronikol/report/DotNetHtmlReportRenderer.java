@@ -1,6 +1,7 @@
 package io.kronikol.report;
 
 import io.kronikol.report.html.HtmlEscaper;
+import io.kronikol.report.flow.InternalFlowPopupInput;
 import io.kronikol.report.flow.InternalFlowRenderer;
 import io.kronikol.report.flow.InternalFlowSegment;
 import io.kronikol.report.flow.WholeTestFlowContent;
@@ -188,13 +189,27 @@ public final class DotNetHtmlReportRenderer {
                                 boolean includeTestRunData, Instant startTime, Instant endTime,
                                 HtmlCustomization custom, WholeTestFlowInput wtfInput,
                                 ParameterizedOptions paramOptions) {
+        return render(features, diagramByTestId, componentDiagram, title, version, includeTestRunData,
+            startTime, endTime, custom, wtfInput, paramOptions, InternalFlowPopupInput.NONE);
+    }
+
+    /**
+     * As {@link #render(List, Map, String, String, String, boolean, Instant, Instant, HtmlCustomization,
+     * WholeTestFlowInput, ParameterizedOptions)}, with the interactive internal-flow popup data
+     * ({@code window.__iflowConfig} + {@code window.__iflowSegments}).
+     */
+    public static String render(List<Feature> features, Map<String, String> diagramByTestId,
+                                String componentDiagram, String title, String version,
+                                boolean includeTestRunData, Instant startTime, Instant endTime,
+                                HtmlCustomization custom, WholeTestFlowInput wtfInput,
+                                ParameterizedOptions paramOptions, InternalFlowPopupInput popup) {
         if (custom.generateBlankOnFailedTests() && anyScenarioFailed(features)) {
             return ""; // .NET WriteFile(string.Empty, …) — a deliberately blank report
         }
         boolean hasComponent = componentDiagram != null && !componentDiagram.isEmpty();
         Map<String, String> diagramData = new LinkedHashMap<>();
         StringBuilder head = new StringBuilder(300_000);
-        appendHead(head, title, version, hasComponent, custom, wtfInput);
+        appendHead(head, title, version, hasComponent, custom, wtfInput, popup);
 
         StringBuilder body = new StringBuilder(8_192);
         appendBody(body, title, version, features, diagramByTestId == null ? Map.of() : diagramByTestId,
@@ -273,15 +288,16 @@ public final class DotNetHtmlReportRenderer {
 
     private static void appendHead(StringBuilder sb, String title, String version,
                                    boolean hasComponentDiagram, HtmlCustomization custom,
-                                   WholeTestFlowInput wtfInput) {
+                                   WholeTestFlowInput wtfInput, InternalFlowPopupInput popup) {
         // .NET gates the interactive internal-flow scripts/styles (incl. the flame-chart render script
-        // the whole-test-flow views need) on internalFlowTracking. internalFlowDataScript (the popup's
-        // window.__iflowSegments data) is a separate input, empty here.
-        boolean iflow = wtfInput.internalFlowTracking();
+        // the whole-test-flow views need) on internalFlowTracking — active for whole-test-flow OR the
+        // per-diagram popup. internalFlowDataScript is the popup's window.__iflowConfig+__iflowSegments.
+        boolean iflow = wtfInput.internalFlowTracking() || popup.internalFlowTracking();
         String internalFlowPopupStyles = iflow ? asset("internal-flow-popup-styles.css") : "";
         String flameChartRenderScript = iflow ? asset("flame-chart-render-script.js") : "";
         String internalFlowPopupScript = iflow ? asset("internal-flow-popup-script.js") : "";
         String toggleScript = iflow ? asset("toggle-script.js") : "";
+        String internalFlowDataScript = popup.dataScript();
         String plantUmlBrowserScript =
             asset("plantuml-browser-render-script.js").replace("__PLANTUML_CDN_BASE__", PLANTUML_CDN_BASE);
         String faviconHref = custom.customFaviconBase64() != null ? custom.customFaviconBase64() : FAVICON_DATA_URI;
@@ -342,7 +358,7 @@ public final class DotNetHtmlReportRenderer {
         sb.append("        ").append(asset("collapsible-notes-script.js")).append(NL);
         sb.append("        ").append(asset("context-menu-script.js")).append(NL);
         sb.append("        ").append(flameChartRenderScript).append(NL);   // flameChartRenderScript
-        sb.append("        ").append(NL);                                  // internalFlowDataScript = ""
+        sb.append("        ").append(internalFlowDataScript).append(NL);   // internalFlowDataScript
         sb.append("        ").append(internalFlowPopupScript).append(NL);  // internalFlowPopupScript
         sb.append("        ").append(toggleScript).append(NL);             // toggleScript
         sb.append("    </head>").append(NL);

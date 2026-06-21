@@ -3,8 +3,14 @@ package io.kronikol.report;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.kronikol.report.flow.InternalFlowDiagramStyle;
+import io.kronikol.report.flow.InternalFlowFlameChartPosition;
+import io.kronikol.report.flow.InternalFlowHasDataBehavior;
+import io.kronikol.report.flow.InternalFlowNoDataBehavior;
+import io.kronikol.report.flow.InternalFlowPopupInput;
 import io.kronikol.report.flow.InternalFlowSegment;
 import io.kronikol.report.flow.InternalFlowSpan;
+import io.kronikol.report.flow.InternalFlowSpanGranularity;
 import io.kronikol.report.flow.WholeTestFlowInput;
 import io.kronikol.report.flow.WholeTestFlowVisualization;
 import io.kronikol.report.model.CiEnvironment;
@@ -583,6 +589,34 @@ class GoldenHtmlParityTest {
             false, java.time.Instant.EPOCH, java.time.Instant.EPOCH, HtmlCustomization.NONE, wtf);
 
         assertParity("report-paramwtfsame.html", actual);
+    }
+
+    @Test
+    void browserHtmlReport_internalFlowPopup_isByteForByteIdenticalToDotNetGolden() throws IOException {
+        java.time.Instant t0 = java.time.Instant.parse("2024-01-15T10:00:00Z");
+        InternalFlowSegment segment = new InternalFlowSegment("s1", List.of(
+            new InternalFlowSpan("1", null, "Kronikol.Request", null, "GET /orders", t0, 100.0),
+            new InternalFlowSpan("2", "1", "OrderService", null, "LoadOrder", t0.plusMillis(10), 40.0),
+            new InternalFlowSpan("3", "2", "Database", null, "SELECT", t0.plusMillis(15), 20.0),
+            new InternalFlowSpan("4", "1", "OrderService", null, "Validate", t0.plusMillis(60), 30.0)),
+            "00000000-0000-0000-0000-000000000001", "request");
+        Map<String, InternalFlowSegment> perDiagram =
+            Map.of("iflow-00000000-0000-0000-0000-000000000001", segment);
+        InternalFlowPopupInput popup = new InternalFlowPopupInput(perDiagram,
+            InternalFlowDiagramStyle.CALL_TREE, true, InternalFlowFlameChartPosition.BEHIND_WITH_TOGGLE,
+            InternalFlowNoDataBehavior.HIDE_LINK, InternalFlowSpanGranularity.AUTO_INSTRUMENTATION, null, 0,
+            InternalFlowHasDataBehavior.SHOW_LINK_ON_HOVER, true);
+
+        Scenario scenario = Scenario.builder("Order flow", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(100).build();
+        Feature feature = new Feature("Orders", List.of(scenario));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION,
+            false, java.time.Instant.EPOCH, java.time.Instant.EPOCH, HtmlCustomization.NONE,
+            WholeTestFlowInput.NONE, ParameterizedOptions.DEFAULTS, popup);
+
+        assertParity("report-popup.html", actual);
     }
 
     @Test

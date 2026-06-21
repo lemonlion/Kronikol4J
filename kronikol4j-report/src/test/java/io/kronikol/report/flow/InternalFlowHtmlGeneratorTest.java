@@ -42,6 +42,27 @@ class InternalFlowHtmlGeneratorTest {
     }
 
     @Test
+    void renderActivityDiagramInline_idAndDecodedPlantUml() throws java.io.IOException {
+        InternalFlowSegment segment = new InternalFlowSegment("t1", List.of(
+            new InternalFlowSpan("1", null, "Kronikol.Request", null, "GET /orders", T0, 100.0),
+            new InternalFlowSpan("2", "1", "OrderService", null, "LoadOrder", T0.plusMillis(10), 40.0)),
+            "00000000-0000-0000-0000-000000000001", "Request");
+        String div = InternalFlowHtmlGenerator.renderActivityDiagramInline(segment);
+
+        // id uses the lower-cased boundary type; the div carries the iflow-diagram classes.
+        assertTrue(div.startsWith("<div class=\"plantuml-browser iflow-diagram\" "
+            + "id=\"iflow-puml-00000000-0000-0000-0000-000000000001-request\" data-plantuml-z=\""), div);
+        String z = div.substring(div.indexOf("data-plantuml-z=\"") + 17);
+        z = z.substring(0, z.indexOf('"'));
+        // the gzip payload decodes to the segment's activity-diagram PlantUML
+        try (java.util.zip.GZIPInputStream in = new java.util.zip.GZIPInputStream(
+                new java.io.ByteArrayInputStream(java.util.Base64.getDecoder().decode(z)))) {
+            assertEquals(InternalFlowRenderer.renderActivityDiagram(segment),
+                new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
     void configScript_matchesDotNet() {
         assertEquals("<script>window.__iflowConfig = { hasDataBehavior: 'showLinkOnHover' };</script>",
             InternalFlowHtmlGenerator.getInternalFlowConfigScript(

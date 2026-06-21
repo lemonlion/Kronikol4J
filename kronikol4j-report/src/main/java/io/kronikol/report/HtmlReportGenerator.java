@@ -6,6 +6,7 @@ import io.kronikol.diagram.component.ComponentRelationship;
 import io.kronikol.diagram.model.PlantUmlForTest;
 import io.kronikol.diagram.plantuml.PlantUmlCreator;
 import io.kronikol.report.data.ReportData;
+import io.kronikol.report.flow.InternalFlowPopupInput;
 import io.kronikol.report.flow.WholeTestFlowInput;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.HtmlCustomization;
@@ -113,6 +114,22 @@ public final class HtmlReportGenerator {
         return postProcess(DotNetHtmlReportRenderer.render(
             features, diagramByTestId, componentDiagram, title, ReportData.defaultKronikolVersion(),
             false, Instant.EPOCH, Instant.EPOCH, HtmlCustomization.NONE, wholeTestFlow));
+    }
+
+    /**
+     * As {@link #renderHtml(List, Map, String, String, WholeTestFlowInput)}, additionally emitting the
+     * interactive internal-flow popup data ({@code window.__iflowConfig} + {@code window.__iflowSegments}).
+     * A caller that collects finished spans builds the per-diagram segments with
+     * {@link io.kronikol.report.flow.InternalFlowSegmentBuilder#buildSegments} and an
+     * {@link InternalFlowPopupInput}.
+     */
+    public static String renderHtml(List<Feature> features, Map<String, String> diagramByTestId,
+                                    String componentDiagram, String title, WholeTestFlowInput wholeTestFlow,
+                                    InternalFlowPopupInput popup) {
+        return postProcess(DotNetHtmlReportRenderer.render(
+            features, diagramByTestId, componentDiagram, title, ReportData.defaultKronikolVersion(),
+            false, Instant.EPOCH, Instant.EPOCH, HtmlCustomization.NONE, wholeTestFlow,
+            io.kronikol.report.model.ParameterizedOptions.DEFAULTS, popup));
     }
 
     /** As {@link #generateFromDiagrams(List, Map, String, Path, String)}, with whole-test-flow views. */

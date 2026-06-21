@@ -56,6 +56,7 @@ parity-harness/dotnet-capture/fixtures/iflow-activity.txt
 parity-harness/dotnet-capture/fixtures/iflow-flame.json
 parity-harness/dotnet-capture/fixtures/iflow-calltree.txt
 parity-harness/dotnet-capture/fixtures/iflow-segmentdata.txt
+parity-harness/dotnet-capture/fixtures/report-popup.html
 parity-harness/dotnet-capture/fixtures/report-wholetestflow.html
 parity-harness/dotnet-capture/fixtures/report-paramwtf.html
 parity-harness/dotnet-capture/fixtures/report-paramwtfsame.html

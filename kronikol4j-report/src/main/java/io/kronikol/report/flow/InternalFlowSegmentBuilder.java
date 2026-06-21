@@ -1,13 +1,19 @@
 package io.kronikol.report.flow;
 
 import io.kronikol.core.tracking.RequestResponseLog;
+import io.kronikol.core.tracking.RequestResponseType;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Builds the whole-test internal-flow segments from captured spans (a port of the .NET
@@ -49,6 +55,65 @@ public final class InternalFlowSegmentBuilder {
             List<InternalFlowSpan> ordered = new ArrayList<>(testSpans);
             ordered.sort(Comparator.comparing(InternalFlowSpan::startTime));
             segments.put("iflow-test-" + e.getKey(), new InternalFlowSegment(e.getKey(), ordered));
+        }
+        return segments;
+    }
+
+    /**
+     * Builds the per-diagram (per HTTP boundary) segments for the interactive popup (.NET
+     * {@code BuildSegments}): one segment per request log, keyed {@code iflow-{requestResponseId}},
+     * spanning from the request timestamp to its matching response (else the next log, else +5s), with
+     * spans in {@code [start-50ms, end)} correlated by trace id. Sets {@code requestResponseId} +
+     * {@code boundaryType} on each segment.
+     */
+    public static Map<String, InternalFlowSegment> buildSegments(
+            List<RequestResponseLog> logs, List<InternalFlowSpan> spans) {
+        Map<String, InternalFlowSegment> segments = new LinkedHashMap<>();
+        if (spans.isEmpty()) {
+            return segments;
+        }
+        Map<String, List<RequestResponseLog>> logsByTest = new LinkedHashMap<>();
+        for (RequestResponseLog l : logs) {
+            if (l.timestamp() != null) {
+                logsByTest.computeIfAbsent(l.testId(), k -> new ArrayList<>()).add(l);
+            }
+        }
+        for (Map.Entry<String, List<RequestResponseLog>> e : logsByTest.entrySet()) {
+            List<RequestResponseLog> ordered = new ArrayList<>(e.getValue());
+            ordered.sort(Comparator.comparing(RequestResponseLog::timestamp));
+            List<InternalFlowSpan> testSpans = filterSpansByTestTraceIds(spans, ordered);
+            Map<UUID, OffsetDateTime> responseTs = new HashMap<>();
+            for (RequestResponseLog l : ordered) {
+                if (l.type() == RequestResponseType.RESPONSE && l.timestamp() != null) {
+                    responseTs.putIfAbsent(l.requestResponseId(), l.timestamp());
+                }
+            }
+            for (int i = 0; i < ordered.size(); i++) {
+                RequestResponseLog log = ordered.get(i);
+                if (log.type() != RequestResponseType.REQUEST) {
+                    continue;
+                }
+                OffsetDateTime segmentStart = log.timestamp();
+                OffsetDateTime resp = responseTs.get(log.requestResponseId());
+                OffsetDateTime segmentEnd = resp != null ? resp
+                    : i + 1 < ordered.size() ? ordered.get(i + 1).timestamp() : segmentStart.plusSeconds(5);
+                String traceId = log.activityTraceId();
+                Instant toleranceStart = segmentStart.toInstant().minusMillis(50);
+                Instant end = segmentEnd.toInstant();
+                List<InternalFlowSpan> segmentSpans = new ArrayList<>();
+                for (InternalFlowSpan s : testSpans) {
+                    if (traceId != null && !traceId.equals(s.traceId())) {
+                        continue;
+                    }
+                    if (!s.startTime().isBefore(toleranceStart) && s.startTime().isBefore(end)) {
+                        segmentSpans.add(s);
+                    }
+                }
+                segmentSpans.sort(Comparator.comparing(InternalFlowSpan::startTime));
+                segments.put("iflow-" + log.requestResponseId(), new InternalFlowSegment(
+                    log.testId(), segmentSpans, log.requestResponseId().toString(),
+                    log.type().name().toLowerCase(Locale.ROOT)));
+            }
         }
         return segments;
     }

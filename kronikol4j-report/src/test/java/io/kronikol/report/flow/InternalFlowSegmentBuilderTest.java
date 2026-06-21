@@ -56,6 +56,26 @@ class InternalFlowSegmentBuilderTest {
     }
 
     @Test
+    void buildSegments_perBoundary_windowsSpansAndKeysByRequestId() {
+        UUID rr = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        RequestResponseLog req = boundary("t1", "traceA", RequestResponseType.REQUEST, rr, T0);
+        RequestResponseLog resp = boundary("t1", "traceA", RequestResponseType.RESPONSE, rr, T0.plusMillis(100));
+        List<InternalFlowSpan> spans = List.of(
+            span("a", null, "in window", T0.plusMillis(10), 5, "traceA"),
+            span("b", null, "after end", T0.plusMillis(200), 5, "traceA"));
+
+        Map<String, InternalFlowSegment> segs =
+            InternalFlowSegmentBuilder.buildSegments(List.of(req, resp), spans);
+
+        assertEquals(1, segs.size());
+        InternalFlowSegment s = segs.get("iflow-" + rr);
+        assertEquals(List.of("a"), s.spans().stream().map(InternalFlowSpan::spanId).toList(),
+            "only spans in [start-50ms, response) are included");
+        assertEquals(rr.toString(), s.requestResponseId());
+        assertEquals("request", s.boundaryType());
+    }
+
+    @Test
     void emptyInputs_yieldNoSegments() {
         assertTrue(InternalFlowSegmentBuilder.buildWholeTestSegments(List.of(), List.of()).isEmpty());
         assertTrue(InternalFlowSegmentBuilder.buildWholeTestSegments(
@@ -65,6 +85,19 @@ class InternalFlowSegmentBuilderTest {
     private static InternalFlowSpan span(String id, String parent, String name, Instant start,
                                          double durMs, String traceId) {
         return new InternalFlowSpan(id, parent, "Svc", null, name, start, durMs, traceId);
+    }
+
+    private static RequestResponseLog boundary(String testId, String traceId, RequestResponseType type,
+                                               UUID rrid, Instant ts) {
+        RequestResponseLog l = RequestResponseLog.builder()
+            .testName(testId).testId(testId)
+            .method(Method.Http.GET).uri(URI.create("http://svc/x"))
+            .serviceName("Svc").callerName("Test")
+            .type(type).traceId(UUID.randomUUID()).requestResponseId(rrid)
+            .build();
+        l.timestamp(ts.atOffset(java.time.ZoneOffset.UTC));
+        l.activityTraceId(traceId);
+        return l;
     }
 
     private static RequestResponseLog log(String testId, String traceId) {
