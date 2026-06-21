@@ -175,6 +175,32 @@ class GoldenHtmlParityTest {
         assertParity("report-errordiff.html", actual);
     }
 
+    @Test
+    void parameterizedBrowserHtmlReport_outlineGroupScalarColumns_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();
+        ev1.put("input", "5");
+        ev1.put("result", "25");
+        LinkedHashMap<String, String> ev2 = new LinkedHashMap<>();
+        ev2.put("input", "6");
+        ev2.put("result", "36");
+        Scenario s1 = Scenario.builder("Squares 5", "s1", ExecutionStatus.PASSED)
+            .durationMs(50).outlineId("Squares").exampleValues(ev1)
+            .steps(List.of(new ScenarioStep("Then", "the square is computed", ExecutionStatus.PASSED, 10L,
+                List.of(), List.of())))
+            .build();
+        Scenario s2 = Scenario.builder("Squares 6", "s2", ExecutionStatus.FAILED)
+            .durationMs(60).outlineId("Squares").exampleValues(ev2)
+            .error("Expected: 36\nActual: 35").errorStackTrace("at Math.Square()")
+            .build();
+        Feature feature = new Feature("Math", List.of(s1, s2));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-parameterized.html", actual);
+    }
+
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
     private static void assertParity(String goldenName, String actual) throws IOException {
         Path dump = Path.of("build", "parity", goldenName.replace(".html", ".actual.html"));

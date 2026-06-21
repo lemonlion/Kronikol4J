@@ -47,6 +47,10 @@ CaptureHtmlRules();
 // failure-result block carries the character-level diff table (error-diff / diff-del / diff-ins).
 CaptureHtmlErrorDiff();
 
+// Parameterized group: two scenarios sharing an OutlineId with scalar ExampleValues — the
+// scenario-parameterized aggregate <details> + the ScalarColumns param table.
+CaptureHtmlParameterized();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -262,6 +266,33 @@ void CaptureHtmlErrorDiff()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-errordiff.html"), content);
     Console.WriteLine($"=== report-errordiff.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlParameterized()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Squares 5", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50),
+        OutlineId = "Squares", ExampleValues = new() { ["input"] = "5", ["result"] = "25" },
+        Steps = [ new ScenarioStep { Keyword = "Then", Text = "the square is computed", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) } ]
+    };
+    var s2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Squares 6", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(60),
+        OutlineId = "Squares", ExampleValues = new() { ["input"] = "6", ["result"] = "36" },
+        ErrorMessage = "Expected: 36\nActual: 35", ErrorStackTrace = "at Math.Square()"
+    };
+    var feature = new Feature { DisplayName = "Math", Scenarios = [s1, s2] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-parameterized.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
+    Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

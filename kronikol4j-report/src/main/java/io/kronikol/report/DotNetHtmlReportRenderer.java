@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -247,6 +249,7 @@ public final class DotNetHtmlReportRenderer {
                 .append("\" data-diagram-type=\"plantuml\"></div></div>");
         }
         body.append("<div id=\"report-content\">");
+        int paramGroupCounter = 0;
         for (Feature feature : features) {
             boolean featureHasFailures = feature.scenarios().stream()
                 .anyMatch(s -> s.status() == ExecutionStatus.FAILED);
@@ -269,10 +272,28 @@ public final class DotNetHtmlReportRenderer {
             ordered.sort(Comparator.comparing(Scenario::isHappyPath).reversed()
                 .thenComparing(Scenario::name));
 
-            // Group consecutive same-Rule scenarios under a <details class="rule"> (.NET rule grouping).
+            // Parameterized grouping (by OutlineId) folded into the rule grouping, with .NET's
+            // first-encounter rendering: a group renders once, at its first scenario.
+            List<ParameterGrouper.ParameterizedGroup> paramGroups = ParameterGrouper.analyze(ordered, 10);
+            Map<String, ParameterGrouper.ParameterizedGroup> scenarioToGroup = new HashMap<>();
+            for (ParameterGrouper.ParameterizedGroup g : paramGroups) {
+                for (Scenario s : g.scenarios()) {
+                    scenarioToGroup.put(s.testId(), g);
+                }
+            }
+            Set<String> renderedGroupKeys = new HashSet<>();
             String currentRule = "__NOTSET__";
             boolean ruleOpen = false;
             for (Scenario scenario : ordered) {
+                ParameterGrouper.ParameterizedGroup group = scenarioToGroup.get(scenario.testId());
+                String groupKey = null;
+                if (group != null) {
+                    groupKey = group.groupDisplayName() + "|" + group.scenarios().stream()
+                        .map(Scenario::testId).collect(java.util.stream.Collectors.joining(","));
+                    if (renderedGroupKeys.contains(groupKey)) {
+                        continue;
+                    }
+                }
                 if (!Objects.equals(scenario.rule(), currentRule)) {
                     if (ruleOpen) {
                         body.append("</details>"); // close previous rule
@@ -285,6 +306,12 @@ public final class DotNetHtmlReportRenderer {
                     } else {
                         ruleOpen = false;
                     }
+                }
+                if (group != null) {
+                    renderedGroupKeys.add(groupKey);
+                    appendParameterizedGroup(body, feature, group, "pgrp" + (paramGroupCounter++),
+                        scenarioDependencies, scenarioSearchTerms);
+                    continue;
                 }
                 counter = appendScenario(body, feature, scenario, diagramByTestId,
                     scenarioDependencies, scenarioSearchTerms, diagramData, counter);
@@ -527,21 +554,7 @@ public final class DotNetHtmlReportRenderer {
             }
             body.append("</details>");
         }
-        if (!scenario.attachments().isEmpty()) {
-            body.append("<div class=\"scenario-attachments\">");
-            for (FileAttachment att : scenario.attachments()) {
-                String relPath = HtmlEscaper.encode(att.relativePath());
-                String name = HtmlEscaper.encode(att.name());
-                if (isImageAttachment(att.name())) {
-                    body.append("<a class=\"attachment-image-link\" href=\"").append(relPath)
-                        .append("\" target=\"_blank\"><img class=\"attachment-image\" src=\"").append(relPath)
-                        .append("\" alt=\"").append(name).append("\" /></a>");
-                } else {
-                    body.append("<a class=\"step-attachment\" href=\"").append(relPath).append("\">").append(name).append("</a>");
-                }
-            }
-            body.append("</div>");
-        }
+        appendScenarioAttachments(body, scenario.attachments());
 
         String diagram = diagramByTestId.get(scenario.testId());
         boolean hasSequenceDiagrams = diagram != null;
@@ -562,6 +575,264 @@ public final class DotNetHtmlReportRenderer {
         }
         body.append("</details>");
         return counter;
+    }
+
+    private static void appendScenarioAttachments(StringBuilder body, List<FileAttachment> attachments) {
+        if (attachments.isEmpty()) {
+            return;
+        }
+        body.append("<div class=\"scenario-attachments\">");
+        for (FileAttachment att : attachments) {
+            String relPath = HtmlEscaper.encode(att.relativePath());
+            String name = HtmlEscaper.encode(att.name());
+            if (isImageAttachment(att.name())) {
+                body.append("<a class=\"attachment-image-link\" href=\"").append(relPath)
+                    .append("\" target=\"_blank\"><img class=\"attachment-image\" src=\"").append(relPath)
+                    .append("\" alt=\"").append(name).append("\" /></a>");
+            } else {
+                body.append("<a class=\"step-attachment\" href=\"").append(relPath).append("\">").append(name).append("</a>");
+            }
+        }
+        body.append("</div>");
+    }
+
+    /** Ports .NET {@code RenderParameterizedGroup} for the representable subset (ScalarColumns/Fallback,
+     *  no flat view / complex-object cells / per-example diagrams — see {@link ParameterGrouper}). */
+    private static void appendParameterizedGroup(StringBuilder body, Feature feature,
+                                                 ParameterGrouper.ParameterizedGroup group, String prefix,
+                                                 Map<String, Set<String>> scenarioDependencies,
+                                                 Map<String, Set<String>> scenarioSearchTerms) {
+        List<Scenario> scenarios = group.scenarios();
+        boolean hasFailure = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.FAILED);
+        boolean hasSkipped = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.SKIPPED);
+        String overallStatus = hasFailure ? "Failed" : hasSkipped ? "Skipped"
+            : scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.INCONCLUSIVE) ? "Bypassed" : "Passed";
+
+        List<String> searchParts = new ArrayList<>();
+        searchParts.add(group.groupDisplayName());
+        searchParts.add(feature.displayName());
+        if (feature.description() != null) {
+            searchParts.add(feature.description());
+        }
+        searchParts.addAll(feature.labels());
+        for (Scenario s : scenarios) {
+            searchParts.add(s.name());
+            if (s.rule() != null) {
+                searchParts.add(s.rule());
+            }
+            searchParts.addAll(s.categories());
+            searchParts.addAll(s.labels());
+            if (s.error() != null) {
+                searchParts.add(s.error());
+            }
+            collectStepText(s.steps(), searchParts);
+            searchParts.addAll(scenarioSearchTerms.getOrDefault(s.testId(), Set.of()));
+        }
+        String searchAttr = " data-search=\""
+            + HtmlEscaper.encode(String.join(" ", searchParts).toLowerCase(Locale.ROOT)) + "\"";
+
+        Set<String> categories = new LinkedHashSet<>();
+        Set<String> labels = new LinkedHashSet<>();
+        Set<String> deps = new TreeSet<>();
+        for (Scenario s : scenarios) {
+            categories.addAll(s.categories());
+            labels.addAll(s.labels());
+            deps.addAll(scenarioDependencies.getOrDefault(s.testId(), Set.of()));
+        }
+        String categoriesAttr = categories.isEmpty() ? ""
+            : " data-categories=\"" + HtmlEscaper.encode(String.join(",", categories)) + "\"";
+        String labelsAttr = labels.isEmpty() ? ""
+            : " data-labels=\"" + HtmlEscaper.encode(String.join(",", labels)) + "\"";
+        String depsAttr = deps.isEmpty() ? ""
+            : " data-dependencies=\"" + HtmlEscaper.encode(String.join(",", deps)) + "\"";
+
+        long totalMs = scenarios.stream().filter(s -> s.durationMs() > 0).mapToLong(Scenario::durationMs).sum();
+        String durationAttr = totalMs > 0 ? " data-duration-ms=\"" + f0(totalMs) + "\"" : "";
+        String durationBadge = totalMs > 0
+            ? " <span class=\"duration-badge " + (totalMs < 2000 ? "duration-fast" : totalMs < 5000 ? "duration-moderate" : "duration-slow")
+                + "\">" + formatDurationBadge(totalMs) + "</span>"
+            : "";
+
+        long passCount = scenarios.stream().filter(s -> s.status() == ExecutionStatus.PASSED).count();
+        long failCount = scenarios.stream().filter(s -> s.status() == ExecutionStatus.FAILED).count();
+        long skipCount = scenarios.stream()
+            .filter(s -> s.status() == ExecutionStatus.SKIPPED || s.status() == ExecutionStatus.INCONCLUSIVE).count();
+        List<String> summaryParts = new ArrayList<>();
+        if (failCount > 0) {
+            summaryParts.add(failCount + " failed");
+        }
+        if (skipCount > 0) {
+            summaryParts.add(skipCount + " skipped");
+        }
+        summaryParts.add(passCount + "/" + scenarios.size() + " passed");
+        String summaryText = " <span class=\"label\">" + String.join(", ", summaryParts) + "</span>";
+
+        String anchorId = scenarioAnchorId(group.groupDisplayName());
+        String encodedGroupName = HtmlEscaper.encode(group.groupDisplayName());
+        boolean isGroupHappyPath = scenarios.stream().anyMatch(Scenario::isHappyPath);
+        String happyPathClass = isGroupHappyPath ? " happy-path" : "";
+        String happyPathBadge = isGroupHappyPath ? " <span class=\"label\">Happy Path</span>" : "";
+
+        body.append("<details class=\"scenario scenario-parameterized").append(happyPathClass)
+            .append("\" data-status=\"").append(overallStatus).append("\"").append(depsAttr).append(searchAttr)
+            .append(durationAttr).append(categoriesAttr).append(labelsAttr).append(" id=\"").append(anchorId)
+            .append("\" tabindex=\"0\">");
+        body.append("<summary class=\"h3").append(hasFailure ? " failed" : hasSkipped ? " skipped" : "")
+            .append("\">").append(encodedGroupName).append(happyPathBadge).append(summaryText).append(durationBadge)
+            .append("<button class=\"copy-scenario-name\" title=\"Copy scenario name\" data-scenario-name=\"")
+            .append(encodedGroupName).append("\" onclick=\"copy_scenario_name(this, event)\">&#128203;</button>")
+            .append("<a class=\"scenario-link\" href=\"#").append(anchorId)
+            .append("\" title=\"Link to this scenario\" onclick=\"event.stopPropagation()\">&#128279;</a></summary>");
+
+        boolean scalarColumns = group.rule() == ParameterGrouper.Rule.SCALAR_COLUMNS && !group.parameterNames().isEmpty();
+        body.append("<table class=\"param-test-table\" data-prefix=\"").append(prefix).append("\"><thead>");
+        if (scalarColumns) {
+            body.append("<tr><th rowspan=\"2\" style=\"width:2.5em\">#</th>");
+            body.append("<th colspan=\"").append(group.parameterNames().size())
+                .append("\" class=\"master-header\">Input Parameters</th>");
+            body.append("<th rowspan=\"2\" style=\"width:5em\">Status</th>");
+            body.append("<th rowspan=\"2\" style=\"width:5.5em\">Duration</th></tr>");
+            body.append("<tr>");
+            for (String name : group.parameterNames()) {
+                body.append("<th class=\"sub-header\">").append(HtmlEscaper.encode(Humanize.titleize(name))).append("</th>");
+            }
+            body.append("</tr>");
+        } else {
+            body.append("<tr><th style=\"width:2.5em\">#</th><th>Test Case</th>"
+                + "<th style=\"width:5em\">Status</th><th style=\"width:5.5em\">Duration</th></tr>");
+        }
+        body.append("</thead><tbody>");
+
+        for (int ri = 0; ri < scenarios.size(); ri++) {
+            Scenario s = scenarios.get(ri);
+            String rowStatusClass = paramRowStatusClass(s.status());
+            String activeClass = ri == 0 ? " row-active" : "";
+
+            List<String> rowSearch = new ArrayList<>();
+            rowSearch.add(s.name());
+            rowSearch.add(feature.displayName());
+            if (feature.description() != null) {
+                rowSearch.add(feature.description());
+            }
+            rowSearch.addAll(feature.labels());
+            rowSearch.addAll(s.categories());
+            rowSearch.addAll(s.labels());
+            if (s.error() != null) {
+                rowSearch.add(s.error());
+            }
+            collectStepText(s.steps(), rowSearch);
+            rowSearch.addAll(scenarioSearchTerms.getOrDefault(s.testId(), Set.of()));
+            String rowSearchAttr = " data-row-search=\""
+                + HtmlEscaper.encode(String.join(" ", rowSearch).toLowerCase(Locale.ROOT)) + "\"";
+
+            String rowAnchor = scenarioAnchorId(s.name());
+            body.append("<tr class=\"").append(rowStatusClass).append(activeClass).append("\" data-row-idx=\"")
+                .append(ri).append("\" id=\"").append(rowAnchor).append("\" data-scenario-id=\"").append(rowAnchor)
+                .append("\"").append(rowSearchAttr).append(" onclick=\"selectRow(this,'").append(prefix).append("')\">");
+            body.append("<td>").append(ri + 1).append("</td>");
+            if (scalarColumns) {
+                for (String name : group.parameterNames()) {
+                    String val = s.exampleValues() == null ? "" : s.exampleValues().getOrDefault(name, "");
+                    body.append("<td class=\"mono\">").append(formatDisplayValue(val)).append("</td>");
+                }
+            } else {
+                String displayText = s.exampleDisplayName() != null ? s.exampleDisplayName() : s.name();
+                body.append("<td class=\"mono\">").append(HtmlEscaper.encode(displayText)).append("</td>");
+            }
+            String rowDuration = s.durationMs() > 0 ? formatDurationBadge(s.durationMs()) : "";
+            body.append("<td><span class=\"status-badge ").append(paramBadgeClass(s.status())).append("\">")
+                .append(paramBadgeText(s.status())).append("</span></td>");
+            body.append("<td class=\"mono\">").append(rowDuration).append("</td>");
+            body.append("</tr>");
+        }
+        body.append("</tbody></table>");
+
+        // Detail panels (steps / attachments / failure) — one per example, first shown.
+        boolean hasAnyDetail = scenarios.stream()
+            .anyMatch(s -> !s.steps().isEmpty() || s.status() == ExecutionStatus.FAILED);
+        if (hasAnyDetail) {
+            body.append("<div class=\"param-detail-panels\">");
+            for (int ri = 0; ri < scenarios.size(); ri++) {
+                Scenario s = scenarios.get(ri);
+                String display = ri == 0 ? "" : " style=\"display:none\"";
+                body.append("<div class=\"param-detail-panel\" id=\"").append(prefix).append("-detail-")
+                    .append(ri).append("\"").append(display).append(">");
+                if (!s.backgroundSteps().isEmpty()) {
+                    body.append("<details class=\"scenario-background\"><summary class=\"h4\">Background Steps</summary>");
+                    for (ScenarioStep step : s.backgroundSteps()) {
+                        appendStep(body, step, null);
+                    }
+                    body.append("</details>");
+                }
+                if (!s.steps().isEmpty()) {
+                    body.append("<details class=\"scenario-steps\" open><summary class=\"h4\">Steps</summary>");
+                    for (ScenarioStep step : s.steps()) {
+                        appendStep(body, step, null);
+                    }
+                    body.append("</details>");
+                }
+                appendScenarioAttachments(body, s.attachments());
+                if (s.status() == ExecutionStatus.FAILED) {
+                    String diffHtml = "";
+                    ErrorDiffParser.DiffResult diff = ErrorDiffParser.tryParseExpectedActual(s.error());
+                    if (diff != null) {
+                        diffHtml = ErrorDiffParser.generateDiffHtml(diff.expected(), diff.actual());
+                    }
+                    // Compact failure-result form used inside the parameterized detail panel.
+                    body.append("<details class=\"failure-result\" open><summary class=\"h4\">Failure Result</summary><pre>");
+                    if (s.error() != null) {
+                        body.append("Failure Cause: ").append(s.error()).append("\n\n");
+                    }
+                    if (s.errorStackTrace() != null) {
+                        body.append(s.errorStackTrace());
+                    }
+                    body.append("</pre>").append(diffHtml).append("</details>");
+                }
+                body.append("</div>");
+            }
+            body.append("</div>");
+        }
+        // (Per-example sequence diagrams / whole-test-flow are out of scope — see ParameterGrouper.)
+
+        body.append("</details>");
+    }
+
+    private static String paramRowStatusClass(ExecutionStatus status) {
+        return switch (status) {
+            case PASSED -> "row-passed";
+            case FAILED -> "row-failed";
+            case SKIPPED -> "row-skipped";
+            case INCONCLUSIVE -> "row-bypassed";
+        };
+    }
+
+    private static String paramBadgeClass(ExecutionStatus status) {
+        return switch (status) {
+            case PASSED -> "badge-pass";
+            case FAILED -> "badge-fail";
+            case SKIPPED -> "badge-skip";
+            case INCONCLUSIVE -> "badge-bypass";
+        };
+    }
+
+    private static String paramBadgeText(ExecutionStatus status) {
+        return switch (status) {
+            case PASSED -> "Passed";
+            case FAILED -> "Failed";
+            case SKIPPED -> "Skipped";
+            case INCONCLUSIVE -> "Bypassed";
+        };
+    }
+
+    /** Mirrors .NET {@code FormatDisplayValue}. */
+    private static String formatDisplayValue(String value) {
+        if (value == null || value.equals("null")) {
+            return "<pre>null</pre>";
+        }
+        if (!value.isEmpty() && value.strip().isEmpty()) {
+            return "<pre>" + HtmlEscaper.encode(value) + "</pre>";
+        }
+        return HtmlEscaper.encode(value);
     }
 
     private static String truncateLinesSelect(String onchange) {
