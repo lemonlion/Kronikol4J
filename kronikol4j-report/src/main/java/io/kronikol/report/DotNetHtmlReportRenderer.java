@@ -3,6 +3,7 @@ package io.kronikol.report;
 import io.kronikol.report.html.HtmlEscaper;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
+import io.kronikol.report.model.FileAttachment;
 import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
 import java.io.ByteArrayOutputStream;
@@ -502,6 +503,21 @@ public final class DotNetHtmlReportRenderer {
             }
             body.append("</details>");
         }
+        if (!scenario.attachments().isEmpty()) {
+            body.append("<div class=\"scenario-attachments\">");
+            for (FileAttachment att : scenario.attachments()) {
+                String relPath = HtmlEscaper.encode(att.relativePath());
+                String name = HtmlEscaper.encode(att.name());
+                if (isImageAttachment(att.name())) {
+                    body.append("<a class=\"attachment-image-link\" href=\"").append(relPath)
+                        .append("\" target=\"_blank\"><img class=\"attachment-image\" src=\"").append(relPath)
+                        .append("\" alt=\"").append(name).append("\" /></a>");
+                } else {
+                    body.append("<a class=\"step-attachment\" href=\"").append(relPath).append("\">").append(name).append("</a>");
+                }
+            }
+            body.append("</div>");
+        }
 
         String diagram = diagramByTestId.get(scenario.testId());
         boolean hasSequenceDiagrams = diagram != null;
@@ -584,6 +600,18 @@ public final class DotNetHtmlReportRenderer {
         body.append("<span class=\"step-text\">").append(HtmlEscaper.encode(step.text())).append("</span>");
         if (step.durationMs() != null) {
             body.append(" <span class=\"step-duration\">(").append(formatDurationBadge(step.durationMs())).append(")</span>");
+        }
+        for (FileAttachment att : step.attachments()) {
+            String relPath = HtmlEscaper.encode(att.relativePath());
+            String name = HtmlEscaper.encode(att.name());
+            if (isImageAttachment(att.name())) {
+                body.append("<a class=\"attachment-image-link\" href=\"").append(relPath)
+                    .append("\" onclick=\"openLightbox(event, this)\"><img class=\"attachment-image\" src=\"")
+                    .append(relPath).append("\" alt=\"").append(name).append("\" /></a>");
+                body.append("<span class=\"attachment-image-name\">").append(name).append("</span>");
+            } else {
+                body.append("<a class=\"step-attachment\" href=\"").append(relPath).append("\">").append(name).append("</a>");
+            }
         }
 
         if (hasSub) {
@@ -835,5 +863,13 @@ public final class DotNetHtmlReportRenderer {
 
     private static String nullToEmpty(String s) {
         return s == null ? "" : s;
+    }
+
+    /** Mirrors .NET's image-attachment test (Path.GetExtension lower-cased against the image set). */
+    private static boolean isImageAttachment(String name) {
+        int dot = name.lastIndexOf('.');
+        String ext = dot < 0 ? "" : name.substring(dot).toLowerCase(Locale.ROOT);
+        return ext.equals(".png") || ext.equals(".jpg") || ext.equals(".jpeg")
+            || ext.equals(".gif") || ext.equals(".webp");
     }
 }

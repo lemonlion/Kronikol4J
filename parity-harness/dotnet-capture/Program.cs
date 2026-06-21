@@ -35,6 +35,10 @@ CaptureHtmlSteps();
 // status tooltips, and the mixed-status timeline bars (passed/skipped/bypassed).
 CaptureHtmlStatuses();
 
+// Attachments: a scenario-level attachments block (image vs link) + a step with step-level
+// attachments (the lightbox image variant + a plain link).
+CaptureHtmlAttachments();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -182,6 +186,37 @@ void CaptureHtmlStatuses()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-statuses.html"), content);
     Console.WriteLine($"=== report-statuses.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlAttachments()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Checkout succeeds", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500),
+        Steps =
+        [
+            new ScenarioStep
+            {
+                Keyword = "Then", Text = "the order is confirmed", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(30),
+                Attachments = [ new FileAttachment("step-shot.png", "attachments/step-shot.png"), new FileAttachment("log.txt", "attachments/log.txt") ]
+            }
+        ],
+        Attachments = [ new FileAttachment("receipt.pdf", "attachments/receipt.pdf"), new FileAttachment("screenshot.png", "attachments/screenshot.png") ]
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [scenario] };
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", "",
+            "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml")
+    };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-attachments.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-attachments.html"), content);
+    Console.WriteLine($"=== report-attachments.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

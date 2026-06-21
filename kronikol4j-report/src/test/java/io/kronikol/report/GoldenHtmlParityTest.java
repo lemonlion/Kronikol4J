@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
+import io.kronikol.report.model.FileAttachment;
 import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
 import java.io.ByteArrayInputStream;
@@ -114,6 +115,30 @@ class GoldenHtmlParityTest {
             List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION);
 
         assertParity("report-statuses.html", actual);
+    }
+
+    @Test
+    void attachmentsBrowserHtmlReport_scenarioAndStepLevel_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        ScenarioStep step = new ScenarioStep("Then", "the order is confirmed", ExecutionStatus.PASSED, 30L,
+            List.of(),
+            List.of(new FileAttachment("step-shot.png", "attachments/step-shot.png"),
+                new FileAttachment("log.txt", "attachments/log.txt")));
+        Scenario scenario = Scenario.builder("Checkout succeeds", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500)
+            .steps(List.of(step))
+            .attachments(List.of(
+                new FileAttachment("receipt.pdf", "attachments/receipt.pdf"),
+                new FileAttachment("screenshot.png", "attachments/screenshot.png")))
+            .build();
+        Feature feature = new Feature("Checkout", List.of(scenario));
+        Map<String, String> diagramByTestId = Map.of(
+            "s1", "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml");
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-attachments.html", actual);
     }
 
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
