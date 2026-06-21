@@ -1,5 +1,6 @@
 package io.kronikol.report.merge;
 
+import io.kronikol.report.flow.WholeTestFlowContent;
 import io.kronikol.report.merge.ReportFragment.FeatureFragment;
 import io.kronikol.report.merge.ReportFragment.ScenarioFragment;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ public final class MergeableReportMerger {
 
     public static ReportFragment merge(List<ReportFragment> fragments) {
         Map<String, Map<String, ScenarioFragment>> byFeature = new LinkedHashMap<>();
+        Map<String, WholeTestFlowContent> wholeTestFlow = new LinkedHashMap<>();
         String title = null;
         String start = null;
         String end = null;
@@ -36,12 +38,13 @@ public final class MergeableReportMerger {
                     scenarios.putIfAbsent(scenario.testId(), scenario);
                 }
             }
+            wholeTestFlow.putAll(fragment.wholeTestFlow()); // ids unique across disjoint runners (.NET MergeMap)
         }
 
         List<FeatureFragment> merged = new ArrayList<>();
         byFeature.forEach((name, scenarios) ->
             merged.add(new FeatureFragment(name, new ArrayList<>(scenarios.values()))));
-        return new ReportFragment(title, start, end, merged);
+        return new ReportFragment(title, start, end, merged, wholeTestFlow);
     }
 
     private static String minTime(String a, String b) {

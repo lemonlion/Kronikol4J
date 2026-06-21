@@ -1,6 +1,8 @@
 package io.kronikol.report.merge;
 
 import io.kronikol.report.HtmlReportGenerator;
+import io.kronikol.report.flow.WholeTestFlowContent;
+import io.kronikol.report.flow.WholeTestFlowInput;
 import io.kronikol.report.merge.ReportFragment.FeatureFragment;
 import io.kronikol.report.merge.ReportFragment.ScenarioFragment;
 import io.kronikol.report.model.Feature;
@@ -33,6 +35,13 @@ public final class MergeableReportRenderer {
             features.add(new Feature(ff.displayName(), scenarios));
         }
         String title = fragment.title() == null ? "Test Run Report" : fragment.title();
+        Map<String, WholeTestFlowContent> wholeTestFlow = fragment.wholeTestFlow();
+        if (!wholeTestFlow.isEmpty()) {
+            // Render each shard's pre-resolved whole-test-flow from the fragments (the .NET
+            // precomputedWholeTestContent branch) — no re-resolving from raw spans.
+            return HtmlReportGenerator.renderHtml(features, diagramByTestId, null, title,
+                WholeTestFlowInput.precomputed(wholeTestFlow));
+        }
         return HtmlReportGenerator.renderHtml(features, diagramByTestId, title);
     }
 }

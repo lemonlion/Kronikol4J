@@ -15,21 +15,44 @@ import java.util.Map;
  * @param internalFlowTracking whether the interactive internal-flow scripts/styles are emitted in the
  *                             head (mirrors the .NET {@code internalFlowTracking} gate — the flame-chart
  *                             render script is required for the flame views to paint client-side)
+ * @param precomputed          pre-rendered whole-test-flow content per test id (the .NET merge
+ *                             {@code precomputedWholeTestContent} branch); {@code null} for the normal
+ *                             capture-from-segments path. When non-null it is used <em>exclusively</em>
+ *                             (a test absent from the map gets no whole-test-flow), mirroring
+ *                             {@code ResolveWholeTestFlowContent}'s precomputed branch.
  */
 public record WholeTestFlowInput(
     Map<String, InternalFlowSegment> segments, WholeTestFlowVisualization visualization,
-    Map<String, List<InternalFlowRenderer.BoundaryMarker>> boundaryMarkers, boolean internalFlowTracking) {
+    Map<String, List<InternalFlowRenderer.BoundaryMarker>> boundaryMarkers, boolean internalFlowTracking,
+    Map<String, WholeTestFlowContent> precomputed) {
 
     public static final WholeTestFlowInput NONE =
-        new WholeTestFlowInput(Map.of(), WholeTestFlowVisualization.NONE, Map.of(), false);
+        new WholeTestFlowInput(Map.of(), WholeTestFlowVisualization.NONE, Map.of(), false, null);
 
     public WholeTestFlowInput {
         segments = segments == null ? Map.of() : Map.copyOf(segments);
         visualization = visualization == null ? WholeTestFlowVisualization.NONE : visualization;
         boundaryMarkers = boundaryMarkers == null ? Map.of() : Map.copyOf(boundaryMarkers);
+        precomputed = precomputed == null ? null : Map.copyOf(precomputed);
     }
 
-    /** True when any whole-test-flow view should be produced. */
+    /** The capture-from-segments path (no precomputed content). */
+    public WholeTestFlowInput(Map<String, InternalFlowSegment> segments, WholeTestFlowVisualization visualization,
+                              Map<String, List<InternalFlowRenderer.BoundaryMarker>> boundaryMarkers,
+                              boolean internalFlowTracking) {
+        this(segments, visualization, boundaryMarkers, internalFlowTracking, null);
+    }
+
+    /**
+     * The merge path: pre-rendered whole-test-flow content per test (the .NET
+     * {@code precomputedWholeTestContent} branch). {@code internalFlowTracking} is on so the head emits
+     * the flame-chart render script the embedded flame views need to paint.
+     */
+    public static WholeTestFlowInput precomputed(Map<String, WholeTestFlowContent> content) {
+        return new WholeTestFlowInput(Map.of(), WholeTestFlowVisualization.BOTH, Map.of(), true, content);
+    }
+
+    /** True when any whole-test-flow view should be produced from captured segments. */
     public boolean isActive() {
         return visualization != WholeTestFlowVisualization.NONE && !segments.isEmpty();
     }

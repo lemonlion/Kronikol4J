@@ -2175,6 +2175,11 @@ public final class DotNetHtmlReportRenderer {
      *  flame chart inlines its gzipped JSON as a {@code data-flame-z} attribute. */
     private static WholeTestFlowContent resolveWholeTestFlow(String testId, WholeTestFlowInput wtfInput,
                                                              Map<String, String> diagramData) {
+        Map<String, WholeTestFlowContent> precomputed = wtfInput.precomputed();
+        if (precomputed != null) {
+            // The merge path: pre-rendered fragment content, used exclusively (absent test → no flow).
+            return precomputed.get(testId);
+        }
         if (!wtfInput.isActive()) {
             return null;
         }
@@ -2219,12 +2224,21 @@ public final class DotNetHtmlReportRenderer {
         return sb.toString();
     }
 
-    /** The lower-median span count across whole-test segments (.NET outlier-warning baseline). */
+    /** The lower-median span count across whole-test segments (.NET outlier-warning baseline). For the
+     *  merge path the baseline comes from the precomputed fragments' span counts instead of live spans. */
     private static int medianSpanCount(WholeTestFlowInput wtfInput) {
         List<Integer> counts = new ArrayList<>();
-        for (InternalFlowSegment s : wtfInput.segments().values()) {
-            if (!s.spans().isEmpty()) {
-                counts.add(s.spans().size());
+        if (wtfInput.precomputed() != null) {
+            for (WholeTestFlowContent c : wtfInput.precomputed().values()) {
+                if (c.spanCount() > 0) {
+                    counts.add(c.spanCount());
+                }
+            }
+        } else {
+            for (InternalFlowSegment s : wtfInput.segments().values()) {
+                if (!s.spans().isEmpty()) {
+                    counts.add(s.spans().size());
+                }
             }
         }
         if (counts.isEmpty()) {
