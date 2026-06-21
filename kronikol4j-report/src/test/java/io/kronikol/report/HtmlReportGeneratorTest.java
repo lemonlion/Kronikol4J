@@ -76,6 +76,32 @@ class HtmlReportGeneratorTest {
     }
 
     @Test
+    void honoursColourOptions(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        var features = List.of(new Feature("Checkout",
+            List.of(Scenario.passed("Checkout succeeds", "t1"))));
+
+        var report = HtmlReportGenerator.generate(features, RequestResponseLogger.getAllLogs(), dir,
+            "Demo Run", ReportOptions.defaults().withArrowColors(true).withParticipantColors(true));
+
+        String html = Files.readString(report.htmlFile());
+        assertThat(html)
+            .contains("-[#438DD5]")            // coloured request/response arrows
+            .contains("orderService #438DD5"); // coloured participant declaration
+    }
+
+    @Test
+    void defaultGenerateLeavesDiagramsUncoloured(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        var features = List.of(new Feature("Checkout",
+            List.of(Scenario.passed("Checkout succeeds", "t1"))));
+
+        var report = HtmlReportGenerator.generate(features, RequestResponseLogger.getAllLogs(), dir, "Demo Run");
+
+        assertThat(Files.readString(report.htmlFile())).doesNotContain("#438DD5"); // back-compatible default
+    }
+
+    @Test
     void defaultsAssetBaseToTheCdn() {
         String html = HtmlReportGenerator.renderHtml(List.of(), java.util.Map.of(), "Demo");
         assertThat(html)

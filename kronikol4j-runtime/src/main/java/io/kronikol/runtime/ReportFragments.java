@@ -3,6 +3,7 @@ package io.kronikol.runtime;
 import io.kronikol.core.tracking.RequestResponseLogger;
 import io.kronikol.diagram.model.PlantUmlForTest;
 import io.kronikol.diagram.plantuml.PlantUmlCreator;
+import io.kronikol.report.ReportOptions;
 import io.kronikol.report.merge.ReportFragment;
 import io.kronikol.report.merge.ReportFragment.FeatureFragment;
 import io.kronikol.report.merge.ReportFragment.ScenarioFragment;
@@ -24,8 +25,14 @@ public final class ReportFragments {
     }
 
     public static ReportFragment fromRun(String title) {
+        return fromRun(title, ReportOptions.defaults());
+    }
+
+    /** As {@link #fromRun(String)}, honouring the diagram colour options. */
+    public static ReportFragment fromRun(String title, ReportOptions options) {
         Map<String, String> diagramByTestId = new HashMap<>();
-        for (PlantUmlForTest p : PlantUmlCreator.create(RequestResponseLogger.getAllLogs())) {
+        for (PlantUmlForTest p : PlantUmlCreator.create(
+                RequestResponseLogger.getAllLogs(), options.arrowColors(), options.participantColors())) {
             if (!p.diagrams().isEmpty()) {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0));
             }

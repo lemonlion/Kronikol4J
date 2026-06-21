@@ -2,6 +2,22 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.5] — unreleased
+
+Wires the diagram colour modes through the report-generation API end-to-end. Full suite green on
+JDK 17–25.
+
+### Added
+- **`ReportOptions`** (`arrowColors`, `participantColors`) — immutable, with `defaults()`, `with…`
+  builders, and `fromSystemProperties()`. Threaded through `HtmlReportGenerator.generate(…)`,
+  `ReportFragments.fromRun(…)` (fork path), and `ReportFinalizer` (standalone + fragment).
+- **Zero-touch enablement**: `ReportFinalizer.finalizeRunToDefault(…)` (used by the JUnit 5 / TestNG
+  listeners) reads `-Dkronikol.diagram.arrowColors=true` / `-Dkronikol.diagram.participantColors=true`,
+  so a run can colour its diagrams without any code change. Explicit overloads taking `ReportOptions`
+  are available for programmatic callers.
+
+The default remains uncoloured (back-compatible); colours are opt-in.
+
 ## [0.1.4] — unreleased
 
 Adds the participant-colour rendering branch and pins it with parity. Full suite green on JDK 17–25.

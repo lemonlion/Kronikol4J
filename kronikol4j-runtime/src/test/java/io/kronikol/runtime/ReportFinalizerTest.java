@@ -2,15 +2,23 @@ package io.kronikol.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.kronikol.core.constants.DependencyCategories;
+import io.kronikol.core.tracking.Method;
+import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseLogger;
+import io.kronikol.core.tracking.RequestResponseType;
+import io.kronikol.core.tracking.StatusCode;
+import io.kronikol.report.ReportOptions;
 import io.kronikol.report.merge.FragmentJson;
 import io.kronikol.report.merge.ReportFragment.ScenarioFragment;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.Scenario;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -77,5 +85,52 @@ class ReportFinalizerTest {
     @Test
     void writeFragmentReturnsNullWhenNothingTracked(@TempDir Path dir) throws IOException {
         assertThat(ReportFinalizer.writeFragment(dir, "f.json", "Run")).isNull();
+    }
+
+    @Test
+    void finalizeThreadsColourOptionsIntoTheDiagram(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        var report = ReportFinalizer.finalizeRun(dir, "Run",
+            ReportOptions.defaults().withArrowColors(true).withParticipantColors(true));
+
+        assertThat(Files.readString(report.htmlFile()))
+            .contains("-[#438DD5]")            // coloured arrow
+            .contains("orderService #438DD5"); // coloured participant
+    }
+
+    @Test
+    void finalizeRunToDefaultReadsColourSystemProperties(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+        System.setProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY, dir.toString());
+        System.setProperty(ReportOptions.ARROW_COLORS_PROPERTY, "true");
+        try {
+            var report = ReportFinalizer.finalizeRunToDefault("Run");
+            assertThat(Files.readString(report.htmlFile())).contains("-[#438DD5]");
+        } finally {
+            System.clearProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY);
+            System.clearProperty(ReportOptions.ARROW_COLORS_PROPERTY);
+        }
+    }
+
+    private static void trackCheckout() {
+        UUID trace = UUID.randomUUID();
+        UUID rr = UUID.randomUUID();
+        RequestResponseLogger.log(RequestResponseLog.builder()
+            .testName("Checkout succeeds").testId("t1")
+            .method(Method.Http.POST).uri(URI.create("http://orders/checkout"))
+            .serviceName("OrderService").callerName("Test")
+            .type(RequestResponseType.REQUEST).traceId(trace).requestResponseId(rr)
+            .dependencyCategory(DependencyCategories.HTTP).content("{\"item\":\"egg\"}")
+            .build());
+        RequestResponseLogger.log(RequestResponseLog.builder()
+            .testName("Checkout succeeds").testId("t1")
+            .method(Method.Http.POST).uri(URI.create("http://orders/checkout"))
+            .serviceName("OrderService").callerName("Test")
+            .type(RequestResponseType.RESPONSE).traceId(trace).requestResponseId(rr)
+            .statusCode(StatusCode.of(200)).content("{\"ok\":true}")
+            .build());
     }
 }

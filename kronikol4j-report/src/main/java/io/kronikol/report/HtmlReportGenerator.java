@@ -43,8 +43,17 @@ public final class HtmlReportGenerator {
                                            List<RequestResponseLog> logs,
                                            Path outputDir,
                                            String title) throws IOException {
+        return generate(features, logs, outputDir, title, ReportOptions.defaults());
+    }
+
+    /** As {@link #generate(List, List, Path, String)}, honouring the diagram colour options. */
+    public static GeneratedReport generate(List<Feature> features,
+                                           List<RequestResponseLog> logs,
+                                           Path outputDir,
+                                           String title,
+                                           ReportOptions options) throws IOException {
         Map<String, String> diagramByTestId = new HashMap<>();
-        for (PlantUmlForTest p : PlantUmlCreator.create(logs)) {
+        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.arrowColors(), options.participantColors())) {
             if (!p.diagrams().isEmpty()) {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }

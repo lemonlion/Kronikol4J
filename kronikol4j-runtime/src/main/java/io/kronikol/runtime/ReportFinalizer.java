@@ -3,6 +3,7 @@ package io.kronikol.runtime;
 import io.kronikol.core.tracking.RequestResponseLogger;
 import io.kronikol.report.HtmlReportGenerator;
 import io.kronikol.report.HtmlReportGenerator.GeneratedReport;
+import io.kronikol.report.ReportOptions;
 import io.kronikol.report.merge.FragmentJson;
 import io.kronikol.report.merge.ReportFragment;
 import java.io.IOException;
@@ -35,34 +36,54 @@ public final class ReportFinalizer {
 
     /** Generates the report to {@code outputDir}; returns {@code null} if nothing was tracked. */
     public static GeneratedReport finalizeRun(Path outputDir, String title) throws IOException {
+        return finalizeRun(outputDir, title, ReportOptions.defaults());
+    }
+
+    /** As {@link #finalizeRun(Path, String)}, honouring the diagram colour {@code options}. */
+    public static GeneratedReport finalizeRun(Path outputDir, String title, ReportOptions options)
+            throws IOException {
         if (RunResults.isEmpty()) {
             return null;
         }
         return HtmlReportGenerator.generate(
-            RunResults.toFeatures(), RequestResponseLogger.getAllLogs(), outputDir, title);
+            RunResults.toFeatures(), RequestResponseLogger.getAllLogs(), outputDir, title, options);
     }
 
     /**
      * Forked mode (run-dir set): emits this JVM's fragment for the build plugin/CLI to merge and
-     * returns {@code null}. Standalone: generates the HTML report to the output directory.
+     * returns {@code null}. Standalone: generates the HTML report to the output directory. Diagram
+     * colour options are read from system properties ({@link ReportOptions#fromSystemProperties()}),
+     * so a run enables them with {@code -Dkronikol.diagram.arrowColors=true} and friends.
      */
     public static GeneratedReport finalizeRunToDefault(String title) throws IOException {
+        return finalizeRunToDefault(title, ReportOptions.fromSystemProperties());
+    }
+
+    /** As {@link #finalizeRunToDefault(String)}, with explicit colour {@code options}. */
+    public static GeneratedReport finalizeRunToDefault(String title, ReportOptions options)
+            throws IOException {
         if (isForkedMode()) {
-            writeFragment(Path.of(System.getProperty(RUN_DIR_PROPERTY)), fragmentFileName(), title);
+            writeFragment(Path.of(System.getProperty(RUN_DIR_PROPERTY)), fragmentFileName(), title, options);
             return null;
         }
-        return finalizeRun(resolveOutputDir(), title);
+        return finalizeRun(resolveOutputDir(), title, options);
+    }
+
+    /** As {@link #writeFragment(Path, String, String, ReportOptions)} with default colour options. */
+    public static Path writeFragment(Path runDir, String fileName, String title) throws IOException {
+        return writeFragment(runDir, fileName, title, ReportOptions.defaults());
     }
 
     /**
      * Writes this JVM's report fragment to {@code runDir} atomically (temp + move), so a crashed
      * fork leaves a whole fragment or none (plan §5.3). Returns {@code null} if nothing was tracked.
      */
-    public static Path writeFragment(Path runDir, String fileName, String title) throws IOException {
+    public static Path writeFragment(Path runDir, String fileName, String title, ReportOptions options)
+            throws IOException {
         if (RunResults.isEmpty()) {
             return null;
         }
-        ReportFragment fragment = ReportFragments.fromRun(title);
+        ReportFragment fragment = ReportFragments.fromRun(title, options);
         Files.createDirectories(runDir);
         Path target = runDir.resolve(fileName);
         Path temp = runDir.resolve(fileName + ".tmp");
