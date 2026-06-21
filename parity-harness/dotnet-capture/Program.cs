@@ -120,6 +120,9 @@ CaptureHtmlDiagramToggles();
 // that is what the report gzips into puml-data before its ReplaceLineEndings("\n").
 DumpInternalFlowActivity();
 
+// Internal-flow call tree — the iflow-call-tree HTML list (nested <li> with source/duration spans).
+DumpInternalFlowCallTree();
+
 // Internal-flow flame data — the compact System.Text.Json produced by GetFlameChartDataWithMarkers
 // (fractional percentages exercise the double formatting + banker's rounding). Single-line JSON.
 DumpInternalFlowFlame();
@@ -604,6 +607,34 @@ void DumpInternalFlowFlame()
     File.WriteAllText(Path.Combine(outDir, "iflow-flame.json"), flameJson);
     Console.WriteLine($"=== iflow-flame.json ({flameJson.Length} chars) ===");
     Console.WriteLine(flameJson);
+}
+
+void DumpInternalFlowCallTree()
+{
+    using var listener = new ActivityListener
+    {
+        ShouldListenTo = _ => true,
+        Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllData
+    };
+    ActivitySource.AddActivityListener(listener);
+    var t0 = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    using var reqSrc = new ActivitySource("Kronikol.Request");
+    using var svcSrc = new ActivitySource("OrderService");
+    using var dbSrc = new ActivitySource("Database");
+    var root = reqSrc.StartActivity("GET /orders")!; root.SetStartTime(t0);
+    var load = svcSrc.StartActivity("LoadOrder")!; load.SetStartTime(t0.AddMilliseconds(10));
+    var sel = dbSrc.StartActivity("SELECT")!; sel.SetStartTime(t0.AddMilliseconds(15)); sel.SetEndTime(t0.AddMilliseconds(35)); sel.Stop();
+    load.SetEndTime(t0.AddMilliseconds(50)); load.Stop();
+    var val = svcSrc.StartActivity("Validate")!; val.SetStartTime(t0.AddMilliseconds(60)); val.SetEndTime(t0.AddMilliseconds(90)); val.Stop();
+    root.SetEndTime(t0.AddMilliseconds(100)); root.Stop();
+    var segment = new InternalFlowSegment(Guid.Empty, RequestResponseType.Request, "t1",
+        new DateTimeOffset(t0, TimeSpan.Zero), new DateTimeOffset(t0.AddMilliseconds(100), TimeSpan.Zero),
+        new[] { root, load, sel, val });
+
+    var html = InternalFlowRenderer.RenderCallTree(segment);
+    File.WriteAllText(Path.Combine(outDir, "iflow-calltree.txt"), html);   // native CRLF
+    Console.WriteLine($"=== iflow-calltree.txt ({html.Length} chars, crlf={html.Contains("\r\n")}) ===");
 }
 
 void DumpInternalFlowActivity()

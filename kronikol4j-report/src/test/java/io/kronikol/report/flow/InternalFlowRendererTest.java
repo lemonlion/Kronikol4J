@@ -38,6 +38,18 @@ class InternalFlowRendererTest {
     }
 
     @Test
+    void renderCallTree_nestedSpanTree_isByteForByteIdenticalToDotNet() {
+        InternalFlowSegment segment = new InternalFlowSegment("t1", List.of(
+            new InternalFlowSpan("1", null, "Kronikol.Request", null, "GET /orders", T0, 100.0),
+            new InternalFlowSpan("2", "1", "OrderService", null, "LoadOrder", T0.plusMillis(10), 40.0),
+            new InternalFlowSpan("3", "2", "Database", null, "SELECT", T0.plusMillis(15), 20.0),
+            new InternalFlowSpan("4", "1", "OrderService", null, "Validate", T0.plusMillis(60), 30.0)));
+
+        assertEquals(readFixture("iflow-calltree.txt"), InternalFlowRenderer.renderCallTree(segment),
+            "call-tree HTML differs from the .NET golden (note CRLF)");
+    }
+
+    @Test
     void flameChartData_withMarkers_isByteForByteIdenticalToDotNet() {
         // A 300ms root → fractional percentages (33.33/36.67/…); markers exercise the JSON escaping.
         InternalFlowSegment segment = new InternalFlowSegment("t1", List.of(

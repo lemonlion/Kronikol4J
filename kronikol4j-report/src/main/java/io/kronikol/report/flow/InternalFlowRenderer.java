@@ -1,5 +1,6 @@
 package io.kronikol.report.flow;
 
+import io.kronikol.report.html.HtmlEscaper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
@@ -298,92 +299,48 @@ public final class InternalFlowRenderer {
      * {@code JsonSerializer.Serialize(new { s, f[, m] }, WriteIndented=false)}.
      */
     public static String flameJson(FlameChartData d) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\"s\":[");
-        for (int i = 0; i < d.sources().size(); i++) {
-            if (i > 0) {
-                sb.append(',');
-            }
-            appendJsonString(sb, d.sources().get(i));
-        }
-        sb.append("],\"f\":[");
-        appendRows(sb, d.spans());
-        sb.append(']');
+        Map<String, Object> obj = new LinkedHashMap<>();
+        obj.put("s", d.sources());
+        obj.put("f", d.spans());
         if (d.markers() != null) {
-            sb.append(",\"m\":[");
-            appendRows(sb, d.markers());
-            sb.append(']');
+            obj.put("m", d.markers());
         }
-        sb.append('}');
+        return CompactJson.write(obj);
+    }
+
+    // -------------------------------------------------------------------------------- call tree -----
+
+    /** Renders the segment as an {@code iflow-call-tree} HTML list (.NET {@code RenderCallTree}).
+     *  Uses {@code AppendLine} line endings (native CRLF on the parity host), like the activity diagram. */
+    public static String renderCallTree(InternalFlowSegment segment) {
+        if (segment.spans().isEmpty()) {
+            return "";
+        }
+        List<SpanNode> roots = buildSpanTree(segment.spans());
+        StringBuilder sb = new StringBuilder();
+        sb.append("<ul class=\"iflow-call-tree\" data-diagram-type=\"calltree\">").append(NL);
+        for (SpanNode root : roots) {
+            renderTreeNode(sb, root);
+        }
+        sb.append("</ul>").append(NL);
         return sb.toString();
     }
 
-    private static void appendRows(StringBuilder sb, List<Object[]> rows) {
-        for (int i = 0; i < rows.size(); i++) {
-            if (i > 0) {
-                sb.append(',');
+    private static void renderTreeNode(StringBuilder sb, SpanNode node) {
+        double duration = node.span.durationMs();
+        String durationText = duration >= 1
+            ? " <span class=\"iflow-duration\">(" + f0(duration) + "ms)</span>" : "";
+        String source = node.span.sourceName() == null || node.span.sourceName().isEmpty()
+            ? "" : "<span class=\"iflow-source\">[" + HtmlEscaper.encode(node.span.sourceName()) + "]</span> ";
+        String name = HtmlEscaper.encode(node.span.label());
+        sb.append("<li>").append(source).append(name).append(durationText).append(NL);
+        if (!node.children.isEmpty()) {
+            sb.append("<ul>").append(NL);
+            for (SpanNode child : node.children) {
+                renderTreeNode(sb, child);
             }
-            sb.append('[');
-            Object[] row = rows.get(i);
-            for (int j = 0; j < row.length; j++) {
-                if (j > 0) {
-                    sb.append(',');
-                }
-                appendCell(sb, row[j]);
-            }
-            sb.append(']');
+            sb.append("</ul>").append(NL);
         }
-    }
-
-    private static void appendCell(StringBuilder sb, Object cell) {
-        if (cell instanceof String s) {
-            appendJsonString(sb, s);
-        } else if (cell instanceof Integer n) {
-            sb.append(n.intValue());
-        } else if (cell instanceof Double dv) {
-            sb.append(formatJsonNumber(dv));
-        } else {
-            sb.append(cell);
-        }
-    }
-
-    /** System.Text.Json number formatting for an already-rounded double: integers without a decimal
-     *  point, otherwise the shortest decimal with trailing zeros stripped (50.0→"50", 33.30→"33.3"). */
-    private static String formatJsonNumber(double r) {
-        if (r == Math.rint(r) && !Double.isInfinite(r)) {
-            return Long.toString((long) r);
-        }
-        return BigDecimal.valueOf(r).stripTrailingZeros().toPlainString();
-    }
-
-    /** Escapes a string exactly like System.Text.Json's default (HTML-safe) encoder. */
-    private static void appendJsonString(StringBuilder sb, String s) {
-        sb.append('"');
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            switch (c) {
-                case '"' -> sb.append("\\u0022");
-                case '&' -> sb.append("\\u0026");
-                case '\'' -> sb.append("\\u0027");
-                case '+' -> sb.append("\\u002B");
-                case '<' -> sb.append("\\u003C");
-                case '>' -> sb.append("\\u003E");
-                case '`' -> sb.append("\\u0060");
-                case '\\' -> sb.append("\\\\");
-                case '\b' -> sb.append("\\b");
-                case '\t' -> sb.append("\\t");
-                case '\n' -> sb.append("\\n");
-                case '\f' -> sb.append("\\f");
-                case '\r' -> sb.append("\\r");
-                default -> {
-                    if (c < 0x20 || c > 0x7E) {
-                        sb.append("\\u").append(String.format(Locale.ROOT, "%04X", (int) c));
-                    } else {
-                        sb.append(c);
-                    }
-                }
-            }
-        }
-        sb.append('"');
+        sb.append("</li>").append(NL);
     }
 }

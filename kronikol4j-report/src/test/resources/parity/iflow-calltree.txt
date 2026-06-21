@@ -1,0 +1,14 @@
+<ul class="iflow-call-tree" data-diagram-type="calltree">
+<li><span class="iflow-source">[Kronikol.Request]</span> GET /orders <span class="iflow-duration">(100ms)</span>
+<ul>
+<li><span class="iflow-source">[OrderService]</span> LoadOrder <span class="iflow-duration">(40ms)</span>
+<ul>
+<li><span class="iflow-source">[Database]</span> SELECT <span class="iflow-duration">(20ms)</span>
+</li>
+</ul>
+</li>
+<li><span class="iflow-source">[OrderService]</span> Validate <span class="iflow-duration">(30ms)</span>
+</li>
+</ul>
+</li>
+</ul>
