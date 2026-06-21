@@ -47,6 +47,22 @@ void CaptureHtml()
     File.WriteAllText(Path.Combine(outDir, "stylesheets.css"),
         Stylesheets.HtmlReportStyleSheet.ReplaceLineEndings("\n"));
     Console.WriteLine($"=== stylesheets.css ({Stylesheets.HtmlReportStyleSheet.Length} chars) ===");
+
+    // Dump the 9 pure-static DiagramContextMenu assets (for §4.2 externalization).
+    var assetDir = Path.Combine(outDir, "assets");
+    Directory.CreateDirectory(assetDir);
+    void Dump(string name, string content) =>
+        File.WriteAllText(Path.Combine(assetDir, name), content.ReplaceLineEndings("\n"));
+    Dump("context-menu-styles.css", DiagramContextMenu.GetStyles());
+    Dump("inline-svg-styles.css", DiagramContextMenu.GetInlineSvgStyles());
+    Dump("collapsible-notes-styles.css", DiagramContextMenu.GetCollapsibleNotesStyles());
+    Dump("internal-flow-popup-styles.css", DiagramContextMenu.GetInternalFlowPopupStyles());
+    Dump("context-menu-script.js", DiagramContextMenu.GetContextMenuScript());
+    Dump("internal-flow-popup-script.js", DiagramContextMenu.GetInternalFlowPopupScript());
+    Dump("toggle-script.js", DiagramContextMenu.GetToggleScript());
+    Dump("flame-chart-render-script.js", DiagramContextMenu.GetFlameChartRenderScript());
+    Dump("collapsible-notes-script.js", DiagramContextMenu.GetCollapsibleNotesScript());
+    Console.WriteLine("=== dumped 9 DiagramContextMenu assets ===");
 }
 
 void CaptureReportData()
