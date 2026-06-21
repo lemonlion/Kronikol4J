@@ -31,9 +31,12 @@ final class ParameterGrouper {
     /**
      * @param flatParameterNames the original (un-flattened) Gherkin example columns, present only when
      *        all members carry {@code exampleFlatValues}; drives the flatten toggle. Empty otherwise.
+     * @param identical true when every member shares the same (non-empty) sequence diagram, so the group
+     *        renders one shared diagram with an "identical across test cases" badge (.NET
+     *        {@code AllDiagramsIdentical}); otherwise per-example diagrams are rendered.
      */
     record ParameterizedGroup(String groupDisplayName, List<String> parameterNames, Rule rule,
-                              List<Scenario> scenarios, List<String> flatParameterNames) {
+                              List<Scenario> scenarios, List<String> flatParameterNames, boolean identical) {
     }
 
     private ParameterGrouper() {
@@ -42,7 +45,8 @@ final class ParameterGrouper {
     /** Returns the parameterized groups; non-grouped scenarios render individually. Groups by the
      *  framework-provided {@code outlineId} first, then by display-name prefix for the remainder.
      *  Preserves first-seen group order. */
-    static List<ParameterizedGroup> analyze(List<Scenario> scenarios, int maxColumns) {
+    static List<ParameterizedGroup> analyze(List<Scenario> scenarios, int maxColumns,
+                                            Map<String, String> diagramByTestId) {
         List<ParameterizedGroup> groups = new ArrayList<>();
         if (scenarios.isEmpty()) {
             return groups;
@@ -59,7 +63,8 @@ final class ParameterGrouper {
         for (Map.Entry<String, List<Scenario>> e : byOutline.entrySet()) {
             List<Scenario> members = e.getValue();
             if (members.size() >= 2 || hasParameters(members)) {
-                groups.add(buildGroup(Humanize.formatScenarioDisplayName(e.getKey()), members, maxColumns));
+                groups.add(buildGroup(Humanize.formatScenarioDisplayName(e.getKey()), members, maxColumns,
+                    diagramByTestId));
             }
             for (Scenario m : members) {
                 consumed.add(m.testId());
@@ -81,7 +86,7 @@ final class ParameterGrouper {
         for (Map.Entry<String, List<Scenario>> e : byPrefix.entrySet()) {
             List<Scenario> members = e.getValue();
             if (members.size() >= 2 || hasParameters(members)) {
-                groups.add(buildGroup(e.getKey(), members, maxColumns));
+                groups.add(buildGroup(e.getKey(), members, maxColumns, diagramByTestId));
             } // else: single, parameter-less → rendered as an individual scenario
         }
         return groups;
@@ -100,15 +105,18 @@ final class ParameterGrouper {
         return false;
     }
 
-    private static ParameterizedGroup buildGroup(String groupName, List<Scenario> members, int maxColumns) {
+    private static ParameterizedGroup buildGroup(String groupName, List<Scenario> members, int maxColumns,
+                                                 Map<String, String> diagramByTestId) {
         // The flat (un-flattened) Gherkin example columns are shown via the flatten toggle whenever all
         // members carry exampleFlatValues — independent of which display rule the grouped view uses.
         List<String> flatNames = computeFlatParameterNames(members);
+        // Whether all members share one identical (non-empty) diagram → render it once with a badge.
+        boolean identical = allDiagramsIdentical(members, diagramByTestId);
 
         // ExampleDisplayName forces the fallback single-column ("Test Case") layout.
         for (Scenario m : members) {
             if (m.exampleDisplayName() != null) {
-                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames);
+                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames, identical);
             }
         }
         int withValues = 0;
@@ -125,15 +133,15 @@ final class ParameterGrouper {
             // R2: a single param whose value is a record ToString() string → flatten into columns.
             if (keys.size() == 1) {
                 ParameterizedGroup flat = tryStringBasedFlatten(groupName, members, keys.iterator().next(),
-                    maxColumns, flatNames);
+                    maxColumns, flatNames, identical);
                 if (flat != null) {
                     return flat;
                 }
             }
             if (keys.size() > maxColumns) {
-                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames);
+                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames, identical);
             }
-            return new ParameterizedGroup(groupName, new ArrayList<>(keys), Rule.SCALAR_COLUMNS, members, flatNames);
+            return new ParameterizedGroup(groupName, new ArrayList<>(keys), Rule.SCALAR_COLUMNS, members, flatNames, identical);
         }
         // Not all members carry ExampleValues → parse display names (.NET DetermineParamsAndRule
         // fallback). Every member's display name must parse, else the single "Test Case" column.
@@ -141,7 +149,7 @@ final class ParameterGrouper {
         for (Scenario m : members) {
             Map<String, String> parsed = ParameterParser.parse(m.name());
             if (parsed == null || parsed.isEmpty()) {
-                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames);
+                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames, identical);
             }
             allParsed.add(parsed);
         }
@@ -154,9 +162,9 @@ final class ParameterGrouper {
             populated.add(m.exampleValues() == null ? withExampleValues(m, allParsed.get(i)) : m);
         }
         if (allKeys.size() > maxColumns) {
-            return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, populated, flatNames);
+            return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, populated, flatNames, identical);
         }
-        return new ParameterizedGroup(groupName, new ArrayList<>(allKeys), Rule.SCALAR_COLUMNS, populated, flatNames);
+        return new ParameterizedGroup(groupName, new ArrayList<>(allKeys), Rule.SCALAR_COLUMNS, populated, flatNames, identical);
     }
 
     /**
@@ -168,7 +176,7 @@ final class ParameterGrouper {
      */
     private static ParameterizedGroup tryStringBasedFlatten(String groupName, List<Scenario> members,
                                                             String paramKey, int maxColumns,
-                                                            List<String> flatNames) {
+                                                            List<String> flatNames, boolean identical) {
         String firstValue = members.get(0).exampleValues() == null
             ? null : members.get(0).exampleValues().get(paramKey);
         Map<String, String> firstParsed = ParameterParser.tryParseRecordToString(firstValue);
@@ -193,7 +201,28 @@ final class ParameterGrouper {
             }
             flattened.add(withExampleValues(m, parsed));
         }
-        return new ParameterizedGroup(groupName, propertyNames, Rule.FLATTENED_OBJECT, flattened, flatNames);
+        return new ParameterizedGroup(groupName, propertyNames, Rule.FLATTENED_OBJECT, flattened, flatNames, identical);
+    }
+
+    /**
+     * Mirrors the .NET {@code diagramComparer}: true when there are ≥2 members, the first member has a
+     * (non-null) diagram, and every member shares that identical diagram. With the Java single-diagram
+     * model this is plain string equality (the .NET sorted-{@code CodeBehind} {@code SequenceEqual}).
+     */
+    private static boolean allDiagramsIdentical(List<Scenario> members, Map<String, String> diagramByTestId) {
+        if (members.size() < 2 || diagramByTestId == null) {
+            return false;
+        }
+        String first = diagramByTestId.get(members.get(0).testId());
+        if (first == null) {
+            return false;
+        }
+        for (int i = 1; i < members.size(); i++) {
+            if (!first.equals(diagramByTestId.get(members.get(i).testId()))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** The distinct {@code exampleFlatValues} keys across members, or empty if any member lacks them. */

@@ -321,6 +321,41 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void parameterizedBrowserHtmlReport_perExampleAndSharedDiagrams_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        String d1 = "@startuml\nA -> B : one\n@enduml";
+        String d2 = "@startuml\nA -> B : two\n@enduml";
+        String d3 = "@startuml\nA -> B : three\n@enduml";
+        LinkedHashMap<String, String> n1 = new LinkedHashMap<>();
+        n1.put("n", "1");
+        LinkedHashMap<String, String> n2 = new LinkedHashMap<>();
+        n2.put("n", "2");
+        LinkedHashMap<String, String> n3 = new LinkedHashMap<>();
+        n3.put("n", "3");
+        LinkedHashMap<String, String> n4 = new LinkedHashMap<>();
+        n4.put("n", "4");
+        Scenario s1 = Scenario.builder("Same A", "s1", ExecutionStatus.PASSED)
+            .durationMs(10).outlineId("Same").exampleValues(n1).build();
+        Scenario s2 = Scenario.builder("Same B", "s2", ExecutionStatus.PASSED)
+            .durationMs(20).outlineId("Same").exampleValues(n2).build();
+        Scenario s3 = Scenario.builder("Diff A", "s3", ExecutionStatus.PASSED)
+            .durationMs(30).outlineId("Diff").exampleValues(n3).build();
+        Scenario s4 = Scenario.builder("Diff B", "s4", ExecutionStatus.PASSED)
+            .durationMs(40).outlineId("Diff").exampleValues(n4).build();
+        Feature feature = new Feature("Flows", List.of(s1, s2, s3, s4));
+        Map<String, String> diagramByTestId = new LinkedHashMap<>();
+        diagramByTestId.put("s1", d1);
+        diagramByTestId.put("s2", d1);
+        diagramByTestId.put("s3", d2);
+        diagramByTestId.put("s4", d3);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-paramdiagrams.html", actual);
+    }
+
+    @Test
     void summaryBrowserHtmlReport_includeTestRunData_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         Scenario login1 = Scenario.builder("Login succeeds", "s1", ExecutionStatus.PASSED)

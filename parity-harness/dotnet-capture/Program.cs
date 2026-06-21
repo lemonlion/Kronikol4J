@@ -91,6 +91,10 @@ CaptureHtmlFlattenToggle();
 // the display name (ExtractBaseName + Parse → ScalarColumns).
 CaptureHtmlPrefixGroup();
 
+// Per-example sequence diagrams in parameterized groups — one shared diagram + identical badge when
+// all examples match (AllDiagramsIdentical), else one diagram per example.
+CaptureHtmlParamDiagrams();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -717,6 +721,34 @@ void CaptureHtmlPrefixGroup()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-prefixgroup.html"), content);
     Console.WriteLine($"=== report-prefixgroup.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlParamDiagrams()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    const string d1 = "@startuml\nA -> B : one\n@enduml";
+    const string d2 = "@startuml\nA -> B : two\n@enduml";
+    const string d3 = "@startuml\nA -> B : three\n@enduml";
+    // Group "Same": both examples share diagram d1 → one shared diagram + identical badge.
+    var s1 = new Scenario { Id = "s1", DisplayName = "Same A", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10), OutlineId = "Same", ExampleValues = new() { ["n"] = "1" } };
+    var s2 = new Scenario { Id = "s2", DisplayName = "Same B", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(20), OutlineId = "Same", ExampleValues = new() { ["n"] = "2" } };
+    // Group "Diff": each example has a different diagram → per-example diagrams (first shown).
+    var s3 = new Scenario { Id = "s3", DisplayName = "Diff A", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(30), OutlineId = "Diff", ExampleValues = new() { ["n"] = "3" } };
+    var s4 = new Scenario { Id = "s4", DisplayName = "Diff B", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(40), OutlineId = "Diff", ExampleValues = new() { ["n"] = "4" } };
+    var feature = new Feature { DisplayName = "Flows", Scenarios = [s1, s2, s3, s4] };
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", "", d1),
+        new DefaultDiagramsFetcher.DiagramAsCode("s2", "", d1),
+        new DefaultDiagramsFetcher.DiagramAsCode("s3", "", d2),
+        new DefaultDiagramsFetcher.DiagramAsCode("s4", "", d3)
+    };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-paramdiagrams.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-paramdiagrams.html"), content);
+    Console.WriteLine($"=== report-paramdiagrams.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

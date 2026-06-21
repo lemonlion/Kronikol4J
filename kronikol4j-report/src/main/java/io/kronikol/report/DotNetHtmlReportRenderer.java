@@ -305,7 +305,8 @@ public final class DotNetHtmlReportRenderer {
 
             // Parameterized grouping (by OutlineId) folded into the rule grouping, with .NET's
             // first-encounter rendering: a group renders once, at its first scenario.
-            List<ParameterGrouper.ParameterizedGroup> paramGroups = ParameterGrouper.analyze(ordered, 10);
+            List<ParameterGrouper.ParameterizedGroup> paramGroups =
+                ParameterGrouper.analyze(ordered, 10, diagramByTestId);
             Map<String, ParameterGrouper.ParameterizedGroup> scenarioToGroup = new HashMap<>();
             for (ParameterGrouper.ParameterizedGroup g : paramGroups) {
                 for (Scenario s : g.scenarios()) {
@@ -340,8 +341,8 @@ public final class DotNetHtmlReportRenderer {
                 }
                 if (group != null) {
                     renderedGroupKeys.add(groupKey);
-                    appendParameterizedGroup(body, feature, group, "pgrp" + (paramGroupCounter++),
-                        scenarioDependencies, scenarioSearchTerms);
+                    counter = appendParameterizedGroup(body, feature, group, "pgrp" + (paramGroupCounter++),
+                        scenarioDependencies, scenarioSearchTerms, diagramByTestId, diagramData, counter);
                     continue;
                 }
                 counter = appendScenario(body, feature, scenario, diagramByTestId,
@@ -754,19 +755,31 @@ public final class DotNetHtmlReportRenderer {
         if (hasSequenceDiagrams) {
             body.append("<details class=\"example-diagrams\" open>");
             body.append("<summary class=\"h4\">Sequence Diagrams</summary>");
-            body.append("<div class=\"diagram-toggle\">");
-            body.append("<span class=\"diagram-toggle-spacer\"></span><span class=\"details-radio\"><span class=\"details-radio-label\">Details:</span><button class=\"details-radio-btn\" data-state=\"expanded\" onclick=\"window._setAllNotes(this,'expanded')\">Expand</button><button class=\"details-radio-btn\" data-state=\"collapsed\" onclick=\"window._setAllNotes(this,'collapsed')\">Collapse</button><button class=\"details-radio-btn details-active\" data-state=\"truncated\" onclick=\"window._setAllNotes(this,'truncated')\">Truncate</button>")
-                .append(truncateLinesSelect("window._setScenarioTruncateLines(this)"))
-                .append("<span class=\"truncate-lines-label\">lines</span></span><button class=\"details-radio-btn toggle-btn details-active\" data-toggle=\"headers\" data-shown=\"true\" onclick=\"window._toggleScenarioHeaders(this)\">Headers Shown</button>");
-            body.append("</div>");
-
-            String diagramId = "puml-" + (counter++);
-            diagramData.put(diagramId, compressToBase64(diagram));
-            body.append("<div class=\"plantuml-browser\" id=\"").append(diagramId)
-                .append("\" data-diagram-type=\"plantuml\"></div>");
+            appendSeqDiagramToggle(body);
+            counter = appendSequenceDiagram(body, diagram, diagramData, counter);
             body.append("</details>");
         }
         body.append("</details>");
+        return counter;
+    }
+
+    /** The shared sequence-diagram {@code diagram-toggle} bar (Details radio + Headers toggle). */
+    private static void appendSeqDiagramToggle(StringBuilder body) {
+        body.append("<div class=\"diagram-toggle\">");
+        body.append("<span class=\"diagram-toggle-spacer\"></span><span class=\"details-radio\"><span class=\"details-radio-label\">Details:</span><button class=\"details-radio-btn\" data-state=\"expanded\" onclick=\"window._setAllNotes(this,'expanded')\">Expand</button><button class=\"details-radio-btn\" data-state=\"collapsed\" onclick=\"window._setAllNotes(this,'collapsed')\">Collapse</button><button class=\"details-radio-btn details-active\" data-state=\"truncated\" onclick=\"window._setAllNotes(this,'truncated')\">Truncate</button>")
+            .append(truncateLinesSelect("window._setScenarioTruncateLines(this)"))
+            .append("<span class=\"truncate-lines-label\">lines</span></span><button class=\"details-radio-btn toggle-btn details-active\" data-toggle=\"headers\" data-shown=\"true\" onclick=\"window._toggleScenarioHeaders(this)\">Headers Shown</button>");
+        body.append("</div>");
+    }
+
+    /** Renders one browser-mode PlantUML diagram (gzip+base64 into {@code diagramData}); returns the
+     *  advanced {@code puml-} counter. Mirrors .NET {@code RenderDiagramsForScenario} (browser path). */
+    private static int appendSequenceDiagram(StringBuilder body, String diagram,
+                                             Map<String, String> diagramData, int counter) {
+        String diagramId = "puml-" + (counter++);
+        diagramData.put(diagramId, compressToBase64(diagram));
+        body.append("<div class=\"plantuml-browser\" id=\"").append(diagramId)
+            .append("\" data-diagram-type=\"plantuml\"></div>");
         return counter;
     }
 
@@ -791,10 +804,12 @@ public final class DotNetHtmlReportRenderer {
 
     /** Ports .NET {@code RenderParameterizedGroup} for the representable subset (ScalarColumns/Fallback,
      *  no flat view / complex-object cells / per-example diagrams — see {@link ParameterGrouper}). */
-    private static void appendParameterizedGroup(StringBuilder body, Feature feature,
+    private static int appendParameterizedGroup(StringBuilder body, Feature feature,
                                                  ParameterGrouper.ParameterizedGroup group, String prefix,
                                                  Map<String, Set<String>> scenarioDependencies,
-                                                 Map<String, Set<String>> scenarioSearchTerms) {
+                                                 Map<String, Set<String>> scenarioSearchTerms,
+                                                 Map<String, String> diagramByTestId,
+                                                 Map<String, String> diagramData, int counter) {
         List<Scenario> scenarios = group.scenarios();
         boolean hasFailure = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.FAILED);
         boolean hasSkipped = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.SKIPPED);
@@ -986,9 +1001,39 @@ public final class DotNetHtmlReportRenderer {
             }
             body.append("</div>");
         }
-        // (Per-example sequence diagrams / whole-test-flow are out of scope — see ParameterGrouper.)
+
+        // Per-example sequence diagrams: one shared diagram (with a badge) when all members' diagrams
+        // are identical, else one diagram per example (first shown, rest display:none).
+        boolean hasAnySeqDiagrams = scenarios.stream()
+            .anyMatch(s -> diagramByTestId.get(s.testId()) != null);
+        if (hasAnySeqDiagrams) {
+            body.append("<details class=\"example-diagrams\" open>");
+            body.append("<summary class=\"h4\">Sequence Diagrams</summary>");
+            appendSeqDiagramToggle(body);
+            if (group.identical()) {
+                String first = diagramByTestId.get(scenarios.get(0).testId());
+                if (first != null) {
+                    body.append("<span class=\"param-diagram-identical-badge\">"
+                        + "All diagrams identical across test cases</span>");
+                    counter = appendSequenceDiagram(body, first, diagramData, counter);
+                }
+            } else {
+                for (int ri = 0; ri < scenarios.size(); ri++) {
+                    String display = ri == 0 ? "" : " style=\"display:none\"";
+                    body.append("<div id=\"").append(prefix).append("-diagram-").append(ri).append("\"")
+                        .append(display).append(">");
+                    String diagram = diagramByTestId.get(scenarios.get(ri).testId());
+                    if (diagram != null) {
+                        counter = appendSequenceDiagram(body, diagram, diagramData, counter);
+                    }
+                    body.append("</div>");
+                }
+            }
+            body.append("</details>");
+        }
 
         body.append("</details>");
+        return counter;
     }
 
     /** The flat (un-flattened) Gherkin example-columns table, visible above the hidden grouped table
