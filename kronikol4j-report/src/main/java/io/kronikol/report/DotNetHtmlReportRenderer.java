@@ -316,8 +316,12 @@ public final class DotNetHtmlReportRenderer {
         sb.append("        <meta name=\"generator\" content=\"Kronikol v").append(version).append("\" />").append(NL);
         sb.append("        <title>").append(title).append("</title>").append(NL);
         sb.append("        <style>").append(NL);
-        // combinedStylesheet = HtmlReportStyleSheet + "\n" + (stylesheet == null ? "" : ...) → trailing "\n"
-        sb.append("            ").append(asset("stylesheets.css")).append(NL).append(NL);
+        // combinedStylesheet = HtmlReportStyleSheet + "\n" + (stylesheet ?? "") — the custom stylesheet is
+        // appended INTO the main <style> right after the base sheet (distinct from the trailing customCss
+        // block); null/"" reproduces the byte-identical default (HtmlReportStyleSheet + "\n" + "\n").
+        String customStyleSheet = custom.customStyleSheet() == null ? "" : custom.customStyleSheet();
+        sb.append("            ").append(asset("stylesheets.css")).append(NL)
+          .append(customStyleSheet).append(NL);
         sb.append("            ").append(asset("context-menu-styles.css")).append(NL);
         sb.append("            ").append(asset("inline-svg-styles.css")).append(NL);
         sb.append("            ").append(asset("collapsible-notes-styles.css")).append(NL);

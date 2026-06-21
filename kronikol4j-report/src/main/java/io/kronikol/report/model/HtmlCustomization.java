@@ -12,12 +12,30 @@ package io.kronikol.report.model;
  * @param customLogoHtml             logo HTML placed above the {@code <h1>}; null = none
  * @param showStepNumbers            prefix steps with their 1-based number (e.g. {@code "1."})
  * @param generateBlankOnFailedTests when true, the report is an empty string if any scenario failed
+ * @param customStyleSheet           the .NET {@code stylesheet} param (e.g.
+ *                                   {@code HtmlSpecificationsCustomStyleSheet}) — appended <em>into</em>
+ *                                   the main {@code <style>} block right after the base stylesheet, and
+ *                                   distinct from {@link #customCss} (which is a separate trailing
+ *                                   {@code <style>}); null = none
  */
 public record HtmlCustomization(
     CiMetadata ciMetadata, String customCss, String customFaviconBase64, String customLogoHtml,
-    boolean showStepNumbers, boolean generateBlankOnFailedTests) {
+    boolean showStepNumbers, boolean generateBlankOnFailedTests, String customStyleSheet) {
 
     /** The all-default customization (no CI block, no custom assets, no step numbers). */
     public static final HtmlCustomization NONE =
-        new HtmlCustomization(null, null, null, null, false, false);
+        new HtmlCustomization(null, null, null, null, false, false, null);
+
+    /** Back-compat carrier without the .NET {@code stylesheet} param (defaults to none). */
+    public HtmlCustomization(CiMetadata ciMetadata, String customCss, String customFaviconBase64,
+                             String customLogoHtml, boolean showStepNumbers, boolean generateBlankOnFailedTests) {
+        this(ciMetadata, customCss, customFaviconBase64, customLogoHtml, showStepNumbers,
+            generateBlankOnFailedTests, null);
+    }
+
+    /** This carrier with the .NET {@code stylesheet} param set (appended into the main {@code <style>}). */
+    public HtmlCustomization withCustomStyleSheet(String css) {
+        return new HtmlCustomization(ciMetadata, customCss, customFaviconBase64, customLogoHtml,
+            showStepNumbers, generateBlankOnFailedTests, css);
+    }
 }

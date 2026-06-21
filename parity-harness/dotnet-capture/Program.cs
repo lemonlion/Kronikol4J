@@ -105,6 +105,10 @@ CaptureHtmlCiMetadata();
 // customLogoHtml (custom-logo div above the <h1>).
 CaptureHtmlCustomAssets();
 
+// stylesheet (HtmlSpecificationsCustomStyleSheet) — appended INTO the main <style> right after the base
+// stylesheet (combinedStylesheet), distinct from the trailing customCss <style>.
+CaptureHtmlCustomStyleSheet();
+
 // showStepNumbers — background/scenario step number prefixes (1., 2., …) incl. nested sub-steps (1.1.).
 CaptureHtmlStepNumbers();
 
@@ -861,6 +865,29 @@ void CaptureHtmlCustomAssets()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-customassets.html"), content);
     Console.WriteLine($"=== report-customassets.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlCustomStyleSheet()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // The 5th positional arg (stylesheet) is appended into the main <style> after the base sheet, and is
+    // distinct from customCss (a separate trailing <style>): pass both to prove the placement difference.
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Renders the spec", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(40),
+        Steps = [ new ScenarioStep { Keyword = "Then", Text = "the spec renders", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) } ]
+    };
+    var feature = new Feature { DisplayName = "Specs", Scenarios = [s1] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, ".kx-spec { margin: 0 }\n.kx-spec h2 { color: #336699 }",
+        "report-customstylesheet.html", "Kronikol Run", includeTestRunData: false,
+        customCss: ".kx-after { color: #c0ffee; }");
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-customstylesheet.html"), content);
+    Console.WriteLine($"=== report-customstylesheet.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlCiMetadata()

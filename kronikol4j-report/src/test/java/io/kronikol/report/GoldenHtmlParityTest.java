@@ -435,6 +435,26 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void browserHtmlReport_customStyleSheet_isByteForByteIdenticalToDotNetGolden() throws IOException {
+        Scenario s1 = Scenario.builder("Renders the spec", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(40)
+            .steps(List.of(new ScenarioStep("Then", "the spec renders", ExecutionStatus.PASSED, 10L,
+                List.of(), List.of())))
+            .build();
+        Feature feature = new Feature("Specs", List.of(s1));
+        // The .NET stylesheet param goes INTO the main <style> (combinedStylesheet); customCss is a
+        // separate trailing <style>. Both set, to prove the placement difference byte-for-byte.
+        HtmlCustomization custom = new HtmlCustomization(null, ".kx-after { color: #c0ffee; }",
+            null, null, false, false).withCustomStyleSheet(".kx-spec { margin: 0 }\n.kx-spec h2 { color: #336699 }");
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION,
+            false, Instant.EPOCH, Instant.EPOCH, custom);
+
+        assertParity("report-customstylesheet.html", actual);
+    }
+
+    @Test
     void browserHtmlReport_showStepNumbers_isByteForByteIdenticalToDotNetGolden() throws IOException {
         ScenarioStep subStep = new ScenarioStep("And", "a valid session", ExecutionStatus.PASSED, 2L,
             List.of(), List.of());
