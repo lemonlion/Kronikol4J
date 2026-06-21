@@ -64,6 +64,9 @@ CaptureHtmlStepSegments();
 // Rich step rendering — a step Parameters list (inline kind) rendered via RenderParameter.
 CaptureHtmlStepParams();
 
+// Rich step rendering — tabular + tree step parameters (step-param-table / step-param-tree).
+CaptureHtmlStepTables();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -425,6 +428,48 @@ void CaptureHtmlStepParams()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-stepparams.html"), content);
     Console.WriteLine($"=== report-stepparams.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlStepTables()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var tabular = new StepParameter
+    {
+        Name = "items", Kind = StepParameterKind.Tabular,
+        TabularValue = new TabularParameterValue(
+            [ new TabularColumn("name", true), new TabularColumn("qty", false) ],
+            [
+                new TabularRow(TableRowType.Matching, [ new TabularCell("egg", null, VerificationStatus.NotApplicable), new TabularCell("2", null, VerificationStatus.NotApplicable) ]),
+                new TabularRow(TableRowType.Surplus, [ new TabularCell("bonus", null, VerificationStatus.NotApplicable), new TabularCell("1", null, VerificationStatus.NotApplicable) ])
+            ])
+    };
+    var tree = new StepParameter
+    {
+        Name = "config", Kind = StepParameterKind.Tree,
+        TreeValue = new TreeParameterValue(new TreeNode("", "root", "", null, VerificationStatus.NotApplicable,
+        [
+            new TreeNode("root.a", "a", "1", null, VerificationStatus.Success, null),
+            new TreeNode("root.b", "b", "2", "3", VerificationStatus.Failure, null)
+        ]))
+    };
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Data is processed", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500),
+        Steps =
+        [
+            new ScenarioStep { Keyword = "When", Text = "the cart is loaded", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(20), Parameters = [ tabular ] },
+            new ScenarioStep { Keyword = "Then", Text = "the config matches", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(30), Parameters = [ tree ] }
+        ]
+    };
+    var feature = new Feature { DisplayName = "Data", Scenarios = [scenario] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-steptables.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-steptables.html"), content);
+    Console.WriteLine($"=== report-steptables.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

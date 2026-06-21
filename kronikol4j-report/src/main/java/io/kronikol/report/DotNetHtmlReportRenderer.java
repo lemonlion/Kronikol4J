@@ -9,6 +9,9 @@ import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
 import io.kronikol.report.model.StepParameter;
 import io.kronikol.report.model.StepTextSegment;
+import io.kronikol.report.model.TableRowType;
+import io.kronikol.report.model.TabularParameterValue;
+import io.kronikol.report.model.TreeParameterValue;
 import io.kronikol.report.model.VerificationStatus;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -1193,12 +1196,79 @@ public final class DotNetHtmlReportRenderer {
                 }
             }
             case TABULAR -> {
-                /* TODO: tabular step-param-table (next increment). */
+                if (param.tabularValue() != null) {
+                    appendTabularParameter(body, param.name(), param.tabularValue());
+                }
             }
             case TREE -> {
-                /* TODO: tree parameter via ParameterValueRenderer (next increment). */
+                if (param.treeValue() != null) {
+                    body.append("<div class=\"step-param-tree\">");
+                    appendTreeNode(body, param.treeValue().root());
+                    body.append("</div>");
+                }
             }
         }
+    }
+
+    private static void appendTabularParameter(StringBuilder body, String name, TabularParameterValue tv) {
+        List<String> colNames = tv.columns().stream().map(TabularParameterValue.TabularColumn::name).toList();
+        body.append("<div class=\"step-param-table\" data-param=\"").append(HtmlEscaper.encode(name))
+            .append("\" data-columns=\"").append(HtmlEscaper.encode(String.join(",", colNames))).append("\">");
+        boolean showRowIndicator = tv.rows().stream().anyMatch(r -> r.type() != TableRowType.MATCHING);
+        body.append(showRowIndicator ? "<table><thead><tr><th></th>" : "<table><thead><tr>");
+        for (TabularParameterValue.TabularColumn col : tv.columns()) {
+            body.append("<th").append(col.isKey() ? " class=\"key\"" : "").append(">")
+                .append(HtmlEscaper.encode(col.name())).append("</th>");
+        }
+        body.append("</tr></thead><tbody>");
+        for (TabularParameterValue.TabularRow row : tv.rows()) {
+            String rowIndicator = switch (row.type()) {
+                case MATCHING -> "=";
+                case SURPLUS -> "+";
+                case MISSING -> "-";
+            };
+            String rowClass = "row-" + row.type().name().toLowerCase(Locale.ROOT);
+            body.append(showRowIndicator
+                ? "<tr class=\"" + rowClass + "\"><td>" + rowIndicator + "</td>"
+                : "<tr class=\"" + rowClass + "\">");
+            for (TabularParameterValue.TabularCell cell : row.values()) {
+                String cellDisplay = cell.expectation() != null && cell.status() == VerificationStatus.FAILURE
+                    ? formatDisplayValue(cell.value()) + "/" + formatDisplayValue(cell.expectation())
+                    : formatDisplayValue(cell.value());
+                body.append("<td class=\"").append(cellStatusClass(cell.status())).append("\">")
+                    .append(cellDisplay).append("</td>");
+            }
+            body.append("</tr>");
+        }
+        body.append("</tbody></table></div>");
+    }
+
+    private static void appendTreeNode(StringBuilder body, TreeParameterValue.TreeNode node) {
+        String valueDisplay = node.expectation() != null && node.status() == VerificationStatus.FAILURE
+            ? formatDisplayValue(node.value()) + "/" + formatDisplayValue(node.expectation())
+            : formatDisplayValue(node.value());
+        body.append("<div class=\"tree-node ").append(cellStatusClass(node.status()))
+            .append("\"><span class=\"tree-node-name\">").append(HtmlEscaper.encode(node.node()))
+            .append("</span>: ").append(valueDisplay);
+        if (!node.children().isEmpty()) {
+            body.append("<div class=\"tree-children\">");
+            for (TreeParameterValue.TreeNode child : node.children()) {
+                appendTreeNode(body, child);
+            }
+            body.append("</div>");
+        }
+        body.append("</div>");
+    }
+
+    /** Cell/tree-node status class — like {@link #paramStatusClass} but NotApplicable yields no class. */
+    private static String cellStatusClass(VerificationStatus status) {
+        return switch (status) {
+            case SUCCESS -> "param-success";
+            case FAILURE -> "param-failure";
+            case EXCEPTION -> "param-exception";
+            case NOT_PROVIDED -> "param-not-provided";
+            default -> ""; // NOT_APPLICABLE → no class
+        };
     }
 
     private static String paramStatusClass(VerificationStatus status) {

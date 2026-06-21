@@ -11,6 +11,13 @@ import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
 import io.kronikol.report.model.StepParameter;
 import io.kronikol.report.model.StepTextSegment;
+import io.kronikol.report.model.TableRowType;
+import io.kronikol.report.model.TabularParameterValue;
+import io.kronikol.report.model.TabularParameterValue.TabularCell;
+import io.kronikol.report.model.TabularParameterValue.TabularColumn;
+import io.kronikol.report.model.TabularParameterValue.TabularRow;
+import io.kronikol.report.model.TreeParameterValue;
+import io.kronikol.report.model.TreeParameterValue.TreeNode;
 import io.kronikol.report.model.VerificationStatus;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -283,6 +290,36 @@ class GoldenHtmlParityTest {
             List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
 
         assertParity("report-stepparams.html", actual);
+    }
+
+    @Test
+    void stepTablesBrowserHtmlReport_tabularAndTreeParameters_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        StepParameter tabular = StepParameter.tabular("items", new TabularParameterValue(
+            List.of(new TabularColumn("name", true), new TabularColumn("qty", false)),
+            List.of(
+                new TabularRow(TableRowType.MATCHING, List.of(
+                    new TabularCell("egg", null, VerificationStatus.NOT_APPLICABLE),
+                    new TabularCell("2", null, VerificationStatus.NOT_APPLICABLE))),
+                new TabularRow(TableRowType.SURPLUS, List.of(
+                    new TabularCell("bonus", null, VerificationStatus.NOT_APPLICABLE),
+                    new TabularCell("1", null, VerificationStatus.NOT_APPLICABLE))))));
+        StepParameter tree = StepParameter.tree("config", new TreeParameterValue(
+            new TreeNode("", "root", "", null, VerificationStatus.NOT_APPLICABLE, List.of(
+                new TreeNode("root.a", "a", "1", null, VerificationStatus.SUCCESS, List.of()),
+                new TreeNode("root.b", "b", "2", "3", VerificationStatus.FAILURE, List.of())))));
+        ScenarioStep whenStep = ScenarioStep.builder("When", "the cart is loaded", ExecutionStatus.PASSED)
+            .durationMs(20).parameters(List.of(tabular)).build();
+        ScenarioStep thenStep = ScenarioStep.builder("Then", "the config matches", ExecutionStatus.PASSED)
+            .durationMs(30).parameters(List.of(tree)).build();
+        Scenario scenario = Scenario.builder("Data is processed", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500).steps(List.of(whenStep, thenStep)).build();
+        Feature feature = new Feature("Data", List.of(scenario));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-steptables.html", actual);
     }
 
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
