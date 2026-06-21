@@ -1,6 +1,8 @@
 package io.kronikol.report;
 
 import io.kronikol.core.tracking.RequestResponseLog;
+import io.kronikol.diagram.component.ComponentDiagramGenerator;
+import io.kronikol.diagram.component.ComponentRelationship;
 import io.kronikol.diagram.json.Json;
 import io.kronikol.diagram.model.PlantUmlForTest;
 import io.kronikol.diagram.plantuml.PlantUmlCreator;
@@ -58,16 +60,31 @@ public final class HtmlReportGenerator {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }
         }
-        return generateFromDiagrams(features, diagramByTestId, outputDir, title);
+        return generateFromDiagrams(features, diagramByTestId, componentDiagram(logs), outputDir, title);
+    }
+
+    /** The run-level component diagram from all tracked logs, or {@code null} if nothing was tracked. */
+    private static String componentDiagram(List<RequestResponseLog> logs) {
+        List<ComponentRelationship> relationships = ComponentDiagramGenerator.extractRelationships(logs);
+        return relationships.isEmpty() ? null : ComponentDiagramGenerator.generatePlantUml(relationships);
     }
 
     /** Renders from pre-computed diagrams — used by the merge path, where fragments already carry
-     *  their PlantUML (no raw logs to re-render). */
+     *  their PlantUML (no raw logs to re-render); no run-level component diagram in that path. */
     public static GeneratedReport generateFromDiagrams(List<Feature> features,
                                                        Map<String, String> diagramByTestId,
                                                        Path outputDir,
                                                        String title) throws IOException {
-        String html = renderHtml(features, diagramByTestId, title);
+        return generateFromDiagrams(features, diagramByTestId, null, outputDir, title);
+    }
+
+    /** As {@link #generateFromDiagrams(List, Map, Path, String)}, with a run-level component diagram. */
+    public static GeneratedReport generateFromDiagrams(List<Feature> features,
+                                                       Map<String, String> diagramByTestId,
+                                                       String componentDiagram,
+                                                       Path outputDir,
+                                                       String title) throws IOException {
+        String html = renderHtml(features, diagramByTestId, componentDiagram, title);
         Files.createDirectories(outputDir);
         Path file = outputDir.resolve("TestRunReport.html");
         Files.writeString(file, html, StandardCharsets.UTF_8);
@@ -76,12 +93,28 @@ public final class HtmlReportGenerator {
 
     /** Builds the report HTML as a string (no IO) — the CLI writes it to its own {@code -o} path. */
     public static String renderHtml(List<Feature> features, Map<String, String> diagramByTestId, String title) {
+        return renderHtml(features, diagramByTestId, null, title);
+    }
+
+    /** As {@link #renderHtml(List, Map, String)}, prepending a run-level component-diagram section. */
+    public static String renderHtml(List<Feature> features, Map<String, String> diagramByTestId,
+                                    String componentDiagram, String title) {
         StringBuilder body = new StringBuilder(2048);
         Map<String, String> diagramData = new LinkedHashMap<>();
         int diagramCounter = 0;
         int passed = 0;
         int failed = 0;
         int totalScenarios = 0;
+
+        if (componentDiagram != null && !componentDiagram.isBlank()) {
+            diagramData.put("puml-component", componentDiagram);
+            body.append("  <section class=\"component\">").append(NL);
+            body.append("    <h2>Component Diagram</h2>").append(NL);
+            body.append("    <div class=\"plantuml-browser\" id=\"puml-component\"></div>").append(NL);
+            body.append("    <details class=\"puml-src\"><summary>PlantUML source</summary><pre>")
+                .append(HtmlEscaper.encode(componentDiagram)).append("</pre></details>").append(NL);
+            body.append("  </section>").append(NL);
+        }
 
         for (Feature feature : features) {
             body.append("  <section class=\"feature\">").append(NL);
@@ -185,6 +218,7 @@ public final class HtmlReportGenerator {
         "body { font-family: system-ui, sans-serif; margin: 2rem; color: #222; }",
         "h1 { font-size: 1.6rem; }",
         ".summary { color: #555; margin-bottom: 1.5rem; }",
+        ".component { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #eee; }",
         ".feature { margin-bottom: 2rem; }",
         ".scenario { border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem; margin: 0.75rem 0; }",
         ".badge { font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 10px; color: #fff; }",

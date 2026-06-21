@@ -2,6 +2,26 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.8] — unreleased
+
+Embeds the component diagram in the HTML report and fixes multi-diagram rendering. Full suite green
+on JDK 17–25.
+
+### Added
+- **Component diagram in the report** — `HtmlReportGenerator.generate(logs, …)` now renders the
+  run-level component diagram as a section at the top of the report (browser-rendered, with a
+  collapsible PlantUML source block), computed from all tracked logs. The standalone/finalize path
+  (`ReportFinalizer`) picks it up automatically. The merge path is unchanged for now (no component
+  diagram). Verified end-to-end: the Playwright pixel test now asserts **both** the sequence and the
+  component `<svg>` paint, offline.
+
+### Fixed
+- **Multi-diagram rendering** — `kronikol-render.js` rendered all `.plantuml-browser` elements in a
+  tight loop, but PlantUML-WASM (TeaVM) renders asynchronously off shared global state, so concurrent
+  `render()` calls clobbered each other and a report with 2+ diagrams kept only one. Renders are now
+  serialized (render → await the injected `<svg>` → next). This also fixes reports with multiple
+  per-test sequence diagrams, not just the new component section.
+
 ## [0.1.7] — unreleased
 
 Adds the **component diagram** — the second diagram type (closing a Phase-2 gap). Full suite green

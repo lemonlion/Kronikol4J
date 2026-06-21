@@ -54,6 +54,16 @@ test('generated report paints a PlantUML SVG with real dimensions, offline', asy
   const svgMarkup = await svg.evaluate((el) => el.outerHTML);
   expect(svgMarkup).toContain('OrderService');
 
+  // The run-level component diagram also paints (a second diagram type in the same report).
+  const componentSvg = page.locator('.plantuml-browser#puml-component svg').first();
+  await expect(componentSvg).toBeVisible({ timeout: 30_000 });
+  const componentBox = await componentSvg.boundingBox();
+  expect(componentBox, 'component <svg> should have a layout box').not.toBeNull();
+  expect(componentBox.width).toBeGreaterThan(10);
+  expect(componentBox.height).toBeGreaterThan(10);
+  const componentMarkup = await componentSvg.evaluate((el) => el.outerHTML);
+  expect(componentMarkup).toContain('OrderService'); // the aggregated component is drawn
+
   // The whole thing ran from local files only, and cleanly.
   expect(networkAttempts, 'report must render with no network').toEqual([]);
   expect(consoleErrors, 'no console/page errors during render').toEqual([]);

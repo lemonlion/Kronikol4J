@@ -105,6 +105,32 @@ class HtmlReportGeneratorTest {
     }
 
     @Test
+    void embedsTheRunLevelComponentDiagram(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        var features = List.of(new Feature("Checkout",
+            List.of(Scenario.passed("Checkout succeeds", "t1"))));
+
+        var report = HtmlReportGenerator.generate(features, RequestResponseLogger.getAllLogs(), dir, "Demo Run");
+
+        assertThat(Files.readString(report.htmlFile()))
+            .contains("<section class=\"component\">")
+            .contains("<h2>Component Diagram</h2>")
+            .contains("class=\"plantuml-browser\" id=\"puml-component\"")
+            .contains("**OrderService**")                          // component participant (raw, escaped)
+            .contains("HTTP: POST - 1 calls across 1 tests");      // aggregated relationship label
+    }
+
+    @Test
+    void omitsTheComponentDiagramWhenNothingWasTracked(@TempDir Path dir) throws IOException {
+        var features = List.of(new Feature("Checkout",
+            List.of(Scenario.passed("Checkout succeeds", "t1"))));
+
+        var report = HtmlReportGenerator.generate(features, List.of(), dir, "Demo Run");
+
+        assertThat(Files.readString(report.htmlFile())).doesNotContain("class=\"component\"");
+    }
+
+    @Test
     void defaultsAssetBaseToTheCdn() {
         String html = HtmlReportGenerator.renderHtml(List.of(), java.util.Map.of(), "Demo");
         assertThat(html)
