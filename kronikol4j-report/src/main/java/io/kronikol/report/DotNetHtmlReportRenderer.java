@@ -879,11 +879,27 @@ public final class DotNetHtmlReportRenderer {
 
         boolean scalarColumns = (group.rule() == ParameterGrouper.Rule.SCALAR_COLUMNS
             || group.rule() == ParameterGrouper.Rule.FLATTENED_OBJECT) && !group.parameterNames().isEmpty();
-        body.append("<table class=\"param-test-table\" data-prefix=\"").append(prefix).append("\"><thead>");
+
+        // Flat view: the original (un-flattened) Gherkin example columns + a toggle, shown when every
+        // member carries exampleFlatValues. The flat table is visible; the grouped table is hidden.
+        boolean hasFlatView = !group.flatParameterNames().isEmpty();
+        if (hasFlatView) {
+            body.append("<div class=\"param-table-wrapper\">");
+            appendFlatParamTable(body, feature, group, prefix, scenarioSearchTerms);
+        }
+
+        String groupedTableClass = hasFlatView ? " param-table-grouped" : "";
+        String groupedStyle = hasFlatView ? " style=\"display:none\"" : "";
+        body.append("<table class=\"param-test-table").append(groupedTableClass).append("\"").append(groupedStyle)
+            .append(" data-prefix=\"").append(prefix).append("\"><thead>");
         if (scalarColumns) {
             body.append("<tr><th rowspan=\"2\" style=\"width:2.5em\">#</th>");
+            String toggleBtn = hasFlatView
+                ? "<button class=\"flatten-toggle\" onclick=\"toggleFlattenParams(this,'" + prefix
+                    + "')\" title=\"Show flattened columns\">+</button>"
+                : "";
             body.append("<th colspan=\"").append(group.parameterNames().size())
-                .append("\" class=\"master-header\">Input Parameters</th>");
+                .append("\" class=\"master-header\">").append(toggleBtn).append("Input Parameters</th>");
             body.append("<th rowspan=\"2\" style=\"width:5em\">Status</th>");
             body.append("<th rowspan=\"2\" style=\"width:5.5em\">Duration</th></tr>");
             body.append("<tr>");
@@ -902,22 +918,7 @@ public final class DotNetHtmlReportRenderer {
             String rowStatusClass = paramRowStatusClass(s.status());
             String activeClass = ri == 0 ? " row-active" : "";
 
-            List<String> rowSearch = new ArrayList<>();
-            rowSearch.add(s.name());
-            rowSearch.add(feature.displayName());
-            if (feature.description() != null) {
-                rowSearch.add(feature.description());
-            }
-            rowSearch.addAll(feature.labels());
-            rowSearch.addAll(s.categories());
-            rowSearch.addAll(s.labels());
-            if (s.error() != null) {
-                rowSearch.add(s.error());
-            }
-            collectStepText(s.steps(), rowSearch);
-            rowSearch.addAll(scenarioSearchTerms.getOrDefault(s.testId(), Set.of()));
-            String rowSearchAttr = " data-row-search=\""
-                + HtmlEscaper.encode(String.join(" ", rowSearch).toLowerCase(Locale.ROOT)) + "\"";
+            String rowSearchAttr = paramRowSearchAttr(feature, s, scenarioSearchTerms);
 
             String rowAnchor = scenarioAnchorId(s.name());
             body.append("<tr class=\"").append(rowStatusClass).append(activeClass).append("\" data-row-idx=\"")
@@ -948,6 +949,9 @@ public final class DotNetHtmlReportRenderer {
             body.append("</tr>");
         }
         body.append("</tbody></table>");
+        if (hasFlatView) {
+            body.append("</div>"); // close param-table-wrapper
+        }
 
         // Detail panels (steps / attachments / failure) — one per example, first shown.
         boolean hasAnyDetail = scenarios.stream()
@@ -985,6 +989,70 @@ public final class DotNetHtmlReportRenderer {
         // (Per-example sequence diagrams / whole-test-flow are out of scope — see ParameterGrouper.)
 
         body.append("</details>");
+    }
+
+    /** The flat (un-flattened) Gherkin example-columns table, visible above the hidden grouped table
+     *  when the group has a flat view (.NET {@code param-table-flat} block). */
+    private static void appendFlatParamTable(StringBuilder body, Feature feature,
+                                             ParameterGrouper.ParameterizedGroup group, String prefix,
+                                             Map<String, Set<String>> scenarioSearchTerms) {
+        List<Scenario> scenarios = group.scenarios();
+        List<String> flatNames = group.flatParameterNames();
+        body.append("<table class=\"param-test-table param-table-flat\" data-prefix=\"").append(prefix)
+            .append("\"><thead>");
+        body.append("<tr><th rowspan=\"2\" style=\"width:2.5em\">#</th>");
+        body.append("<th colspan=\"").append(flatNames.size())
+            .append("\" class=\"master-header\"><button class=\"flatten-toggle\" onclick=\"toggleFlattenParams(this,'")
+            .append(prefix).append("')\" title=\"Show grouped columns\">−</button>Input Parameters</th>");
+        body.append("<th rowspan=\"2\" style=\"width:5em\">Status</th>");
+        body.append("<th rowspan=\"2\" style=\"width:5.5em\">Duration</th></tr>");
+        body.append("<tr>");
+        for (String name : flatNames) {
+            body.append("<th class=\"sub-header\">").append(HtmlEscaper.encode(Humanize.titleize(name))).append("</th>");
+        }
+        body.append("</tr></thead><tbody>");
+
+        for (int ri = 0; ri < scenarios.size(); ri++) {
+            Scenario s = scenarios.get(ri);
+            String rowStatusClass = paramRowStatusClass(s.status());
+            String activeClass = ri == 0 ? " row-active" : "";
+            String rowSearchAttr = paramRowSearchAttr(feature, s, scenarioSearchTerms);
+            body.append("<tr class=\"").append(rowStatusClass).append(activeClass).append("\" data-row-idx=\"")
+                .append(ri).append("\"").append(rowSearchAttr).append(" onclick=\"selectRow(this,'").append(prefix)
+                .append("')\">");
+            body.append("<td>").append(ri + 1).append("</td>");
+            for (String name : flatNames) {
+                String val = s.exampleFlatValues() == null ? "" : s.exampleFlatValues().getOrDefault(name, "");
+                body.append("<td class=\"mono\">").append(formatDisplayValue(val)).append("</td>");
+            }
+            String rowDuration = s.durationMs() > 0 ? formatDurationBadge(s.durationMs()) : "";
+            body.append("<td><span class=\"status-badge ").append(paramBadgeClass(s.status())).append("\">")
+                .append(paramBadgeText(s.status())).append("</span></td>");
+            body.append("<td class=\"mono\">").append(rowDuration).append("</td>");
+            body.append("</tr>");
+        }
+        body.append("</tbody></table>");
+    }
+
+    /** The {@code data-row-search} attribute shared by a parameterized group's flat and grouped rows. */
+    private static String paramRowSearchAttr(Feature feature, Scenario s,
+                                             Map<String, Set<String>> scenarioSearchTerms) {
+        List<String> rowSearch = new ArrayList<>();
+        rowSearch.add(s.name());
+        rowSearch.add(feature.displayName());
+        if (feature.description() != null) {
+            rowSearch.add(feature.description());
+        }
+        rowSearch.addAll(feature.labels());
+        rowSearch.addAll(s.categories());
+        rowSearch.addAll(s.labels());
+        if (s.error() != null) {
+            rowSearch.add(s.error());
+        }
+        collectStepText(s.steps(), rowSearch);
+        rowSearch.addAll(scenarioSearchTerms.getOrDefault(s.testId(), Set.of()));
+        return " data-row-search=\""
+            + HtmlEscaper.encode(String.join(" ", rowSearch).toLowerCase(Locale.ROOT)) + "\"";
     }
 
     private static String paramRowStatusClass(ExecutionStatus status) {

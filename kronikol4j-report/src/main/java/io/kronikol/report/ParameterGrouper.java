@@ -26,8 +26,12 @@ final class ParameterGrouper {
         SCALAR_COLUMNS, FLATTENED_OBJECT, FALLBACK
     }
 
+    /**
+     * @param flatParameterNames the original (un-flattened) Gherkin example columns, present only when
+     *        all members carry {@code exampleFlatValues}; drives the flatten toggle. Empty otherwise.
+     */
     record ParameterizedGroup(String groupDisplayName, List<String> parameterNames, Rule rule,
-                              List<Scenario> scenarios) {
+                              List<Scenario> scenarios, List<String> flatParameterNames) {
     }
 
     private ParameterGrouper() {
@@ -66,10 +70,14 @@ final class ParameterGrouper {
     }
 
     private static ParameterizedGroup buildGroup(String groupName, List<Scenario> members, int maxColumns) {
+        // The flat (un-flattened) Gherkin example columns are shown via the flatten toggle whenever all
+        // members carry exampleFlatValues — independent of which display rule the grouped view uses.
+        List<String> flatNames = computeFlatParameterNames(members);
+
         // ExampleDisplayName forces the fallback single-column ("Test Case") layout.
         for (Scenario m : members) {
             if (m.exampleDisplayName() != null) {
-                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members);
+                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames);
             }
         }
         int withValues = 0;
@@ -85,19 +93,20 @@ final class ParameterGrouper {
             }
             // R2: a single param whose value is a record ToString() string → flatten into columns.
             if (keys.size() == 1) {
-                ParameterizedGroup flat = tryStringBasedFlatten(groupName, members, keys.iterator().next(), maxColumns);
+                ParameterizedGroup flat = tryStringBasedFlatten(groupName, members, keys.iterator().next(),
+                    maxColumns, flatNames);
                 if (flat != null) {
                     return flat;
                 }
             }
             if (keys.size() > maxColumns) {
-                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members);
+                return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames);
             }
-            return new ParameterizedGroup(groupName, new ArrayList<>(keys), Rule.SCALAR_COLUMNS, members);
+            return new ParameterizedGroup(groupName, new ArrayList<>(keys), Rule.SCALAR_COLUMNS, members, flatNames);
         }
         // Not all members carry ExampleValues → .NET parses display names (ParameterParser, out of
         // scope here); fall back to the single "Test Case" column.
-        return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members);
+        return new ParameterizedGroup(groupName, List.of(), Rule.FALLBACK, members, flatNames);
     }
 
     /**
@@ -108,7 +117,8 @@ final class ParameterGrouper {
      * Returns null (no flatten) if any member fails to parse or lacks a property the first member has.
      */
     private static ParameterizedGroup tryStringBasedFlatten(String groupName, List<Scenario> members,
-                                                            String paramKey, int maxColumns) {
+                                                            String paramKey, int maxColumns,
+                                                            List<String> flatNames) {
         String firstValue = members.get(0).exampleValues() == null
             ? null : members.get(0).exampleValues().get(paramKey);
         Map<String, String> firstParsed = ParameterParser.tryParseRecordToString(firstValue);
@@ -133,14 +143,28 @@ final class ParameterGrouper {
             }
             flattened.add(withExampleValues(m, parsed));
         }
-        return new ParameterizedGroup(groupName, propertyNames, Rule.FLATTENED_OBJECT, flattened);
+        return new ParameterizedGroup(groupName, propertyNames, Rule.FLATTENED_OBJECT, flattened, flatNames);
+    }
+
+    /** The distinct {@code exampleFlatValues} keys across members, or empty if any member lacks them. */
+    private static List<String> computeFlatParameterNames(List<Scenario> members) {
+        for (Scenario m : members) {
+            if (m.exampleFlatValues() == null || m.exampleFlatValues().isEmpty()) {
+                return List.of();
+            }
+        }
+        Set<String> names = new LinkedHashSet<>();
+        for (Scenario m : members) {
+            names.addAll(m.exampleFlatValues().keySet());
+        }
+        return new ArrayList<>(names);
     }
 
     /** Rebuilds an (immutable) {@link Scenario} with a replaced {@code exampleValues} map. */
     private static Scenario withExampleValues(Scenario s, Map<String, String> exampleValues) {
         return new Scenario(s.name(), s.testId(), s.status(), s.durationMs(), s.error(),
             s.isHappyPath(), s.errorStackTrace(), s.labels(), s.categories(), s.rule(),
-            s.outlineId(), exampleValues, s.exampleDisplayName(),
+            s.outlineId(), exampleValues, s.exampleFlatValues(), s.exampleDisplayName(),
             s.attachments(), s.backgroundSteps(), s.steps());
     }
 }

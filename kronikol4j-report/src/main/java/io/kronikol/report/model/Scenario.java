@@ -12,14 +12,17 @@ import java.util.Map;
  * {@code testId} links it to the tracked interactions whose diagram is rendered beneath it.
  *
  * <p>{@code exampleValues} preserves insertion order (it is emitted ordered in JSON) and keeps the
- * {@code null}-vs-empty distinction; the list fields default to empty.
+ * {@code null}-vs-empty distinction; the list fields default to empty. {@code exampleFlatValues} holds
+ * the original (un-flattened) Gherkin example columns when a structured/flattened view is also shown —
+ * it drives the report's flatten toggle and, like the .NET field, is HTML-only (never serialized).
  *
  * @param durationMs duration in milliseconds (0 if untimed)
  */
 public record Scenario(
     String name, String testId, ExecutionStatus status, long durationMs, String error,
     boolean isHappyPath, String errorStackTrace, List<String> labels, List<String> categories,
-    String rule, String outlineId, Map<String, String> exampleValues, String exampleDisplayName,
+    String rule, String outlineId, Map<String, String> exampleValues, Map<String, String> exampleFlatValues,
+    String exampleDisplayName,
     List<FileAttachment> attachments, List<ScenarioStep> backgroundSteps, List<ScenarioStep> steps) {
 
     public Scenario {
@@ -30,6 +33,8 @@ public record Scenario(
         steps = steps == null ? List.of() : List.copyOf(steps);
         exampleValues = exampleValues == null
             ? null : Collections.unmodifiableMap(new LinkedHashMap<>(exampleValues)); // ordered, null kept
+        exampleFlatValues = exampleFlatValues == null
+            ? null : Collections.unmodifiableMap(new LinkedHashMap<>(exampleFlatValues)); // ordered, null kept
     }
 
     /** The deterministic, cross-run stable id derived from the owning feature + this scenario. */
@@ -40,7 +45,7 @@ public record Scenario(
     /** Back-compatible core scenario (no BDD / parameterized metadata). */
     public Scenario(String name, String testId, ExecutionStatus status, long durationMs, String error) {
         this(name, testId, status, durationMs, error, false, null, List.of(), List.of(),
-            null, null, null, null, List.of(), List.of(), List.of());
+            null, null, null, null, null, List.of(), List.of(), List.of());
     }
 
     public static Scenario passed(String name, String testId) {
@@ -65,6 +70,7 @@ public record Scenario(
         private String rule;
         private String outlineId;
         private Map<String, String> exampleValues;
+        private Map<String, String> exampleFlatValues;
         private String exampleDisplayName;
         private List<FileAttachment> attachments = List.of();
         private List<ScenarioStep> backgroundSteps = List.of();
@@ -85,6 +91,7 @@ public record Scenario(
         public Builder rule(String v) { this.rule = v; return this; }
         public Builder outlineId(String v) { this.outlineId = v; return this; }
         public Builder exampleValues(Map<String, String> v) { this.exampleValues = v; return this; }
+        public Builder exampleFlatValues(Map<String, String> v) { this.exampleFlatValues = v; return this; }
         public Builder exampleDisplayName(String v) { this.exampleDisplayName = v; return this; }
         public Builder attachments(List<FileAttachment> v) { this.attachments = v; return this; }
         public Builder backgroundSteps(List<ScenarioStep> v) { this.backgroundSteps = v; return this; }
@@ -92,7 +99,7 @@ public record Scenario(
 
         public Scenario build() {
             return new Scenario(name, testId, status, durationMs, error, isHappyPath, errorStackTrace,
-                labels, categories, rule, outlineId, exampleValues, exampleDisplayName,
+                labels, categories, rule, outlineId, exampleValues, exampleFlatValues, exampleDisplayName,
                 attachments, backgroundSteps, steps);
         }
     }

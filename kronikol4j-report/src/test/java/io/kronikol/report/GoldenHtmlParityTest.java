@@ -271,6 +271,37 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void parameterizedBrowserHtmlReport_flattenToggle_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();
+        ev1.put("name", "Bob");
+        ev1.put("age", "30");
+        LinkedHashMap<String, String> fv1 = new LinkedHashMap<>();
+        fv1.put("user", "Bob (30)");
+        LinkedHashMap<String, String> ev2 = new LinkedHashMap<>();
+        ev2.put("name", "Sue");
+        ev2.put("age", "25");
+        LinkedHashMap<String, String> fv2 = new LinkedHashMap<>();
+        fv2.put("user", "Sue (25)");
+        Scenario s1 = Scenario.builder("Signup Bob", "s1", ExecutionStatus.PASSED)
+            .durationMs(50).outlineId("Signup").exampleValues(ev1).exampleFlatValues(fv1)
+            .steps(List.of(new ScenarioStep("Then", "account exists", ExecutionStatus.PASSED, 10L,
+                List.of(), List.of())))
+            .build();
+        Scenario s2 = Scenario.builder("Signup Sue", "s2", ExecutionStatus.PASSED)
+            .durationMs(60).outlineId("Signup").exampleValues(ev2).exampleFlatValues(fv2)
+            .steps(List.of(new ScenarioStep("Then", "account exists", ExecutionStatus.PASSED, 10L,
+                List.of(), List.of())))
+            .build();
+        Feature feature = new Feature("Accounts", List.of(s1, s2));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-flattentoggle.html", actual);
+    }
+
+    @Test
     void summaryBrowserHtmlReport_includeTestRunData_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         Scenario login1 = Scenario.builder("Login succeeds", "s1", ExecutionStatus.PASSED)

@@ -83,6 +83,10 @@ CaptureHtmlParamComplexCells();
 // (TryStringBasedFlatten), with a nested-record column rendered as an R3 cell-subtable.
 CaptureHtmlR2Flatten();
 
+// Flatten toggle — ExampleFlatValues + ExampleValues produce the param-table-wrapper with a visible
+// param-table-flat table (− toggle) and a hidden param-table-grouped table (+ toggle).
+CaptureHtmlFlattenToggle();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -646,6 +650,41 @@ void CaptureHtmlR2Flatten()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-r2flatten.html"), content);
     Console.WriteLine($"=== report-r2flatten.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlFlattenToggle()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // Each example carries BOTH structured ExampleValues (the grouped ScalarColumns view: name/age)
+    // AND original ExampleFlatValues (the flat view: a single "user" column). The report shows the
+    // flat table (param-table-flat, visible) with a − toggle and the grouped table (param-table-grouped,
+    // display:none) with a + toggle, wrapped in param-table-wrapper.
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Signup Bob", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50),
+        OutlineId = "Signup",
+        ExampleValues = new() { ["name"] = "Bob", ["age"] = "30" },
+        ExampleFlatValues = new() { ["user"] = "Bob (30)" },
+        Steps = [ new ScenarioStep { Keyword = "Then", Text = "account exists", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) } ]
+    };
+    var s2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Signup Sue", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60),
+        OutlineId = "Signup",
+        ExampleValues = new() { ["name"] = "Sue", ["age"] = "25" },
+        ExampleFlatValues = new() { ["user"] = "Sue (25)" },
+        Steps = [ new ScenarioStep { Keyword = "Then", Text = "account exists", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) } ]
+    };
+    var feature = new Feature { DisplayName = "Accounts", Scenarios = [s1, s2] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-flattentoggle.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-flattentoggle.html"), content);
+    Console.WriteLine($"=== report-flattentoggle.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()
