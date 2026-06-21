@@ -13,19 +13,20 @@ import java.util.List;
 public record ScenarioStep(String keyword, String text, ExecutionStatus status, Long durationMs,
                            List<ScenarioStep> subSteps, List<FileAttachment> attachments,
                            List<String> comments, String docString, String docStringMediaType,
-                           List<StepTextSegment> textSegments) {
+                           List<StepTextSegment> textSegments, List<StepParameter> parameters) {
 
     public ScenarioStep {
         subSteps = subSteps == null ? List.of() : List.copyOf(subSteps);
         attachments = attachments == null ? List.of() : List.copyOf(attachments);
         comments = comments == null ? List.of() : List.copyOf(comments);
         textSegments = textSegments == null ? List.of() : List.copyOf(textSegments);
+        parameters = parameters == null ? List.of() : List.copyOf(parameters);
     }
 
     /** Back-compatible step (keyword/text/status/duration/sub-steps/attachments; no comments/doc-string). */
     public ScenarioStep(String keyword, String text, ExecutionStatus status, Long durationMs,
                         List<ScenarioStep> subSteps, List<FileAttachment> attachments) {
-        this(keyword, text, status, durationMs, subSteps, attachments, List.of(), null, null, List.of());
+        this(keyword, text, status, durationMs, subSteps, attachments, List.of(), null, null, List.of(), List.of());
     }
 
     /** A leaf step with a keyword, text, and status. */
@@ -49,6 +50,7 @@ public record ScenarioStep(String keyword, String text, ExecutionStatus status, 
         private String docString;
         private String docStringMediaType;
         private List<StepTextSegment> textSegments = List.of();
+        private List<StepParameter> parameters = List.of();
 
         private Builder(String keyword, String text, ExecutionStatus status) {
             this.keyword = keyword;
@@ -91,9 +93,14 @@ public record ScenarioStep(String keyword, String text, ExecutionStatus status, 
             return this;
         }
 
+        public Builder parameters(List<StepParameter> v) {
+            this.parameters = v;
+            return this;
+        }
+
         public ScenarioStep build() {
             return new ScenarioStep(keyword, text, status, durationMs, subSteps, attachments,
-                comments, docString, docStringMediaType, textSegments);
+                comments, docString, docStringMediaType, textSegments, parameters);
         }
     }
 }

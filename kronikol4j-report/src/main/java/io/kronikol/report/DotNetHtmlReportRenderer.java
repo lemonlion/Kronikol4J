@@ -4,9 +4,12 @@ import io.kronikol.report.html.HtmlEscaper;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.FileAttachment;
+import io.kronikol.report.model.InlineParameterValue;
 import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
+import io.kronikol.report.model.StepParameter;
 import io.kronikol.report.model.StepTextSegment;
+import io.kronikol.report.model.VerificationStatus;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -1116,6 +1119,13 @@ public final class DotNetHtmlReportRenderer {
                 body.append("<a class=\"step-attachment\" href=\"").append(relPath).append("\">").append(name).append("</a>");
             }
         }
+        for (StepParameter param : step.parameters()) {
+            // (skipTabularInline — for the combined tabular table — is threaded with that feature.)
+            if (!step.textSegments().isEmpty() && param.kind() == StepParameter.Kind.INLINE) {
+                continue; // already rendered inline in the text segments
+            }
+            appendParameter(body, param);
+        }
         if (step.docString() != null) {
             String codeClass = step.docStringMediaType() != null
                 ? " class=\"language-" + HtmlEscaper.encode(step.docStringMediaType()) + "\"" : "";
@@ -1144,13 +1154,7 @@ public final class DotNetHtmlReportRenderer {
         body.append("<span class=\"step-text\">");
         for (StepTextSegment seg : segments) {
             if (seg.parameter() != null) {
-                String statusClass = switch (seg.parameter().status()) {
-                    case SUCCESS -> "param-success";
-                    case FAILURE -> "param-failure";
-                    case EXCEPTION -> "param-exception";
-                    case NOT_PROVIDED -> "param-not-provided";
-                    default -> "param-na"; // NOT_APPLICABLE
-                };
+                String statusClass = paramStatusClass(seg.parameter().status());
                 String display = seg.parameter().expectation() != null
                     ? formatDisplayValue(seg.parameter().value()) + "/" + formatDisplayValue(seg.parameter().expectation())
                     : formatDisplayValue(seg.parameter().value());
@@ -1171,6 +1175,40 @@ public final class DotNetHtmlReportRenderer {
             }
         }
         body.append("</span>");
+    }
+
+    /** Ports .NET {@code RenderParameter}. Inline parameters render as a highlighted span; tabular and
+     *  tree parameters are ported in the following increments. */
+    private static void appendParameter(StringBuilder body, StepParameter param) {
+        switch (param.kind()) {
+            case INLINE -> {
+                if (param.inlineValue() != null) {
+                    InlineParameterValue iv = param.inlineValue();
+                    String display = iv.expectation() != null
+                        ? formatDisplayValue(iv.value()) + "/" + formatDisplayValue(iv.expectation())
+                        : formatDisplayValue(iv.value());
+                    body.append("<span class=\"step-param-inline ").append(paramStatusClass(iv.status()))
+                        .append("\" title=\"").append(HtmlEscaper.encode(param.name())).append("\">")
+                        .append(display).append("</span>");
+                }
+            }
+            case TABULAR -> {
+                /* TODO: tabular step-param-table (next increment). */
+            }
+            case TREE -> {
+                /* TODO: tree parameter via ParameterValueRenderer (next increment). */
+            }
+        }
+    }
+
+    private static String paramStatusClass(VerificationStatus status) {
+        return switch (status) {
+            case SUCCESS -> "param-success";
+            case FAILURE -> "param-failure";
+            case EXCEPTION -> "param-exception";
+            case NOT_PROVIDED -> "param-not-provided";
+            default -> "param-na"; // NOT_APPLICABLE
+        };
     }
 
     private static String stepStatusClass(ScenarioStep step) {

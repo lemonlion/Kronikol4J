@@ -9,6 +9,7 @@ import io.kronikol.report.model.FileAttachment;
 import io.kronikol.report.model.InlineParameterValue;
 import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
+import io.kronikol.report.model.StepParameter;
 import io.kronikol.report.model.StepTextSegment;
 import io.kronikol.report.model.VerificationStatus;
 import java.io.ByteArrayInputStream;
@@ -264,6 +265,24 @@ class GoldenHtmlParityTest {
             List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
 
         assertParity("report-stepsegments.html", actual);
+    }
+
+    @Test
+    void stepParamsBrowserHtmlReport_inlineParameter_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        ScenarioStep step = ScenarioStep.builder("When", "the amount is charged", ExecutionStatus.PASSED)
+            .durationMs(15)
+            .parameters(List.of(StepParameter.inline("amount",
+                new InlineParameterValue("9.99", null, VerificationStatus.NOT_APPLICABLE))))
+            .build();
+        Scenario scenario = Scenario.builder("Checkout succeeds", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500).steps(List.of(step)).build();
+        Feature feature = new Feature("Checkout", List.of(scenario));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-stepparams.html", actual);
     }
 
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
