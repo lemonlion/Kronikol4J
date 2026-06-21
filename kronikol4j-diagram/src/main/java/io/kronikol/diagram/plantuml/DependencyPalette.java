@@ -1,79 +1,88 @@
 package io.kronikol.diagram.plantuml;
 
-import io.kronikol.core.constants.DependencyCategories;
+import java.util.Locale;
 import java.util.Map;
 
 /**
- * Maps a dependency category to a PlantUML participant shape and colour. A static lookup with no
- * hashing (plan §6.5 confirmed the .NET palette is a frozen dictionary — ports cleanly). Unknown
- * categories fall back to a plain participant.
- *
- * <p>NOTE: the exact hex values must be reconciled against the .NET {@code DependencyPalette} during
- * golden-file parity (plan §6.3); the shape mapping below is structurally faithful.
+ * Maps a dependency category to a participant shape and arrow colour, mirroring the .NET
+ * {@code DependencyPalette} <strong>exactly</strong> (category → {@link DependencyType} → shape/colour),
+ * including: a {@code null}/empty category resolves to {@link DependencyType#HTTP_API} (the core HTTP
+ * handler sets no category), an unknown category resolves to {@link DependencyType#UNKNOWN}, and
+ * case-insensitive category lookup. Verified by the golden-file parity tests.
  */
 public final class DependencyPalette {
 
     private DependencyPalette() {
     }
 
-    /** PlantUML participant keywords. */
-    public enum Shape {
-        PARTICIPANT("participant"),
-        DATABASE("database"),
-        QUEUE("queue"),
-        COLLECTIONS("collections"),
-        ENTITY("entity");
+    /** Dependency classifications (mirror of the .NET {@code DependencyType}). */
+    public enum DependencyType {
+        HTTP_API("entity", "#438DD5"),
+        DATABASE("database", "#E74C3C"),
+        CACHE("collections", "#F39C12"),
+        MESSAGE_QUEUE("queue", "#9B59B6"),
+        STORAGE("database", "#2ECC71"),
+        UNKNOWN("participant", "#95A5A6");
 
-        private final String keyword;
+        private final String shape;
+        private final String color;
 
-        Shape(String keyword) {
-            this.keyword = keyword;
+        DependencyType(String shape, String color) {
+            this.shape = shape;
+            this.color = color;
         }
 
-        public String keyword() {
-            return keyword;
+        public String shape() {
+            return shape;
+        }
+
+        public String color() {
+            return color;
         }
     }
 
-    private static final Map<String, Shape> SHAPES = Map.ofEntries(
-        Map.entry(DependencyCategories.SQL, Shape.DATABASE),
-        Map.entry(DependencyCategories.DATABASE, Shape.DATABASE),
-        Map.entry(DependencyCategories.POSTGRESQL, Shape.DATABASE),
-        Map.entry(DependencyCategories.MYSQL, Shape.DATABASE),
-        Map.entry(DependencyCategories.COSMOS_DB, Shape.DATABASE),
-        Map.entry(DependencyCategories.MONGO_DB, Shape.DATABASE),
-        Map.entry(DependencyCategories.BIG_QUERY, Shape.DATABASE),
-        Map.entry(DependencyCategories.ELASTICSEARCH, Shape.DATABASE),
-        Map.entry(DependencyCategories.REDIS, Shape.COLLECTIONS),
-        Map.entry(DependencyCategories.MESSAGE_QUEUE, Shape.QUEUE),
-        Map.entry(DependencyCategories.SERVICE_BUS, Shape.QUEUE),
-        Map.entry(DependencyCategories.BLOB_STORAGE, Shape.DATABASE),
-        Map.entry(DependencyCategories.S3, Shape.DATABASE),
-        Map.entry(DependencyCategories.HTTP, Shape.ENTITY),
-        Map.entry(DependencyCategories.MEDIATR, Shape.ENTITY),
-        Map.entry(DependencyCategories.GRPC, Shape.ENTITY));
+    // Category (lower-cased for case-insensitive lookup) -> type. Mirrors .NET CategoryToType.
+    private static final Map<String, DependencyType> CATEGORY_TO_TYPE = Map.ofEntries(
+        Map.entry("cosmosdb", DependencyType.DATABASE),
+        Map.entry("sql", DependencyType.DATABASE),
+        Map.entry("bigquery", DependencyType.DATABASE),
+        Map.entry("redis", DependencyType.CACHE),
+        Map.entry("servicebus", DependencyType.MESSAGE_QUEUE),
+        Map.entry("blobstorage", DependencyType.STORAGE),
+        Map.entry("http", DependencyType.HTTP_API),
+        Map.entry("mediatr", DependencyType.HTTP_API),
+        Map.entry("messagequeue", DependencyType.MESSAGE_QUEUE),
+        Map.entry("mongodb", DependencyType.DATABASE),
+        Map.entry("dynamodb", DependencyType.DATABASE),
+        Map.entry("elasticsearch", DependencyType.DATABASE),
+        Map.entry("spanner", DependencyType.DATABASE),
+        Map.entry("bigtable", DependencyType.DATABASE),
+        Map.entry("database", DependencyType.DATABASE),
+        Map.entry("s3", DependencyType.STORAGE),
+        Map.entry("cloudstorage", DependencyType.STORAGE),
+        Map.entry("grpc", DependencyType.HTTP_API),
+        Map.entry("postgresql", DependencyType.DATABASE),
+        Map.entry("sqlserver", DependencyType.DATABASE),
+        Map.entry("mysql", DependencyType.DATABASE),
+        Map.entry("sqlite", DependencyType.DATABASE),
+        Map.entry("oracle", DependencyType.DATABASE),
+        Map.entry("clickhouse", DependencyType.DATABASE));
 
-    private static final Map<String, String> COLORS = Map.ofEntries(
-        Map.entry(DependencyCategories.SQL, "#FADBD8"),
-        Map.entry(DependencyCategories.DATABASE, "#FADBD8"),
-        Map.entry(DependencyCategories.POSTGRESQL, "#FADBD8"),
-        Map.entry(DependencyCategories.MYSQL, "#FADBD8"),
-        Map.entry(DependencyCategories.COSMOS_DB, "#FADBD8"),
-        Map.entry(DependencyCategories.MONGO_DB, "#FADBD8"),
-        Map.entry(DependencyCategories.REDIS, "#FCF3CF"),
-        Map.entry(DependencyCategories.MESSAGE_QUEUE, "#D6EAF8"),
-        Map.entry(DependencyCategories.SERVICE_BUS, "#D6EAF8"),
-        Map.entry(DependencyCategories.HTTP, "#D5F5E3"));
-
-    public static Shape shapeFor(String category) {
-        if (category == null) {
-            return Shape.PARTICIPANT;
+    /** Resolves a category to its type. {@code null}/empty → {@code HTTP_API}; unknown → {@code UNKNOWN}. */
+    public static DependencyType resolve(String category) {
+        if (category == null || category.isEmpty()) {
+            return DependencyType.HTTP_API;
         }
-        return SHAPES.getOrDefault(category, Shape.PARTICIPANT);
+        return CATEGORY_TO_TYPE.getOrDefault(category.toLowerCase(Locale.ROOT), DependencyType.UNKNOWN);
     }
 
-    /** A PlantUML colour token (e.g. {@code "#D5F5E3"}), or {@code null} for the theme default. */
+    /** The PlantUML participant shape keyword for a category. */
+    public static String shapeFor(String category) {
+        return resolve(category).shape();
+    }
+
+    /** The arrow/participant hex colour for a category (e.g. {@code "#438DD5"}). */
     public static String colorFor(String category) {
-        return category == null ? null : COLORS.get(category);
+        return resolve(category).color();
     }
 }

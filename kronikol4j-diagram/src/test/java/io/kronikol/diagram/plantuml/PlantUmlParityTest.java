@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.kronikol.core.constants.DependencyCategories;
 import io.kronikol.core.tracking.Method;
 import io.kronikol.core.tracking.RequestResponseLog;
+import io.kronikol.core.tracking.RequestResponseMetaType;
 import io.kronikol.core.tracking.RequestResponseType;
 import io.kronikol.core.tracking.StatusCode;
 import java.io.IOException;
@@ -17,40 +18,90 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Cross-runtime golden-file parity: asserts the Java {@link PlantUmlCreator} produces PlantUML
- * <strong>byte-identical</strong> to the real .NET Kronikol for the same corpus. The {@code .puml}
+ * <strong>byte-identical</strong> to the real .NET Kronikol for the same corpora. The {@code .puml}
  * fixtures were captured by driving the actual .NET {@code PlantUmlCreator}
  * ({@code parity-harness/dotnet-capture}). Only the trailing newline is normalised — never styling.
- *
- * <p>The corpus is currently the subset the Java generator covers; it grows as fidelity grows. Within
- * it, this is genuine byte parity, not a structural approximation.
  */
 class PlantUmlParityTest {
 
-    private static final UUID TRACE = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
-    private static final UUID RR = UUID.fromString("00000000-0000-0000-0000-0000000000bb");
+    @Test
+    void simpleHttp() throws IOException {
+        assertParity("simple-http", PlantUmlCreator.create(httpExchange()).get(0).diagrams().get(0));
+    }
 
     @Test
-    void simpleHttpMatchesDotNetByteForByte() throws IOException {
-        List<RequestResponseLog> corpus = List.of(
-            RequestResponseLog.builder()
-                .testName("Checkout succeeds").testId("t1")
-                .method(Method.Http.POST).uri(URI.create("http://orders/checkout"))
-                .serviceName("OrderService").callerName("Test")
-                .type(RequestResponseType.REQUEST).traceId(TRACE).requestResponseId(RR)
-                .dependencyCategory(DependencyCategories.HTTP).content("{\"item\":\"egg\"}")
-                .build(),
-            RequestResponseLog.builder()
-                .testName("Checkout succeeds").testId("t1")
-                .method(Method.Http.POST).uri(URI.create("http://orders/checkout"))
-                .serviceName("OrderService").callerName("Test")
-                .type(RequestResponseType.RESPONSE).traceId(TRACE).requestResponseId(RR)
-                .dependencyCategory(DependencyCategories.HTTP).statusCode(StatusCode.of(200))
-                .content("{\"ok\":true}")
-                .build());
+    void simpleHttpColored() throws IOException {
+        // .NET default is coloured arrows; verify per-dependency-type colours byte-for-byte.
+        assertParity("simple-http-colored",
+            PlantUmlCreator.create(httpExchange(), true).get(0).diagrams().get(0));
+    }
 
-        String actual = PlantUmlCreator.create(corpus).get(0).diagrams().get(0);
+    @Test
+    void multiTrace() throws IOException {
+        List<RequestResponseLog> corpus = new java.util.ArrayList<>(httpExchange());
+        corpus.addAll(sqlExchange("Checkout succeeds"));
+        assertParity("multi-trace", PlantUmlCreator.create(corpus).get(0).diagrams().get(0));
+    }
 
-        assertThat(actual.stripTrailing()).isEqualTo(readFixture("parity/simple-http.puml").stripTrailing());
+    @Test
+    void sql() throws IOException {
+        assertParity("sql", PlantUmlCreator.create(sqlExchange("Lookup order")).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void event() throws IOException {
+        assertParity("event", PlantUmlCreator.create(eventExchange()).get(0).diagrams().get(0));
+    }
+
+    // --- corpora (built identically to parity-harness/dotnet-capture/Program.cs) ---
+
+    private static List<RequestResponseLog> httpExchange() {
+        return List.of(
+            log("Checkout succeeds", Method.Http.POST, "http://orders/checkout", "OrderService",
+                DependencyCategories.HTTP, RequestResponseType.REQUEST, "{\"item\":\"egg\"}", null),
+            log("Checkout succeeds", Method.Http.POST, "http://orders/checkout", "OrderService",
+                DependencyCategories.HTTP, RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
+    }
+
+    private static List<RequestResponseLog> sqlExchange(String testName) {
+        return List.of(
+            log(testName, Method.of("SELECT"), "sql://database/", "OrderDb",
+                DependencyCategories.SQL, RequestResponseType.REQUEST,
+                "SELECT * FROM orders WHERE id = 1", null),
+            log(testName, Method.of("SELECT"), "sql://database/", "OrderDb",
+                DependencyCategories.SQL, RequestResponseType.RESPONSE, "1 row", StatusCode.of("OK")));
+    }
+
+    private static List<RequestResponseLog> eventExchange() {
+        return List.of(
+            event(RequestResponseType.REQUEST, "{\"id\":1}", null),
+            event(RequestResponseType.RESPONSE, null, StatusCode.of("Sent")));
+    }
+
+    private static RequestResponseLog log(String testName, Method method, String uri, String service,
+                                          String category, RequestResponseType type, String content,
+                                          StatusCode status) {
+        return RequestResponseLog.builder()
+            .testName(testName).testId("t1").method(method).uri(URI.create(uri))
+            .serviceName(service).callerName("Test").type(type)
+            .traceId(UUID.randomUUID()).requestResponseId(UUID.randomUUID())
+            .dependencyCategory(category).statusCode(status).content(content)
+            .build();
+    }
+
+    private static RequestResponseLog event(RequestResponseType type, String content, StatusCode status) {
+        return RequestResponseLog.builder()
+            .testName("Publishes order-created").testId("t1").method(Method.of("PUBLISH"))
+            .uri(URI.create("amqp://bus/")).serviceName("Kafka").callerName("Test").type(type)
+            .traceId(UUID.randomUUID()).requestResponseId(UUID.randomUUID())
+            .dependencyCategory(DependencyCategories.MESSAGE_QUEUE)
+            .metaType(RequestResponseMetaType.EVENT).statusCode(status).content(content)
+            .build();
+    }
+
+    private static void assertParity(String fixture, String actual) throws IOException {
+        assertThat(actual.stripTrailing())
+            .isEqualTo(readFixture("parity/" + fixture + ".puml").stripTrailing());
     }
 
     private static String readFixture(String resource) throws IOException {

@@ -1,6 +1,7 @@
 package io.kronikol.diagram.plantuml;
 
 import io.kronikol.core.tracking.RequestResponseLog;
+import io.kronikol.core.tracking.RequestResponseMetaType;
 import io.kronikol.core.tracking.RequestResponseType;
 import io.kronikol.core.tracking.StatusCode;
 import io.kronikol.diagram.model.PlantUmlForTest;
@@ -18,22 +19,32 @@ import java.util.Set;
  * Turns tracked {@link RequestResponseLog}s into PlantUML sequence-diagram text — the pure,
  * parity-critical heart of the output pipeline (plan §1 Seam C / Phase 2).
  *
- * <p>The output is aligned <strong>byte-for-byte</strong> with the .NET {@code PlantUmlCreator} for
- * the covered corpus (verified by the golden-file parity tests): the {@code !pragma teoz}/
- * {@code autonumber 1} prefix, {@code actor}/{@code entity} participant keywords with camelCased
- * aliases, the {@code METHOD: path} arrow labels, and request-note-left / response-note-right.
- * Parity discipline (plan §6.5): {@code \n} only; one un-split diagram per test (client-side
- * splitting); deterministic first-seen participant order.
+ * <p>Output is aligned <strong>byte-for-byte</strong> with the .NET {@code PlantUmlCreator} (verified
+ * by the golden-file parity tests): the {@code !pragma teoz}/{@code autonumber 1} prefix with the
+ * conditional {@code .eventNote} {@code <style>} block; {@code actor}/{@code entity}/{@code database}/
+ * {@code queue}/{@code collections} participant keywords with camelCased aliases; {@code METHOD: path}
+ * arrows (optionally colour-coded per dependency type, e.g. {@code -[#438DD5]>}); request-note-left /
+ * response-note-right; and {@code note<<eventNote>>} for fire-and-forget events. Parity discipline
+ * (plan §6.5): {@code \n} only; one un-split diagram per test; deterministic first-seen order.
  */
 public final class PlantUmlCreator {
 
     private static final String NL = "\n";
 
+    // Exact .NET prefix fragments (the event/assertion style sections are empty -> a single blank line).
+    private static final String EVENT_STYLE =
+        "<style>\n .eventNote {\n     BackgroundColor #cfecf7\n     FontSize 11\n     RoundCorner 10\n }\n</style>\n";
+
     private PlantUmlCreator() {
     }
 
-    /** Groups logs by test (first-seen order) and builds one diagram per test. */
+    /** Groups logs by test and builds one diagram per test (arrows uncoloured). */
     public static List<PlantUmlForTest> create(List<RequestResponseLog> logs) {
+        return create(logs, false);
+    }
+
+    /** As {@link #create(List)}, with optional per-dependency-type arrow colouring (.NET default: on). */
+    public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, boolean arrowColors) {
         Map<String, List<RequestResponseLog>> byTest = new LinkedHashMap<>();
         for (RequestResponseLog log : logs) {
             if (log.trackingIgnore()) {
@@ -45,17 +56,19 @@ public final class PlantUmlCreator {
         List<PlantUmlForTest> result = new ArrayList<>();
         byTest.forEach((testId, testLogs) ->
             result.add(new PlantUmlForTest(testId, testLogs.get(0).testName(),
-                List.of(buildDiagram(testLogs)), testLogs)));
+                List.of(buildDiagram(testLogs, arrowColors)), testLogs)));
         return result;
     }
 
-    private static String buildDiagram(List<RequestResponseLog> logs) {
+    private static String buildDiagram(List<RequestResponseLog> logs, boolean arrowColors) {
+        boolean hasEvents = logs.stream()
+            .anyMatch(l -> l.plantUml() == null && l.metaType() == RequestResponseMetaType.EVENT);
+
         StringBuilder sb = new StringBuilder(512);
-        // Prefix — matches the .NET CreatePlantUmlPrefix exactly (the two blank lines come from the
-        // empty event/assertion styling sections).
         sb.append("@startuml").append(NL);
         sb.append("!pragma teoz true").append(NL);
-        sb.append(NL).append(NL);
+        sb.append(hasEvents ? EVENT_STYLE : NL); // event style section (or empty -> blank line)
+        sb.append(NL);                            // assertion style section (empty -> blank line)
         sb.append("skinparam wrapWidth 800").append(NL);
         sb.append("autonumber 1").append(NL);
         sb.append(NL);
@@ -70,15 +83,21 @@ public final class PlantUmlCreator {
             }
             String caller = alias(log.callerName());
             String service = alias(log.serviceName());
+            String color = DependencyPalette.colorFor(log.dependencyCategory());
+            String side;
             if (log.type() == RequestResponseType.REQUEST) {
-                sb.append(caller).append(" -> ").append(service).append(": ")
-                    .append(requestLabel(log)).append(NL);
-                appendNote(sb, "left", NoteFormatter.format(log.content(), log.headers()));
+                String arrow = arrowColors ? "-[" + color + "]>" : "->";
+                sb.append(caller).append(' ').append(arrow).append(' ').append(service)
+                    .append(": ").append(requestLabel(log)).append(NL);
+                side = "left";
             } else {
-                sb.append(service).append(" --> ").append(caller).append(": ")
-                    .append(responseLabel(log)).append(NL);
-                appendNote(sb, "right", NoteFormatter.format(log.content(), log.headers()));
+                String arrow = arrowColors ? "-[" + color + "]->" : "-->";
+                sb.append(service).append(' ').append(arrow).append(' ').append(caller)
+                    .append(": ").append(responseLabel(log)).append(NL);
+                side = "right";
             }
+            String opener = (log.metaType() == RequestResponseMetaType.EVENT ? "note<<eventNote>> " : "note ") + side;
+            appendNote(sb, opener, NoteFormatter.format(log.content(), log.headers()));
         }
 
         sb.append("@enduml");
@@ -103,17 +122,17 @@ public final class PlantUmlCreator {
         for (String name : order) {
             // A service is shaped by its (first non-null) category; a caller-only name is an actor.
             String keyword = services.contains(name)
-                ? DependencyPalette.shapeFor(categoryByService.get(name)).keyword()
+                ? DependencyPalette.shapeFor(categoryByService.get(name))
                 : "actor";
             sb.append(keyword).append(" \"").append(name).append("\" as ").append(alias(name)).append(NL);
         }
     }
 
-    private static void appendNote(StringBuilder sb, String side, String body) {
+    private static void appendNote(StringBuilder sb, String opener, String body) {
         if (body == null || body.isEmpty()) {
             return;
         }
-        sb.append("note ").append(side).append(NL).append(body).append(NL).append("end note").append(NL);
+        sb.append(opener).append(NL).append(body).append(NL).append("end note").append(NL);
     }
 
     private static String requestLabel(RequestResponseLog log) {
@@ -126,7 +145,7 @@ public final class PlantUmlCreator {
         if (query != null && !query.isEmpty()) {
             path = path + "?" + query;
         }
-        return log.method().value() + ": " + path; // ".NET emits 'POST: /path'"
+        return log.method().value() + ": " + path;
     }
 
     private static String responseLabel(RequestResponseLog log) {
@@ -140,20 +159,16 @@ public final class PlantUmlCreator {
         return "";
     }
 
-    /** Camelizes then sanitizes a participant name into a PlantUML alias (mirrors the .NET
-     *  {@code SanitizeAlias} = {@code Camelize()} then {@code [^a-zA-Z0-9_] -> _}). E.g.
-     *  {@code "OrderService" -> "orderService"}, {@code "Test" -> "test"}. */
+    /** Camelizes then sanitizes a participant name into a PlantUML alias (mirrors .NET {@code
+     *  SanitizeAlias}). E.g. {@code "OrderService" -> "orderService"}, {@code "Test" -> "test"}. */
     static String alias(String name) {
-        String camel = camelize(name);
-        String sanitized = camel.replaceAll("[^a-zA-Z0-9_]", "_");
+        String sanitized = camelize(name).replaceAll("[^a-zA-Z0-9_]", "_");
         if (sanitized.isEmpty() || Character.isDigit(sanitized.charAt(0))) {
             sanitized = "_" + sanitized;
         }
         return sanitized;
     }
 
-    /** Lower-cases the first character (sufficient for Pascal/single-token names; full Humanizer
-     *  parity for multi-word names is a future refinement, plan §6.5). */
     private static String camelize(String name) {
         if (name == null || name.isEmpty()) {
             return "";

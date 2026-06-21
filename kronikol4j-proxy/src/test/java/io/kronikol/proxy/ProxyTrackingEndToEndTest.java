@@ -54,7 +54,8 @@ class ProxyTrackingEndToEndTest {
         assertThat(diagrams).hasSize(1);
         String uml = diagrams.get(0).diagrams().get(0);
         assertThat(uml)
-            .contains("participant \"OrderService\" as orderService")
+            // a null dependency category resolves to HttpApi -> entity (parity with .NET)
+            .contains("entity \"OrderService\" as orderService")
             .contains("test -> orderService: checkout: /OrderService/checkout")
             .contains("orderService --> test: OK");
     }

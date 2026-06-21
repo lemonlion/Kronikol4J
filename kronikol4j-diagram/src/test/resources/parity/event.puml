@@ -1,0 +1,24 @@
+@startuml
+!pragma teoz true
+<style>
+ .eventNote {
+     BackgroundColor #cfecf7
+     FontSize 11
+     RoundCorner 10
+ }
+</style>
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+queue "Kafka" as kafka
+
+test -> kafka: PUBLISH: /
+note<<eventNote>> left
+{
+  "id": 1
+}
+end note
+kafka --> test: Sent
+@enduml

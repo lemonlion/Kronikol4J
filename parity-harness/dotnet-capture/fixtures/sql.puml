@@ -1,0 +1,19 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+database "OrderDb" as orderDb
+
+test -> orderDb: SELECT: /
+note left
+SELECT * FROM orders WHERE id = 1
+end note
+orderDb --> test: OK
+note right
+1 row
+end note
+@enduml

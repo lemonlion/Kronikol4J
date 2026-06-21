@@ -1,0 +1,32 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "OrderService" as orderService
+database "OrderDb" as orderDb
+
+test -> orderService: POST: /checkout
+note left
+{
+  "item": "egg"
+}
+end note
+orderService --> test: OK
+note right
+{
+  "ok": true
+}
+end note
+test -> orderDb: SELECT: /
+note left
+SELECT * FROM orders WHERE id = 1
+end note
+orderDb --> test: OK
+note right
+1 row
+end note
+@enduml
