@@ -14,13 +14,20 @@ import io.kronikol.report.merge.FragmentJson;
 import io.kronikol.report.merge.ReportFragment.ScenarioFragment;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.Scenario;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +64,9 @@ class ReportFinalizerTest {
 
         var report = ReportFinalizer.finalizeRun(dir, "Run");
         assertThat(report).isNotNull();
-        assertThat(Files.readString(report.htmlFile())).contains("Checkout succeeds").contains("1 passed");
+        assertThat(Files.readString(report.htmlFile()))
+            .contains("Checkout succeeds")
+            .contains("data-status=\"Passed\""); // .NET-parity scenario marker
     }
 
     @Test
@@ -97,7 +106,8 @@ class ReportFinalizerTest {
         var report = ReportFinalizer.finalizeRun(dir, "Run",
             ReportOptions.defaults().withArrowColors(true).withParticipantColors(true));
 
-        assertThat(Files.readString(report.htmlFile()))
+        // The diagram is gzip-compressed in the puml-data island (.NET parity); decode to check colours.
+        assertThat(decodedDiagrams(Files.readString(report.htmlFile())))
             .contains("-[#438DD5]")            // coloured arrow
             .contains("orderService #438DD5"); // coloured participant
     }
@@ -110,7 +120,7 @@ class ReportFinalizerTest {
         System.setProperty(ReportOptions.ARROW_COLORS_PROPERTY, "true");
         try {
             var report = ReportFinalizer.finalizeRunToDefault("Run");
-            assertThat(Files.readString(report.htmlFile())).contains("-[#438DD5]");
+            assertThat(decodedDiagrams(Files.readString(report.htmlFile()))).contains("-[#438DD5]");
         } finally {
             System.clearProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY);
             System.clearProperty(ReportOptions.ARROW_COLORS_PROPERTY);
@@ -171,5 +181,52 @@ class ReportFinalizerTest {
             .type(RequestResponseType.RESPONSE).traceId(trace).requestResponseId(rr)
             .statusCode(StatusCode.of(200)).content("{\"ok\":true}")
             .build());
+    }
+
+    /** Extracts + decodes the gzip+base64 PlantUML island the .NET-parity report stores (plan §6.4),
+     *  so colour/diagram-content assertions can inspect the source rather than the inline bytes. */
+    private static String decodedDiagrams(String html) {
+        String open = "<script id=\"puml-data\" type=\"application/json\">";
+        int start = html.indexOf(open);
+        if (start < 0) {
+            return "";
+        }
+        int contentStart = start + open.length();
+        String json = html.substring(contentStart, html.indexOf("</script>", contentStart));
+        StringBuilder all = new StringBuilder();
+        Matcher m = Pattern.compile("\"[^\"]+\":\"((?:\\\\u[0-9A-Fa-f]{4}|\\\\.|[^\"\\\\])*)\"").matcher(json);
+        while (m.find()) {
+            byte[] gz = Base64.getDecoder().decode(jsonUnescape(m.group(1)));
+            try (GZIPInputStream in = new GZIPInputStream(new ByteArrayInputStream(gz))) {
+                all.append(new String(in.readAllBytes(), StandardCharsets.UTF_8)).append('\n');
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        return all.toString();
+    }
+
+    private static String jsonUnescape(String s) {
+        StringBuilder out = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c != '\\') {
+                out.append(c);
+                continue;
+            }
+            char n = s.charAt(++i);
+            if (n == 'u') {
+                out.append((char) Integer.parseInt(s.substring(i + 1, i + 5), 16));
+                i += 4;
+            } else {
+                out.append(switch (n) {
+                    case 'n' -> '\n';
+                    case 'r' -> '\r';
+                    case 't' -> '\t';
+                    default -> n;
+                });
+            }
+        }
+        return out.toString();
     }
 }

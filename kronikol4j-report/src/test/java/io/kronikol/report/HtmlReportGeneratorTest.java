@@ -22,6 +22,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * End-to-end wiring of {@link HtmlReportGenerator} (tracked logs → diagrams → the .NET-parity HTML
+ * report). The exact byte layout is proven separately by {@code GoldenHtmlParityTest}; here we assert
+ * the structural markers of that layout and decode the gzip {@code puml-data} island (via
+ * {@link PumlData}) to check the PlantUML that flowed through.
+ */
 class HtmlReportGeneratorTest {
 
     @BeforeEach
@@ -64,15 +70,16 @@ class HtmlReportGeneratorTest {
         assertThat(html)
             .startsWith("<!DOCTYPE html>")
             .contains("<title>Demo Run</title>")
-            .contains("1 scenarios · 1 passed · 0 failed")
+            .contains("<h1>Demo Run</h1>")
             .contains("Checkout succeeds")
-            .contains("badge passed")
-            .contains("class=\"plantuml-browser\" id=\"puml-0\"")
-            .contains("id=\"kronikol-diagrams\"")                        // JSON diagram data map
-            .contains("plantuml.js")                                     // PlantUML-WASM from the CDN
-            .contains("plantumlLoad")                                    // the bundled browser renderer
-            .contains("test -[#438DD5]&gt; orderService: POST: /checkout") // raw PlantUML (coloured), HTML-escaped
-            .endsWith("</html>\n");
+            .contains("data-status=\"Passed\"")                  // .NET-parity scenario marker
+            .contains("class=\"plantuml-browser\"")               // browser-rendered diagram slot
+            .contains("data-diagram-type=\"plantuml\"")
+            .contains("id=\"puml-data\"")                         // gzip diagram island
+            .contains("/plantuml.js\"")                           // PlantUML-WASM from the CDN
+            .endsWith("</html>");
+        // The diagram source survives, gzip-compressed, with the default per-dependency arrow colour.
+        assertThat(PumlData.all(html)).contains("test -[#438DD5]> orderService: POST: /checkout");
     }
 
     @Test
@@ -84,8 +91,7 @@ class HtmlReportGeneratorTest {
         var report = HtmlReportGenerator.generate(features, RequestResponseLogger.getAllLogs(), dir,
             "Demo Run", ReportOptions.defaults().withArrowColors(true).withParticipantColors(true));
 
-        String html = Files.readString(report.htmlFile());
-        assertThat(html)
+        assertThat(PumlData.all(Files.readString(report.htmlFile())))
             .contains("-[#438DD5]")            // coloured request/response arrows
             .contains("orderService #438DD5"); // coloured participant declaration
     }
@@ -99,7 +105,7 @@ class HtmlReportGeneratorTest {
         var report = HtmlReportGenerator.generate(features, RequestResponseLogger.getAllLogs(), dir, "Demo Run");
 
         // The .NET defaults: arrows coloured per dependency type, participants left uncoloured.
-        assertThat(Files.readString(report.htmlFile()))
+        assertThat(PumlData.all(Files.readString(report.htmlFile())))
             .contains("-[#438DD5]")
             .doesNotContain("orderService #438DD5");
     }
@@ -111,12 +117,14 @@ class HtmlReportGeneratorTest {
             List.of(Scenario.passed("Checkout succeeds", "t1"))));
 
         var report = HtmlReportGenerator.generate(features, RequestResponseLogger.getAllLogs(), dir, "Demo Run");
+        String html = Files.readString(report.htmlFile());
 
-        assertThat(Files.readString(report.htmlFile()))
-            .contains("<section class=\"component\">")
-            .contains("<h2>Component Diagram</h2>")
-            .contains("class=\"plantuml-browser\" id=\"puml-component\"")
-            .contains("**OrderService**")                          // component participant (raw, escaped)
+        assertThat(html)
+            .contains("id=\"component-diagram\" class=\"component-diagram-section\"")   // hidden section
+            .contains("onclick=\"toggle_component_diagram(this)\">Component Diagram");  // toolbar toggle
+        // The run-level component diagram is gzip-compressed as the first diagram (puml-0).
+        assertThat(PumlData.all(html))
+            .contains("**OrderService**")                          // component participant (raw)
             .contains("HTTP: POST - 1 calls across 1 tests");      // aggregated relationship label
     }
 
@@ -127,7 +135,7 @@ class HtmlReportGeneratorTest {
 
         var report = HtmlReportGenerator.generate(features, List.of(), dir, "Demo Run");
 
-        assertThat(Files.readString(report.htmlFile())).doesNotContain("class=\"component\"");
+        assertThat(Files.readString(report.htmlFile())).doesNotContain("component-diagram-section");
     }
 
     @Test
@@ -168,9 +176,11 @@ class HtmlReportGeneratorTest {
         String html = Files.readString(report.htmlFile());
 
         assertThat(html)
-            .contains("badge failed")
-            .contains("12 ms")
-            .contains("expected &lt;400&gt; but got &lt;500&gt;")  // error, escaped
-            .contains("0 passed · 1 failed");
+            .contains("data-status=\"Failed\"")
+            .contains("class=\"h3 failed\"")
+            .contains("<span class=\"duration-badge duration-fast\">12ms</span>")
+            .contains("<details class=\"failure-result\" open>")
+            .contains("Failure Cause: expected <400> but got <500>")          // error, raw (matches .NET)
+            .contains("data-search=\"checkout checkout rejects empty cart expected &lt;400&gt; but got &lt;500&gt;"); // escaped in search
     }
 }

@@ -53,7 +53,10 @@ class MergeTest {
         String html = MergeableReportRenderer.renderHtml(fragment);
         assertThat(html)
             .contains("<title>Merged Run</title>")
+            .contains("<h1>Merged Run</h1>")
             .contains("class=\"plantuml-browser\"")
-            .contains("id=\"kronikol-diagrams\"");
+            .contains("id=\"puml-data\"");                     // .NET-parity gzip diagram island
+        // The fragment's pre-computed PlantUML survives, gzip-compressed, in the island.
+        assertThat(io.kronikol.report.PumlData.all(html)).contains("Alice -> Bob");
     }
 }
