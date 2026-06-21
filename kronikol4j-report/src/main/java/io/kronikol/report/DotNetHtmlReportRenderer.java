@@ -6,6 +6,7 @@ import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.FileAttachment;
 import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
+import io.kronikol.report.model.StepTextSegment;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -1092,7 +1093,11 @@ public final class DotNetHtmlReportRenderer {
         if (step.keyword() != null) {
             body.append("<span class=\"step-keyword\">").append(HtmlEscaper.encode(step.keyword())).append("</span> ");
         }
-        body.append("<span class=\"step-text\">").append(HtmlEscaper.encode(step.text())).append("</span>");
+        if (!step.textSegments().isEmpty()) {
+            appendStepTextSegments(body, step.textSegments());
+        } else {
+            body.append("<span class=\"step-text\">").append(HtmlEscaper.encode(step.text())).append("</span>");
+        }
         if (step.durationMs() != null) {
             body.append(" <span class=\"step-duration\">(").append(formatDurationBadge(step.durationMs())).append(")</span>");
         }
@@ -1130,6 +1135,42 @@ public final class DotNetHtmlReportRenderer {
         } else {
             body.append("</div>");
         }
+    }
+
+    /** Ports .NET RenderStep's structured-text-segment branch: literal prose interleaved with inline
+     *  parameter values (highlighted by verification status). The tabular/tree reference path falls
+     *  back to its formatted value / plain text until the tabular-parameter feature is ported. */
+    private static void appendStepTextSegments(StringBuilder body, List<StepTextSegment> segments) {
+        body.append("<span class=\"step-text\">");
+        for (StepTextSegment seg : segments) {
+            if (seg.parameter() != null) {
+                String statusClass = switch (seg.parameter().status()) {
+                    case SUCCESS -> "param-success";
+                    case FAILURE -> "param-failure";
+                    case EXCEPTION -> "param-exception";
+                    case NOT_PROVIDED -> "param-not-provided";
+                    default -> "param-na"; // NOT_APPLICABLE
+                };
+                String display = seg.parameter().expectation() != null
+                    ? formatDisplayValue(seg.parameter().value()) + "/" + formatDisplayValue(seg.parameter().expectation())
+                    : formatDisplayValue(seg.parameter().value());
+                String titleAttr = seg.parameterName() != null
+                    ? " title=\"" + HtmlEscaper.encode(seg.parameterName()) + "\"" : "";
+                body.append("<span class=\"step-param-inline ").append(statusClass).append("\"")
+                    .append(titleAttr).append(">").append(display).append("</span>");
+            } else if (seg.tableReference() != null) {
+                if (seg.tableReferenceFormattedValue() != null) {
+                    body.append("<span class=\"step-param-inline param-na\" title=\"")
+                        .append(HtmlEscaper.encode(seg.tableReference())).append("\">")
+                        .append(HtmlEscaper.encode(seg.tableReferenceFormattedValue())).append("</span>");
+                } else {
+                    body.append(HtmlEscaper.encode(seg.tableReference()));
+                }
+            } else if (seg.text() != null) {
+                body.append(HtmlEscaper.encode(seg.text()));
+            }
+        }
+        body.append("</span>");
     }
 
     private static String stepStatusClass(ScenarioStep step) {

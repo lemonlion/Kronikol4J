@@ -58,6 +58,9 @@ CaptureHtmlSummary();
 // Rich step rendering — a step with Comments + a DocString (with media type).
 CaptureHtmlStepDetails();
 
+// Rich step rendering — structured TextSegments (literal prose + highlighted inline parameter values).
+CaptureHtmlStepSegments();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -358,6 +361,38 @@ void CaptureHtmlStepDetails()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-stepdetails.html"), content);
     Console.WriteLine($"=== report-stepdetails.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlStepSegments()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Checkout succeeds", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500),
+        Steps =
+        [
+            new ScenarioStep
+            {
+                Keyword = "Then", Text = "paid 9.99 with code 200", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(25),
+                TextSegments =
+                [
+                    StepTextSegment.Literal("paid "),
+                    StepTextSegment.Param("amount", new InlineParameterValue("9.99", null, VerificationStatus.NotApplicable)),
+                    StepTextSegment.Literal(" with code "),
+                    StepTextSegment.Param("code", new InlineParameterValue("200", "200", VerificationStatus.Success))
+                ]
+            }
+        ]
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [scenario] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-stepsegments.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-stepsegments.html"), content);
+    Console.WriteLine($"=== report-stepsegments.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()

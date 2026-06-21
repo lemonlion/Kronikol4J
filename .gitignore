@@ -37,5 +37,6 @@ parity-harness/dotnet-capture/fixtures/report-errordiff.html
 parity-harness/dotnet-capture/fixtures/report-parameterized.html
 parity-harness/dotnet-capture/fixtures/report-summary.html
 parity-harness/dotnet-capture/fixtures/report-stepdetails.html
+parity-harness/dotnet-capture/fixtures/report-stepsegments.html
 parity-harness/dotnet-capture/fixtures/stylesheets.css
 parity-harness/dotnet-capture/fixtures/assets/

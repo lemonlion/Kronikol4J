@@ -6,8 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.FileAttachment;
+import io.kronikol.report.model.InlineParameterValue;
 import io.kronikol.report.model.Scenario;
 import io.kronikol.report.model.ScenarioStep;
+import io.kronikol.report.model.StepTextSegment;
+import io.kronikol.report.model.VerificationStatus;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -240,6 +243,27 @@ class GoldenHtmlParityTest {
             List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
 
         assertParity("report-stepdetails.html", actual);
+    }
+
+    @Test
+    void stepSegmentsBrowserHtmlReport_inlineParameters_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        ScenarioStep step = ScenarioStep.builder("Then", "paid 9.99 with code 200", ExecutionStatus.PASSED)
+            .durationMs(25)
+            .textSegments(List.of(
+                StepTextSegment.literal("paid "),
+                StepTextSegment.param("amount", new InlineParameterValue("9.99", null, VerificationStatus.NOT_APPLICABLE)),
+                StepTextSegment.literal(" with code "),
+                StepTextSegment.param("code", new InlineParameterValue("200", "200", VerificationStatus.SUCCESS))))
+            .build();
+        Scenario scenario = Scenario.builder("Checkout succeeds", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500).steps(List.of(step)).build();
+        Feature feature = new Feature("Checkout", List.of(scenario));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-stepsegments.html", actual);
     }
 
     /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
