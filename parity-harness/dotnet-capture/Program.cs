@@ -128,6 +128,14 @@ DumpInternalFlowFlame();
 // multi-view diagram toolbar, and the internalFlowTracking head scripts.
 CaptureHtmlWholeTestFlow();
 
+// Whole-test-flow in a PARAMETERIZED group — two examples with different per-example sequence diagrams
+// + different activity/flame (per-example diagram-view divs).
+CaptureHtmlParamWholeTestFlow();
+
+// Whole-test-flow in a PARAMETERIZED group, all examples identical (shared seq + shared flame +
+// "identical across test cases" badge; FlameChart-only so allWtfIdentical can hold).
+CaptureHtmlParamWholeTestFlowSame();
+
 
 void CaptureHtml()
 {
@@ -371,6 +379,94 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlParamWholeTestFlow()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    using var listener = new ActivityListener
+    {
+        ShouldListenTo = _ => true,
+        Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllData
+    };
+    ActivitySource.AddActivityListener(listener);
+    var t0 = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    using var reqSrc = new ActivitySource("Kronikol.Request");
+    using var svcSrc = new ActivitySource("Svc");
+    var a1 = reqSrc.StartActivity("GET /a")!; a1.SetStartTime(t0);
+    var a2 = svcSrc.StartActivity("StepA")!; a2.SetStartTime(t0.AddMilliseconds(10)); a2.SetEndTime(t0.AddMilliseconds(40)); a2.Stop();
+    a1.SetEndTime(t0.AddMilliseconds(60)); a1.Stop();
+    var segA = new InternalFlowSegment(Guid.Empty, RequestResponseType.Request, "s1",
+        new DateTimeOffset(t0, TimeSpan.Zero), new DateTimeOffset(t0.AddMilliseconds(60), TimeSpan.Zero), new[] { a1, a2 });
+    var b1 = reqSrc.StartActivity("GET /b")!; b1.SetStartTime(t0);
+    var b2 = svcSrc.StartActivity("StepB")!; b2.SetStartTime(t0.AddMilliseconds(5)); b2.SetEndTime(t0.AddMilliseconds(25)); b2.Stop();
+    b1.SetEndTime(t0.AddMilliseconds(50)); b1.Stop();
+    var segB = new InternalFlowSegment(Guid.Empty, RequestResponseType.Request, "s2",
+        new DateTimeOffset(t0, TimeSpan.Zero), new DateTimeOffset(t0.AddMilliseconds(50), TimeSpan.Zero), new[] { b1, b2 });
+    var wholeTestSegments = new Dictionary<string, InternalFlowSegment> { ["iflow-test-s1"] = segA, ["iflow-test-s2"] = segB };
+
+    var s1 = new Scenario { Id = "s1", DisplayName = "Recipe A", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60), OutlineId = "Recipes", ExampleValues = new() { ["n"] = "1" } };
+    var s2 = new Scenario { Id = "s2", DisplayName = "Recipe B", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50), OutlineId = "Recipes", ExampleValues = new() { ["n"] = "2" } };
+    var feature = new Feature { DisplayName = "Recipes", Scenarios = [s1, s2] };
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", "", "@startuml\nA -> B : seqA\n@enduml"),
+        new DefaultDiagramsFetcher.DiagramAsCode("s2", "", "@startuml\nA -> B : seqB\n@enduml")
+    };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-paramwtf.html", "Kronikol Run", includeTestRunData: false,
+        internalFlowTracking: true, wholeTestSegments: wholeTestSegments,
+        wholeTestVisualization: WholeTestFlowVisualization.Both);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-paramwtf.html"), content);
+    Console.WriteLine($"=== report-paramwtf.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlParamWholeTestFlowSame()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    using var listener = new ActivityListener
+    {
+        ShouldListenTo = _ => true,
+        Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllData
+    };
+    ActivitySource.AddActivityListener(listener);
+    var t0 = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    using var reqSrc = new ActivitySource("Kronikol.Request");
+    using var svcSrc = new ActivitySource("Svc");
+    // Identical span trees for both examples → identical flame JSON → allWtfIdentical (FlameChart only,
+    // so the testId-bearing activity html is absent and cannot diverge).
+    InternalFlowSegment BuildSeg(string testId)
+    {
+        var r = reqSrc.StartActivity("GET /x")!; r.SetStartTime(t0);
+        var st = svcSrc.StartActivity("Step")!; st.SetStartTime(t0.AddMilliseconds(10)); st.SetEndTime(t0.AddMilliseconds(40)); st.Stop();
+        r.SetEndTime(t0.AddMilliseconds(60)); r.Stop();
+        return new InternalFlowSegment(Guid.Empty, RequestResponseType.Request, testId,
+            new DateTimeOffset(t0, TimeSpan.Zero), new DateTimeOffset(t0.AddMilliseconds(60), TimeSpan.Zero), new[] { r, st });
+    }
+    var wholeTestSegments = new Dictionary<string, InternalFlowSegment> { ["iflow-test-s3"] = BuildSeg("s3"), ["iflow-test-s4"] = BuildSeg("s4") };
+
+    var s3 = new Scenario { Id = "s3", DisplayName = "Shared A", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60), OutlineId = "Shared", ExampleValues = new() { ["n"] = "1" } };
+    var s4 = new Scenario { Id = "s4", DisplayName = "Shared B", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60), OutlineId = "Shared", ExampleValues = new() { ["n"] = "2" } };
+    var feature = new Feature { DisplayName = "Shared", Scenarios = [s3, s4] };
+    // Same sequence diagram for both → group.AllDiagramsIdentical.
+    var seq = "@startuml\nA -> B : shared\n@enduml";
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s3", "", seq),
+        new DefaultDiagramsFetcher.DiagramAsCode("s4", "", seq)
+    };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-paramwtfsame.html", "Kronikol Run", includeTestRunData: false,
+        internalFlowTracking: true, wholeTestSegments: wholeTestSegments,
+        wholeTestVisualization: WholeTestFlowVisualization.FlameChart);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-paramwtfsame.html"), content);
+    Console.WriteLine($"=== report-paramwtfsame.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlWholeTestFlow()

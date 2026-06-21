@@ -453,7 +453,7 @@ public final class DotNetHtmlReportRenderer {
                     renderedGroupKeys.add(groupKey);
                     counter = appendParameterizedGroup(body, feature, group, "pgrp" + (paramGroupCounter++),
                         scenarioDependencies, scenarioSearchTerms, diagramByTestId, diagramData, counter,
-                        custom.showStepNumbers(), toggles);
+                        custom.showStepNumbers(), toggles, wtfInput, median);
                     continue;
                 }
                 counter = appendScenario(body, feature, scenario, diagramByTestId,
@@ -972,10 +972,16 @@ public final class DotNetHtmlReportRenderer {
     /** The Details radio + Headers toggle + assertion/step/database toggles, shared by the single-view
      *  {@code diagram-toggle} bar and the multi-view (Diagrams) toolbar. */
     private static void appendDiagramDetailsRadio(StringBuilder body, DiagramToggles toggles) {
+        appendDetailsRadioCore(body);
+        appendDiagramToggleButtons(body, toggles, "Scenario");
+    }
+
+    /** The Details radio (Expand/Collapse/Truncate + lines select) + Headers toggle, <em>without</em>
+     *  the assertion/step/database toggles — those are placed separately in the parameterized toolbar. */
+    private static void appendDetailsRadioCore(StringBuilder body) {
         body.append("<span class=\"diagram-toggle-spacer\"></span><span class=\"details-radio\"><span class=\"details-radio-label\">Details:</span><button class=\"details-radio-btn\" data-state=\"expanded\" onclick=\"window._setAllNotes(this,'expanded')\">Expand</button><button class=\"details-radio-btn\" data-state=\"collapsed\" onclick=\"window._setAllNotes(this,'collapsed')\">Collapse</button><button class=\"details-radio-btn details-active\" data-state=\"truncated\" onclick=\"window._setAllNotes(this,'truncated')\">Truncate</button>")
             .append(truncateLinesSelect("window._setScenarioTruncateLines(this)"))
             .append("<span class=\"truncate-lines-label\">lines</span></span><button class=\"details-radio-btn toggle-btn details-active\" data-toggle=\"headers\" data-shown=\"true\" onclick=\"window._toggleScenarioHeaders(this)\">Headers Shown</button>");
-        appendDiagramToggleButtons(body, toggles, "Scenario");
     }
 
     /** The seq/activity/flame {@code diagram-toggle-btn} buttons + the spanWarning + details-radio for
@@ -1037,7 +1043,8 @@ public final class DotNetHtmlReportRenderer {
                                                  Map<String, Set<String>> scenarioSearchTerms,
                                                  Map<String, String> diagramByTestId,
                                                  Map<String, String> diagramData, int counter,
-                                                 boolean showStepNumbers, DiagramToggles toggles) {
+                                                 boolean showStepNumbers, DiagramToggles toggles,
+                                                 WholeTestFlowInput wtfInput, int medianSpanCount) {
         List<Scenario> scenarios = group.scenarios();
         boolean hasFailure = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.FAILED);
         boolean hasSkipped = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.SKIPPED);
@@ -1230,32 +1237,143 @@ public final class DotNetHtmlReportRenderer {
             body.append("</div>");
         }
 
-        // Per-example sequence diagrams: one shared diagram (with a badge) when all members' diagrams
-        // are identical, else one diagram per example (first shown, rest display:none).
-        boolean hasAnySeqDiagrams = scenarios.stream()
-            .anyMatch(s -> diagramByTestId.get(s.testId()) != null);
-        if (hasAnySeqDiagrams) {
-            body.append("<details class=\"example-diagrams\" open>");
-            body.append("<summary class=\"h4\">Sequence Diagrams</summary>");
-            appendSeqDiagramToggle(body, toggles);
-            if (group.identical()) {
-                String first = diagramByTestId.get(scenarios.get(0).testId());
-                if (first != null) {
-                    body.append("<span class=\"param-diagram-identical-badge\">"
-                        + "All diagrams identical across test cases</span>");
-                    counter = appendSequenceDiagram(body, first, diagramData, counter);
+        // Per-example diagrams: sequence + whole-test-flow (activity/flame), with one shared view + a
+        // badge when all examples are identical, else one per example (first shown). Mirrors the .NET
+        // RenderParameterizedGroup example-diagrams block.
+        String badge = "<span class=\"param-diagram-identical-badge\">All diagrams identical across test cases</span>";
+        List<WholeTestFlowContent> wtfContents = new ArrayList<>();
+        boolean hasAnyWholeTestFlow = false;
+        for (Scenario s : scenarios) {
+            WholeTestFlowContent c = resolveWholeTestFlow(s.testId(), wtfInput, diagramData);
+            wtfContents.add(c);
+            if (c != null) {
+                hasAnyWholeTestFlow = true;
+            }
+        }
+        boolean allWtfIdentical = false;
+        if (hasAnyWholeTestFlow && group.identical()) {
+            WholeTestFlowContent zero = wtfContents.get(0);
+            String firstActivity = zero != null ? zero.activityHtml() : "";
+            String firstFlame = zero != null ? zero.flameHtml() : "";
+            allWtfIdentical = true;
+            for (WholeTestFlowContent c : wtfContents) {
+                String a = c != null ? c.activityHtml() : "";
+                String f = c != null ? c.flameHtml() : "";
+                if (!a.equals(firstActivity) || !f.equals(firstFlame)) {
+                    allWtfIdentical = false;
+                    break;
                 }
+            }
+        }
+
+        boolean hasAnySeqDiagrams = scenarios.stream().anyMatch(s -> diagramByTestId.get(s.testId()) != null);
+        if (hasAnySeqDiagrams || hasAnyWholeTestFlow) {
+            body.append("<details class=\"example-diagrams\" open>");
+            boolean showSeqToggle = hasAnySeqDiagrams;
+            boolean showActivityToggle = hasAnyWholeTestFlow
+                && wtfContents.stream().anyMatch(c -> c != null && c.hasActivity());
+            boolean showFlameToggle = hasAnyWholeTestFlow
+                && wtfContents.stream().anyMatch(c -> c != null && c.hasFlame());
+            boolean multipleTypes =
+                (showSeqToggle ? 1 : 0) + (showActivityToggle ? 1 : 0) + (showFlameToggle ? 1 : 0) > 1;
+
+            if (multipleTypes) {
+                body.append("<summary class=\"h4\">Diagrams</summary><div class=\"diagram-toggle\">");
+                if (showSeqToggle) {
+                    body.append("<button class=\"diagram-toggle-btn diagram-toggle-active\" data-dtype=\"seq\">Sequence Diagrams</button>");
+                }
+                if (showActivityToggle) {
+                    body.append("<button class=\"diagram-toggle-btn").append(showSeqToggle ? "" : " diagram-toggle-active")
+                        .append("\" data-dtype=\"activity\">Activity Diagrams</button>");
+                }
+                if (showFlameToggle) {
+                    body.append("<button class=\"diagram-toggle-btn\" data-dtype=\"flame\">Flame Chart</button>");
+                }
+                if (showSeqToggle) { // .NET emits the Details radio only when a sequence diagram is present
+                    appendDetailsRadioCore(body);
+                }
+                appendDiagramToggleButtons(body, toggles, "Scenario");
+                body.append("</div>");
+            } else if (showSeqToggle) {
+                body.append("<summary class=\"h4\">Sequence Diagrams</summary>");
+                appendSeqDiagramToggle(body, toggles);
+            } else if (showActivityToggle && showFlameToggle) {
+                body.append("<summary class=\"h4\">Diagrams</summary><div class=\"diagram-toggle\">"
+                    + "<button class=\"diagram-toggle-btn diagram-toggle-active\" data-dtype=\"activity\">Activity Diagrams</button>"
+                    + "<button class=\"diagram-toggle-btn\" data-dtype=\"flame\">Flame Chart</button></div>");
+            } else if (showActivityToggle) {
+                body.append("<summary class=\"h4\">Activity Diagrams</summary>");
             } else {
-                for (int ri = 0; ri < scenarios.size(); ri++) {
-                    String display = ri == 0 ? "" : " style=\"display:none\"";
-                    body.append("<div id=\"").append(prefix).append("-diagram-").append(ri).append("\"")
-                        .append(display).append(">");
-                    String diagram = diagramByTestId.get(scenarios.get(ri).testId());
-                    if (diagram != null) {
-                        counter = appendSequenceDiagram(body, diagram, diagramData, counter);
+                body.append("<summary class=\"h4\">Flame Chart</summary>");
+            }
+
+            if (hasAnySeqDiagrams) {
+                boolean seqWrap = hasAnyWholeTestFlow && multipleTypes;
+                if (seqWrap) {
+                    body.append("<div class=\"diagram-view diagram-view-seq\">");
+                }
+                if (group.identical()) {
+                    String first = diagramByTestId.get(scenarios.get(0).testId());
+                    if (first != null) {
+                        body.append(badge);
+                        counter = appendSequenceDiagram(body, first, diagramData, counter);
                     }
+                } else {
+                    for (int ri = 0; ri < scenarios.size(); ri++) {
+                        String display = ri == 0 ? "" : " style=\"display:none\"";
+                        body.append("<div id=\"").append(prefix).append("-diagram-").append(ri).append("\"")
+                            .append(display).append(">");
+                        String diagram = diagramByTestId.get(scenarios.get(ri).testId());
+                        if (diagram != null) {
+                            counter = appendSequenceDiagram(body, diagram, diagramData, counter);
+                        }
+                        body.append("</div>");
+                    }
+                }
+                if (seqWrap) {
                     body.append("</div>");
                 }
+            }
+
+            if (showActivityToggle) {
+                body.append("<div class=\"diagram-view diagram-view-activity\"")
+                    .append(showSeqToggle ? " style=\"display:none\"" : "").append(">");
+                if (allWtfIdentical && wtfContents.get(0) != null) {
+                    body.append(badge).append(wtfContents.get(0).activityHtml());
+                } else {
+                    for (int ri = 0; ri < scenarios.size(); ri++) {
+                        String display = ri == 0 ? "" : " style=\"display:none\"";
+                        body.append("<div id=\"").append(prefix).append("-activity-").append(ri).append("\"")
+                            .append(display).append(">");
+                        WholeTestFlowContent c = wtfContents.get(ri);
+                        if (c != null && c.hasActivity()) {
+                            body.append(c.activityHtml());
+                        }
+                        body.append("</div>");
+                    }
+                }
+                body.append("</div>");
+            }
+
+            if (showFlameToggle) {
+                boolean hideFlame = showSeqToggle || (showActivityToggle && !showSeqToggle);
+                body.append("<div class=\"diagram-view diagram-view-flame\"")
+                    .append(hideFlame ? " style=\"display:none\"" : "").append(">");
+                if (allWtfIdentical && wtfContents.get(0) != null) {
+                    body.append(badge).append(wtfContents.get(0).flameHtml());
+                } else {
+                    for (int ri = 0; ri < scenarios.size(); ri++) {
+                        String display = ri == 0 ? "" : " style=\"display:none\"";
+                        body.append("<div id=\"").append(prefix).append("-flame-").append(ri).append("\"")
+                            .append(display).append(">");
+                        WholeTestFlowContent c = wtfContents.get(ri);
+                        if (c != null && c.hasFlame()) {
+                            body.append(c.flameHtml());
+                        }
+                        body.append("</div>");
+                    }
+                }
+                body.append("</div>");
             }
             body.append("</details>");
         }

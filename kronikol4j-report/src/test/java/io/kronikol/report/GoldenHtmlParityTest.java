@@ -466,6 +466,79 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void parameterizedBrowserHtmlReport_perExampleWholeTestFlow_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        java.time.Instant t0 = java.time.Instant.parse("2024-01-15T10:00:00Z");
+        InternalFlowSegment segA = new InternalFlowSegment("s1", List.of(
+            new InternalFlowSpan("1", null, "Kronikol.Request", null, "GET /a", t0, 60.0),
+            new InternalFlowSpan("2", "1", "Svc", null, "StepA", t0.plusMillis(10), 30.0)));
+        InternalFlowSegment segB = new InternalFlowSegment("s2", List.of(
+            new InternalFlowSpan("1", null, "Kronikol.Request", null, "GET /b", t0, 50.0),
+            new InternalFlowSpan("2", "1", "Svc", null, "StepB", t0.plusMillis(5), 20.0)));
+        Map<String, InternalFlowSegment> segs = new LinkedHashMap<>();
+        segs.put("iflow-test-s1", segA);
+        segs.put("iflow-test-s2", segB);
+        WholeTestFlowInput wtf = new WholeTestFlowInput(segs, WholeTestFlowVisualization.BOTH, Map.of(), true);
+
+        LinkedHashMap<String, String> n1 = new LinkedHashMap<>();
+        n1.put("n", "1");
+        LinkedHashMap<String, String> n2 = new LinkedHashMap<>();
+        n2.put("n", "2");
+        Scenario s1 = Scenario.builder("Recipe A", "s1", ExecutionStatus.PASSED)
+            .durationMs(60).outlineId("Recipes").exampleValues(n1).build();
+        Scenario s2 = Scenario.builder("Recipe B", "s2", ExecutionStatus.PASSED)
+            .durationMs(50).outlineId("Recipes").exampleValues(n2).build();
+        Feature feature = new Feature("Recipes", List.of(s1, s2));
+        Map<String, String> diagramByTestId = new LinkedHashMap<>();
+        diagramByTestId.put("s1", "@startuml\nA -> B : seqA\n@enduml");
+        diagramByTestId.put("s2", "@startuml\nA -> B : seqB\n@enduml");
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION,
+            false, java.time.Instant.EPOCH, java.time.Instant.EPOCH, HtmlCustomization.NONE, wtf);
+
+        assertParity("report-paramwtf.html", actual);
+    }
+
+    @Test
+    void parameterizedBrowserHtmlReport_sharedWholeTestFlow_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        java.time.Instant t0 = java.time.Instant.parse("2024-01-15T10:00:00Z");
+        // Identical span trees → identical flame JSON → allWtfIdentical (FlameChart only).
+        List<InternalFlowSpan> spans1 = List.of(
+            new InternalFlowSpan("1", null, "Kronikol.Request", null, "GET /x", t0, 60.0),
+            new InternalFlowSpan("2", "1", "Svc", null, "Step", t0.plusMillis(10), 30.0));
+        List<InternalFlowSpan> spans2 = List.of(
+            new InternalFlowSpan("1", null, "Kronikol.Request", null, "GET /x", t0, 60.0),
+            new InternalFlowSpan("2", "1", "Svc", null, "Step", t0.plusMillis(10), 30.0));
+        Map<String, InternalFlowSegment> segs = new LinkedHashMap<>();
+        segs.put("iflow-test-s3", new InternalFlowSegment("s3", spans1));
+        segs.put("iflow-test-s4", new InternalFlowSegment("s4", spans2));
+        WholeTestFlowInput wtf =
+            new WholeTestFlowInput(segs, WholeTestFlowVisualization.FLAME_CHART, Map.of(), true);
+
+        LinkedHashMap<String, String> n1 = new LinkedHashMap<>();
+        n1.put("n", "1");
+        LinkedHashMap<String, String> n2 = new LinkedHashMap<>();
+        n2.put("n", "2");
+        Scenario s3 = Scenario.builder("Shared A", "s3", ExecutionStatus.PASSED)
+            .durationMs(60).outlineId("Shared").exampleValues(n1).build();
+        Scenario s4 = Scenario.builder("Shared B", "s4", ExecutionStatus.PASSED)
+            .durationMs(60).outlineId("Shared").exampleValues(n2).build();
+        Feature feature = new Feature("Shared", List.of(s3, s4));
+        String seq = "@startuml\nA -> B : shared\n@enduml";
+        Map<String, String> diagramByTestId = new LinkedHashMap<>();
+        diagramByTestId.put("s3", seq);
+        diagramByTestId.put("s4", seq);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION,
+            false, java.time.Instant.EPOCH, java.time.Instant.EPOCH, HtmlCustomization.NONE, wtf);
+
+        assertParity("report-paramwtfsame.html", actual);
+    }
+
+    @Test
     void browserHtmlReport_wholeTestFlowActivityAndFlame_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         java.time.Instant t0 = java.time.Instant.parse("2024-01-15T10:00:00Z");
