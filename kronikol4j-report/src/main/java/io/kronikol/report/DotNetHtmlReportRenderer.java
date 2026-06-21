@@ -78,15 +78,16 @@ public final class DotNetHtmlReportRenderer {
         + "b2tlLXdpZHRoPSI5IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4NCiAgPHBvbHlnb24gcG9pbnRz"
         + "PSI0Nyw5MyAyNCw4MCA0Nyw2NyIgZmlsbD0iIzEwMUUzQyIvPg0KPC9zdmc+DQo=";
 
-    /** The inline {@code toggleTimelineFunction} (.NET keeps it inline; no component diagram here). */
-    private static final String TOGGLE_TIMELINE_FUNCTION =
+    /** The inline {@code toggleTimelineFunction} up to (and including) the toggle call. .NET appends
+     *  {@code deactivateComponentDiagramJs} here when a run-level component diagram is present, then
+     *  the closing brace; otherwise just the closing brace. */
+    private static final String TOGGLE_TIMELINE_HEAD =
         "function toggle_timeline(btn) {" + NL
         + "    var tl = document.getElementById('scenario-timeline');" + NL
         + "    if (!tl) return;" + NL
         + "    var hidden = tl.style.display === 'none';" + NL
         + "    tl.style.display = hidden ? '' : 'none';" + NL
-        + "    btn.classList.toggle('timeline-toggle-active', hidden);" + NL
-        + "}";
+        + "    btn.classList.toggle('timeline-toggle-active', hidden);";
 
     /** .NET status-filter button order: {@code ExecutionResult} sorted, minus SkippedAfterFailure. */
     private static final String[] STATUS_FILTER_ORDER = {"Passed", "Failed", "Skipped", "Bypassed"};
@@ -111,13 +112,14 @@ public final class DotNetHtmlReportRenderer {
      */
     public static String render(List<Feature> features, Map<String, String> diagramByTestId,
                                 String componentDiagram, String title, String version) {
+        boolean hasComponent = componentDiagram != null && !componentDiagram.isEmpty();
         Map<String, String> diagramData = new LinkedHashMap<>();
         StringBuilder head = new StringBuilder(300_000);
-        appendHead(head, title, version);
+        appendHead(head, title, version, hasComponent);
 
         StringBuilder body = new StringBuilder(8_192);
         appendBody(body, title, features, diagramByTestId == null ? Map.of() : diagramByTestId,
-            componentDiagram, diagramData);
+            hasComponent ? componentDiagram : null, diagramData);
 
         StringBuilder html = new StringBuilder(head.length() + body.length() + 1_024);
         html.append(head).append(body);
@@ -132,10 +134,16 @@ public final class DotNetHtmlReportRenderer {
 
     // ----------------------------------------------------------------------------------- head -----
 
-    private static void appendHead(StringBuilder sb, String title, String version) {
+    private static void appendHead(StringBuilder sb, String title, String version,
+                                   boolean hasComponentDiagram) {
         String plantUmlBrowserScript =
             asset("plantuml-browser-render-script.js").replace("__PLANTUML_CDN_BASE__", PLANTUML_CDN_BASE);
         String faviconLink = "<link rel=\"icon\" href=\"" + FAVICON_DATA_URI + "\">";
+        String toggleTimelineFunction = hasComponentDiagram
+            ? TOGGLE_TIMELINE_HEAD + asset("report-deactivate-component-diagram.js") + NL + "}"
+            : TOGGLE_TIMELINE_HEAD + NL + "}";
+        String toggleComponentDiagramFunction = hasComponentDiagram
+            ? asset("report-toggle-component-diagram-function.js") : "";
 
         sb.append("<!DOCTYPE html>").append(NL);
         sb.append("<html>").append(NL);
@@ -171,8 +179,8 @@ public final class DotNetHtmlReportRenderer {
         sb.append("            ").append(asset("report-select-row-function.js")).append(NL);
         sb.append("            ").append(asset("report-toggle-flatten-params-js.js")).append(NL);
         sb.append("            ").append(asset("report-param-expand-js.js")).append(NL);
-        sb.append("            ").append(TOGGLE_TIMELINE_FUNCTION).append(NL);
-        sb.append("            ").append(NL);                              // toggleComponentDiagramFunction = ""
+        sb.append("            ").append(toggleTimelineFunction).append(NL);
+        sb.append("            ").append(toggleComponentDiagramFunction).append(NL);
         sb.append("            ").append(asset("report-jump-to-failure-function.js")).append(NL);
         sb.append("            ").append(asset("report-duration-filter-function.js")).append(NL);
         sb.append("            ").append(asset("report-export-function.js")).append(NL);
@@ -224,10 +232,17 @@ public final class DotNetHtmlReportRenderer {
         }
 
         appendFilteringBox(body, features, allDependencies, hasDurations);
-        appendToolbar(body, hasDurations);
+        appendToolbar(body, hasDurations, componentDiagram != null);
         appendTimeline(body, features, hasDurations);
 
         int counter = 0;
+        if (componentDiagram != null) {
+            String compId = "puml-" + (counter++);
+            diagramData.put(compId, compressToBase64(componentDiagram));
+            body.append("<div id=\"component-diagram\" class=\"component-diagram-section\" style=\"display:none\">")
+                .append("<div class=\"plantuml-browser\" id=\"").append(compId)
+                .append("\" data-diagram-type=\"plantuml\"></div></div>");
+        }
         body.append("<div id=\"report-content\">");
         for (Feature feature : features) {
             boolean featureHasFailures = feature.scenarios().stream()
@@ -258,6 +273,13 @@ public final class DotNetHtmlReportRenderer {
         }
         body.append("</div>");
 
+        long failureCount = features.stream().flatMap(f -> f.scenarios().stream())
+            .filter(s -> s.status() == ExecutionStatus.FAILED).count();
+        if (failureCount > 0) {
+            body.append("<button class=\"jump-to-failure\" onclick=\"jump_to_next_failure()\">Next Failure "
+                + "<span class=\"failure-counter\" id=\"failure-counter\">(0/").append(failureCount)
+                .append(")</span></button>");
+        }
         body.append("<button class=\"back-to-top\" id=\"back-to-top\" "
             + "onclick=\"window.scrollTo({top:0,behavior:'smooth'})\">↑</button>");
     }
@@ -322,11 +344,14 @@ public final class DotNetHtmlReportRenderer {
         body.append("</div>"); // close filtering-box
     }
 
-    private static void appendToolbar(StringBuilder body, boolean hasDurations) {
+    private static void appendToolbar(StringBuilder body, boolean hasDurations, boolean hasComponent) {
         body.append("<div class=\"toolbar-row\">");
         body.append("<div class=\"toolbar-left\"><button class=\"collapse-expand-all\" onclick=\"toggle_expand_collapse(this, 'details.feature', 'Expand All Features', 'Collapse All Features')\">Expand All Features</button><button class=\"collapse-expand-all\" onclick=\"toggle_expand_collapse(this, 'details.scenario', 'Expand All Scenarios', 'Collapse All Scenarios')\">Expand All Scenarios</button>");
         if (hasDurations) {
             body.append("<button class=\"timeline-toggle\" onclick=\"toggle_timeline(this)\">Scenario Timeline</button>");
+        }
+        if (hasComponent) {
+            body.append("<button class=\"timeline-toggle\" onclick=\"toggle_component_diagram(this)\">Component Diagram</button>");
         }
         body.append("</div>");
         body.append("<div class=\"toolbar-right\">");
@@ -443,6 +468,22 @@ public final class DotNetHtmlReportRenderer {
             .append(encodedName).append("\" onclick=\"copy_scenario_name(this, event)\">&#128203;</button>")
             .append("<a class=\"scenario-link\" href=\"#").append(anchorId)
             .append("\" title=\"Link to this scenario\" onclick=\"event.stopPropagation()\">&#128279;</a></summary>");
+
+        if (failed) {
+            // .NET interpolates the error + stack trace RAW (unescaped) into the <pre>. diffHtml is the
+            // ErrorDiffParser expected/actual table — empty unless the message matches that shape (a
+            // separate port; the corpus error does not match, so "" is byte-correct here).
+            String diffHtml = "";
+            body.append("<details class=\"failure-result\" open>").append(NL)
+                .append("   <summary class=\"h4\">Failure Result</summary>").append(NL)
+                .append("   <pre>").append(NL)
+                .append("Failure Cause: ").append(nullToEmpty(scenario.error())).append(NL)
+                .append(NL)
+                .append(nullToEmpty(scenario.errorStackTrace())).append(NL)
+                .append("   </pre>").append(NL)
+                .append("   ").append(diffHtml).append(NL)
+                .append("</details>");
+        }
 
         String diagram = diagramByTestId.get(scenario.testId());
         boolean hasSequenceDiagrams = diagram != null;
@@ -662,5 +703,9 @@ public final class DotNetHtmlReportRenderer {
 
     private static String f1(double v) {
         return String.format(Locale.ROOT, "%.1f", v);
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
     }
 }

@@ -50,25 +50,46 @@ class GoldenHtmlParityTest {
         String actual = DotNetHtmlReportRenderer.render(
             List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION);
 
-        // Always dump the actual output next to the build dir so a failing run can be diffed externally.
-        Path dump = Path.of("build", "parity", "report-simple.actual.html");
+        assertParity("report-simple.html", actual);
+    }
+
+    @Test
+    void richBrowserHtmlReport_componentDiagramAndFailure_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        Scenario passed = Scenario.builder("Checkout succeeds", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500).build();
+        Scenario failed = Scenario.builder("Checkout rejects empty cart", "s2", ExecutionStatus.FAILED)
+            .durationMs(12)
+            .error("Expected <400> but got <500> & failed")
+            .errorStackTrace("at Checkout.Validate()\n  at Checkout.Run()")
+            .build();
+        Feature feature = new Feature("Checkout", List.of(passed, failed));
+        String diagram = "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml";
+        Map<String, String> diagramByTestId = Map.of("s1", diagram, "s2", diagram);
+        String componentDiagram = "@startuml\n[Test] --> [OrderService] : HTTP\n@enduml";
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, componentDiagram, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-rich.html", actual);
+    }
+
+    /** Asserts byte-identity (outside the gzip puml-data) and decoded-equality of the puml-data. */
+    private static void assertParity(String goldenName, String actual) throws IOException {
+        Path dump = Path.of("build", "parity", goldenName.replace(".html", ".actual.html"));
         Files.createDirectories(dump.getParent());
         Files.writeString(dump, actual, StandardCharsets.UTF_8);
 
-        String golden = readGolden();
-
-        // 1) Everything except the puml-data gzip payload must be byte-identical.
+        String golden = readGolden(goldenName);
         assertEquals(mask(golden), mask(actual),
             "HTML differs outside the puml-data block — see " + dump.toAbsolutePath());
-
-        // 2) The puml-data block must decode to the same diagram map (gzip is not byte-stable).
         assertEquals(decodePumlData(golden), decodePumlData(actual),
-            "puml-data decodes differently between golden and actual");
+            "puml-data decodes differently between golden and actual (" + goldenName + ")");
     }
 
-    private static String readGolden() {
-        try (InputStream in = GoldenHtmlParityTest.class.getResourceAsStream("/parity/report-simple.html")) {
-            assertTrue(in != null, "golden fixture /parity/report-simple.html not found on test classpath");
+    private static String readGolden(String name) {
+        try (InputStream in = GoldenHtmlParityTest.class.getResourceAsStream("/parity/" + name)) {
+            assertTrue(in != null, "golden fixture /parity/" + name + " not found on test classpath");
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException(e);

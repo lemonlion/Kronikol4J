@@ -22,6 +22,11 @@ CaptureReportData();
 // Full browser-render HTML report (Stage 0 evidence: scope true byte-parity from the real output).
 CaptureHtml();
 
+// Richer browser-render HTML: a component diagram + a failed scenario alongside the passed one
+// (exercises the component-diagram head/body wiring, the failure-result block, jump-to-failure,
+// status filters with failures, and mixed-status timeline — so the migrated tests prove those paths).
+CaptureHtmlRich();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -68,6 +73,39 @@ void CaptureHtml()
         .Replace(cdn, "__PLANTUML_CDN_BASE__");
     File.WriteAllText(Path.Combine(assetDir, "plantuml-browser-render-script.js"), browserScript);
     Console.WriteLine("=== dumped 9 + browser-render assets ===");
+}
+
+void CaptureHtmlRich()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    var passed = new Scenario
+    {
+        Id = "s1", DisplayName = "Checkout succeeds", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500)
+    };
+    var failed = new Scenario
+    {
+        Id = "s2", DisplayName = "Checkout rejects empty cart", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(12),
+        ErrorMessage = "Expected <400> but got <500> & failed",
+        ErrorStackTrace = "at Checkout.Validate()\n  at Checkout.Run()"
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [passed, failed] };
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", "",
+            "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml"),
+        new DefaultDiagramsFetcher.DiagramAsCode("s2", "",
+            "@startuml\nactor Test\nTest -> OrderService : POST: /checkout\n@enduml")
+    };
+    var componentDiagram = "@startuml\n[Test] --> [OrderService] : HTTP\n@enduml";
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-rich.html", "Kronikol Run",
+        includeTestRunData: false, componentDiagramPlantUml: componentDiagram);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-rich.html"), content);
+    Console.WriteLine($"=== report-rich.html ({content.Length} chars) ===");
 }
 
 void CaptureReportData()
