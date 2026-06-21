@@ -1,0 +1,17 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "Api" as api
+
+test -> api: GET: /missing
+api --> test: Not Found
+test -> api: POST: /boom
+api --> test: Internal Server Error
+test -> api: GET: /old
+api --> test: Found (Redirect)
+@enduml

@@ -1,0 +1,16 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+database "ReceiptBucket" as receiptBucket
+
+test -[#2ECC71]> receiptBucket: PUT: /
+note left
+receipts/42.pdf
+end note
+receiptBucket -[#2ECC71]-> test: OK
+@enduml

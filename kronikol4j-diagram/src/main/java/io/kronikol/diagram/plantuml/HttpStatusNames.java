@@ -20,7 +20,7 @@ public final class HttpStatusNames {
         Map.entry(202, "Accepted"),
         Map.entry(204, "NoContent"),
         Map.entry(301, "MovedPermanently"),
-        Map.entry(302, "Redirect"),
+        Map.entry(302, "Found"),
         Map.entry(304, "NotModified"),
         Map.entry(307, "TemporaryRedirect"),
         Map.entry(308, "PermanentRedirect"),
@@ -41,7 +41,9 @@ public final class HttpStatusNames {
     /** The display label for an HTTP code, e.g. {@code "Not Found"}. */
     public static String label(int code) {
         String name = NAMES.get(code);
-        return name == null ? Integer.toString(code) : titleize(name);
+        String base = name == null ? Integer.toString(code) : titleize(name);
+        // .NET disambiguates 302 ("Found" is unclear to a reader) with an explicit suffix.
+        return code == 302 ? base + " (Redirect)" : base;
     }
 
     /**

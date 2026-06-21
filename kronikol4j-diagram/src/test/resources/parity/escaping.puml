@@ -1,0 +1,29 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "EchoService" as echoService
+
+test -> echoService: POST: /echo
+note left
+{
+  "path": "C:\\\\temp\\\\f",
+  "name": "<a>&\\"x\\"",
+  "emoji": "✓",
+  "nested": {
+    "a": [
+      1,
+      2
+    ]
+  }
+}
+end note
+echoService --> test: OK
+note right
+plain text with a backslash \\ and a quote "
+end note
+@enduml

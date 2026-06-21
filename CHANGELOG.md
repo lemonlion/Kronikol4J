@@ -2,6 +2,30 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.3] — unreleased
+
+Strengthens the cross-runtime PlantUML parity guarantee and fixes a status-label divergence it
+surfaced. Full suite green on JDK 17–25.
+
+### Fixed
+- **HTTP 302 status label** now renders `Found (Redirect)` (was `Redirect`), matching .NET's
+  `HttpStatusCode.ToString()` + the reader-friendly redirect suffix. Found by the expanded parity
+  corpus.
+
+### Parity (testing)
+- **Corpus expanded 5 → 11 scenarios**, each captured byte-for-byte from the real .NET
+  `PlantUmlCreator` (`parity-harness/dotnet-capture`):
+  - every dependency-type shape + arrow colour — `redis` (cache → `collections`, `#F39C12`),
+    `storage` (S3 → `database`, `#2ECC71`), `unknown-category` (→ `participant`, `#95A5A6`);
+  - `status-codes` — 404 → `Not Found`, 500 → `Internal Server Error`, 302 → `Found (Redirect)`;
+  - `escaping` — backslash-doubling, no HTML-escaping inside notes, unicode, and nested-JSON
+    pretty-printing;
+  - `fan-out` — one test calling three services, pinning first-seen participant order.
+- **Tightened the parity assertion**: it now normalises CRLF→LF and strips only trailing newlines, so
+  a stray trailing space or extra blank line fails parity (previously `stripTrailing()` masked them).
+- Added `HttpStatusNamesTest` covering titleization, the 302 disambiguation, and the unknown-code
+  bare-number fallback.
+
 ## [0.1.2] — unreleased
 
 Rounds out the roadmap extensions: a Spock test-framework adapter and two more database trackers.

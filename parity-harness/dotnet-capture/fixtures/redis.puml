@@ -1,0 +1,21 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+collections "CartCache" as cartCache
+
+test -[#F39C12]> cartCache: GET: /
+note left
+cart:42
+end note
+cartCache -[#F39C12]-> test: OK
+note right
+{
+  "items": 2
+}
+end note
+@enduml

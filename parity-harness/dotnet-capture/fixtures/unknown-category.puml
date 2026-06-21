@@ -1,0 +1,19 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+participant "WidgetService" as widgetService
+
+test -[#95A5A6]> widgetService: INVOKE: /
+note left
+ping
+end note
+widgetService -[#95A5A6]-> test: OK
+note right
+pong
+end note
+@enduml
