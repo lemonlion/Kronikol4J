@@ -76,6 +76,34 @@ class HtmlReportGeneratorTest {
     }
 
     @Test
+    void defaultsAssetBaseToTheCdn() {
+        String html = HtmlReportGenerator.renderHtml(List.of(), java.util.Map.of(), "Demo");
+        assertThat(html)
+            .contains("src=\"https://cdn.jsdelivr.net/gh/lemonlion/")
+            .contains("/viz-global.js\"")
+            .contains("/plantuml.js\"");
+    }
+
+    @Test
+    void assetBaseOverrideEmitsAnOfflineSelfContainedReport() {
+        String previous = System.getProperty(HtmlReportGenerator.ASSET_BASE_PROPERTY);
+        System.setProperty(HtmlReportGenerator.ASSET_BASE_PROPERTY, "./assets/"); // trailing slash trimmed
+        try {
+            String html = HtmlReportGenerator.renderHtml(List.of(), java.util.Map.of(), "Demo");
+            assertThat(html)
+                .contains("src=\"./assets/viz-global.js\"")
+                .contains("src=\"./assets/plantuml.js\"")
+                .doesNotContain("cdn.jsdelivr.net");                 // no network dependency
+        } finally {
+            if (previous == null) {
+                System.clearProperty(HtmlReportGenerator.ASSET_BASE_PROPERTY);
+            } else {
+                System.setProperty(HtmlReportGenerator.ASSET_BASE_PROPERTY, previous);
+            }
+        }
+    }
+
+    @Test
     void rendersFailedScenarioWithError(@TempDir Path dir) throws IOException {
         var features = List.of(new Feature("Checkout", List.of(
             new Scenario("Checkout rejects empty cart", "t2", ExecutionStatus.FAILED, 12,

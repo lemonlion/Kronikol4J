@@ -117,11 +117,27 @@ public final class HtmlReportGenerator {
         return document(HtmlEscaper.encode(title), summary, diagramData, body.toString());
     }
 
-    /** PlantUML-WASM CDN (matches the .NET {@code PlantUmlJsCdnBase}). */
-    private static final String CDN =
+    /** Default PlantUML-WASM CDN (matches the .NET {@code PlantUmlJsCdnBase}). */
+    private static final String DEFAULT_CDN =
         "https://cdn.jsdelivr.net/gh/lemonlion/plantuml-js-plantuml_limit_size_98304@v1.2026.3beta6-patched";
+
+    /** System property to point {@code viz-global.js}/{@code plantuml.js} at a local directory (or
+     *  any base URL) instead of the CDN — set it to emit a self-contained, offline-renderable report
+     *  (e.g. {@code -Dkronikol.report.assetBase=./assets}). Trailing slash is trimmed. */
+    public static final String ASSET_BASE_PROPERTY = "kronikol.report.assetBase";
+
     private static final String RENDER_SCRIPT = loadResource("io/kronikol/report/kronikol-render.js");
     private static final String SEARCH_SCRIPT = loadResource("io/kronikol/report/advanced-search.js");
+
+    /** The base for the WASM assets: the {@link #ASSET_BASE_PROPERTY} override, else the CDN. */
+    static String assetBase() {
+        String override = System.getProperty(ASSET_BASE_PROPERTY);
+        if (override == null || override.isBlank()) {
+            return DEFAULT_CDN;
+        }
+        String trimmed = override.strip();
+        return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
+    }
 
     private static String document(String title, String summary, Map<String, String> diagramData, String body) {
         return "<!DOCTYPE html>" + NL
@@ -131,8 +147,8 @@ public final class HtmlReportGenerator {
             + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" + NL
             + "<title>" + title + "</title>" + NL
             + "<style>" + NL + STYLES + NL + "</style>" + NL
-            + "<script defer src=\"" + CDN + "/viz-global.js\"></script>" + NL
-            + "<script defer src=\"" + CDN + "/plantuml.js\"></script>" + NL
+            + "<script defer src=\"" + assetBase() + "/viz-global.js\"></script>" + NL
+            + "<script defer src=\"" + assetBase() + "/plantuml.js\"></script>" + NL
             + "<script id=\"kronikol-diagrams\" type=\"application/json\">" + Json.write(diagramData) + "</script>" + NL
             + "<script>" + NL + SEARCH_SCRIPT + NL + "</script>" + NL
             + "<script>" + NL + RENDER_SCRIPT + NL + "</script>" + NL
