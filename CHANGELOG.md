@@ -2,6 +2,31 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.11] — unreleased
+
+Completes the **browser-only HTML report port**: `TestRunReport.html` is now a byte-for-byte
+reproduction of the .NET Kronikol report (browser-rendering path), proven against captured golden
+files. Full suite green on JDK 17–25; the Playwright render check passes on Chromium.
+
+### Added
+- **`DotNetHtmlReportRenderer`** — assembles the report byte-identically to .NET's
+  `ReportGenerator.GenerateHtmlReport`: the head is built from the shared embedded assets interleaved
+  with the literal template + interpolations (reproducing C# raw-string-literal semantics exactly,
+  including the pure-whitespace lines empty holes emit); the body ports the filtering box, toolbar,
+  scenario timeline, per-feature/scenario `<details>`, failure-result block, run-level component
+  diagram and the gzip+base64 `puml-data` island.
+- **`GoldenHtmlParityTest`** — asserts byte-identity against two golden fixtures (a simple passed
+  scenario, and a rich one with a component diagram + a failure). The gzip diagram payload is not
+  byte-stable across runtimes (the harness's gzip differs from the JVM's); it is asserted by
+  *decoded* equality. Independent `diff`: only the `puml-data` line differs, and it decodes equal.
+
+### Changed
+- **The report is now the .NET-parity layout.** `HtmlReportGenerator.renderHtml`/`generate`/
+  `generateFromDiagrams` (and thus the runtime finalizer, JUnit 5 / TestNG listeners, CLI and merge
+  path) emit the new HTML; the legacy inline-PlantUML renderer is removed. The
+  `kronikol.report.assetBase` offline override is preserved (it rewrites the baked-in CDN base).
+- The 23 CRLF report asset scripts are normalised to LF so the embedded bytes match the golden.
+
 ## [0.1.10] — unreleased
 
 Wires the report-data serializers into the run: a standalone report now emits the machine-readable
