@@ -109,6 +109,10 @@ CaptureHtmlStepNumbers();
 // generateBlankOnFailedTests — an empty report file when any scenario failed.
 CaptureHtmlBlankOnFail();
 
+// Diagram-toolbar toggles — a diagram with assertion-note / step-delimiter / database markers renders
+// the Assertions/Steps/Databases buttons in the global toolbar and the scenario diagram bar.
+CaptureHtmlDiagramToggles();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -351,6 +355,29 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlDiagramToggles()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // A diagram whose PlantUML carries all three markers → hasAssertionNotes / hasStepDelimiters /
+    // hasDatabaseParticipants all true → the Assertions/Steps/Databases toggle buttons render in both
+    // the global toolbar (_toggle*) and the scenario diagram bar (_toggleScenario*).
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Saves order", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(100),
+        Steps = [ new ScenarioStep { Keyword = "When", Text = "the order is saved", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(20) } ]
+    };
+    var feature = new Feature { DisplayName = "Orders", Scenarios = [scenario] };
+    var puml = "@startuml\ndatabase \"OrderDB\" as db\nactor User\nUser -> db : <<stepDelimiter>> save\nnote over db <<assertionNote>> : verify\n@enduml";
+    var diagrams = new[] { new DefaultDiagramsFetcher.DiagramAsCode("s1", "", puml) };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-diagramtoggles.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-diagramtoggles.html"), content);
+    Console.WriteLine($"=== report-diagramtoggles.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlStepNumbers()

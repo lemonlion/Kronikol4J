@@ -459,6 +459,25 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void browserHtmlReport_diagramToolbarToggles_isByteForByteIdenticalToDotNetGolden() throws IOException {
+        Scenario scenario = Scenario.builder("Saves order", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(100)
+            .steps(List.of(new ScenarioStep("When", "the order is saved", ExecutionStatus.PASSED, 20L,
+                List.of(), List.of())))
+            .build();
+        Feature feature = new Feature("Orders", List.of(scenario));
+        String puml = "@startuml\ndatabase \"OrderDB\" as db\nactor User\nUser -> db : "
+            + "<<stepDelimiter>> save\nnote over db <<assertionNote>> : verify\n@enduml";
+        Map<String, String> diagramByTestId = new LinkedHashMap<>();
+        diagramByTestId.put("s1", puml);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-diagramtoggles.html", actual);
+    }
+
+    @Test
     void stepDetailsBrowserHtmlReport_commentsAndDocString_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         ScenarioStep step = ScenarioStep.builder("When", "the user submits the order", ExecutionStatus.PASSED)

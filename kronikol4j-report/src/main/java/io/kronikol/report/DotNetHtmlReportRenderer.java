@@ -178,6 +178,52 @@ public final class DotNetHtmlReportRenderer {
         return html.toString();
     }
 
+    /** Report-wide diagram-toolbar toggles: whether any diagram PlantUML carries assertion notes,
+     *  step delimiters, or database/collections participants (mirrors .NET hasAssertionNotes/
+     *  hasStepDelimiters/hasDatabaseParticipants — browser mode, scanning diagram code-behind). */
+    private record DiagramToggles(boolean assertions, boolean steps, boolean databases) {
+        static final DiagramToggles NONE = new DiagramToggles(false, false, false);
+    }
+
+    private static DiagramToggles computeDiagramToggles(Map<String, String> diagramByTestId) {
+        boolean assertions = false;
+        boolean steps = false;
+        boolean databases = false;
+        for (String puml : diagramByTestId.values()) {
+            if (puml == null) {
+                continue;
+            }
+            if (puml.contains("<<assertionNote>>")) {
+                assertions = true;
+            }
+            if (puml.contains("<<stepDelimiter>>")) {
+                steps = true;
+            }
+            if (puml.contains("\ndatabase \"") || puml.contains("\ncollections \"")) {
+                databases = true;
+            }
+        }
+        return new DiagramToggles(assertions, steps, databases);
+    }
+
+    /** The three conditional diagram-toolbar buttons, shared by the global toolbar and the per-scenario
+     *  / per-group diagram bars; {@code scope} is "" (global → {@code _toggleAssertions}…) or "Scenario"
+     *  (diagram bars → {@code _toggleScenarioAssertions}…). */
+    private static void appendDiagramToggleButtons(StringBuilder body, DiagramToggles toggles, String scope) {
+        if (toggles.assertions()) {
+            body.append("<button class=\"details-radio-btn toggle-btn\" data-toggle=\"assertions\" data-shown=\"false\" onclick=\"window._toggle")
+                .append(scope).append("Assertions(this)\">Assertions Hidden</button>");
+        }
+        if (toggles.steps()) {
+            body.append("<button class=\"details-radio-btn toggle-btn details-active\" data-toggle=\"steps\" data-shown=\"true\" onclick=\"window._toggle")
+                .append(scope).append("Steps(this)\">Steps Shown</button>");
+        }
+        if (toggles.databases()) {
+            body.append("<button class=\"details-radio-btn toggle-btn details-active\" data-toggle=\"databases\" data-shown=\"true\" onclick=\"window._toggle")
+                .append(scope).append("Databases(this)\">Databases Shown</button>");
+        }
+    }
+
     private static boolean anyScenarioFailed(List<Feature> features) {
         for (Feature f : features) {
             for (Scenario s : f.scenarios()) {
@@ -301,7 +347,8 @@ public final class DotNetHtmlReportRenderer {
         if (includeTestRunData) {
             body.append("</div>"); // close header-row (opened in the test-execution-summary block)
         }
-        appendToolbar(body, hasDurations, componentDiagram != null);
+        DiagramToggles toggles = computeDiagramToggles(diagramByTestId);
+        appendToolbar(body, hasDurations, componentDiagram != null, toggles);
         appendTimeline(body, features, hasDurations);
 
         int counter = 0;
@@ -376,11 +423,12 @@ public final class DotNetHtmlReportRenderer {
                     renderedGroupKeys.add(groupKey);
                     counter = appendParameterizedGroup(body, feature, group, "pgrp" + (paramGroupCounter++),
                         scenarioDependencies, scenarioSearchTerms, diagramByTestId, diagramData, counter,
-                        custom.showStepNumbers());
+                        custom.showStepNumbers(), toggles);
                     continue;
                 }
                 counter = appendScenario(body, feature, scenario, diagramByTestId,
-                    scenarioDependencies, scenarioSearchTerms, diagramData, counter, custom.showStepNumbers());
+                    scenarioDependencies, scenarioSearchTerms, diagramData, counter, custom.showStepNumbers(),
+                    toggles);
             }
             if (ruleOpen) {
                 body.append("</details>"); // close last rule
@@ -669,7 +717,8 @@ public final class DotNetHtmlReportRenderer {
         body.append("</div>"); // close filtering-box
     }
 
-    private static void appendToolbar(StringBuilder body, boolean hasDurations, boolean hasComponent) {
+    private static void appendToolbar(StringBuilder body, boolean hasDurations, boolean hasComponent,
+                                      DiagramToggles toggles) {
         body.append("<div class=\"toolbar-row\">");
         body.append("<div class=\"toolbar-left\"><button class=\"collapse-expand-all\" onclick=\"toggle_expand_collapse(this, 'details.feature', 'Expand All Features', 'Collapse All Features')\">Expand All Features</button><button class=\"collapse-expand-all\" onclick=\"toggle_expand_collapse(this, 'details.scenario', 'Expand All Scenarios', 'Collapse All Scenarios')\">Expand All Scenarios</button>");
         if (hasDurations) {
@@ -682,6 +731,7 @@ public final class DotNetHtmlReportRenderer {
         body.append("<div class=\"toolbar-right\">");
         body.append("<span class=\"details-radio\"><span class=\"details-radio-label\">Details:</span><button class=\"details-radio-btn\" data-state=\"expanded\" onclick=\"window._setReportDetails('expanded')\">Expand</button><button class=\"details-radio-btn\" data-state=\"collapsed\" onclick=\"window._setReportDetails('collapsed')\">Collapse</button><button class=\"details-radio-btn details-active\" data-state=\"truncated\" onclick=\"window._setReportDetails('truncated')\">Truncate</button>").append(truncateLinesSelect("window._setTruncateLines(this)")).append("<span class=\"truncate-lines-label\">lines</span></span>");
         body.append("<button class=\"details-radio-btn toggle-btn details-active\" data-toggle=\"headers\" data-shown=\"true\" onclick=\"window._toggleHeaders(this)\">Headers Shown</button>");
+        appendDiagramToggleButtons(body, toggles, "");
         body.append("</div>");
         body.append("</div>");
     }
@@ -729,7 +779,8 @@ public final class DotNetHtmlReportRenderer {
                                       Map<String, String> diagramByTestId,
                                       Map<String, Set<String>> scenarioDependencies,
                                       Map<String, Set<String>> scenarioSearchTerms,
-                                      Map<String, String> diagramData, int counter, boolean showStepNumbers) {
+                                      Map<String, String> diagramData, int counter, boolean showStepNumbers,
+                                      DiagramToggles toggles) {
         boolean failed = scenario.status() == ExecutionStatus.FAILED;
         boolean skipped = scenario.status() == ExecutionStatus.SKIPPED;
 
@@ -822,7 +873,7 @@ public final class DotNetHtmlReportRenderer {
         if (hasSequenceDiagrams) {
             body.append("<details class=\"example-diagrams\" open>");
             body.append("<summary class=\"h4\">Sequence Diagrams</summary>");
-            appendSeqDiagramToggle(body);
+            appendSeqDiagramToggle(body, toggles);
             counter = appendSequenceDiagram(body, diagram, diagramData, counter);
             body.append("</details>");
         }
@@ -830,12 +881,14 @@ public final class DotNetHtmlReportRenderer {
         return counter;
     }
 
-    /** The shared sequence-diagram {@code diagram-toggle} bar (Details radio + Headers toggle). */
-    private static void appendSeqDiagramToggle(StringBuilder body) {
+    /** The shared sequence-diagram {@code diagram-toggle} bar (Details radio + Headers toggle, plus the
+     *  conditional assertion/step/database toggles). */
+    private static void appendSeqDiagramToggle(StringBuilder body, DiagramToggles toggles) {
         body.append("<div class=\"diagram-toggle\">");
         body.append("<span class=\"diagram-toggle-spacer\"></span><span class=\"details-radio\"><span class=\"details-radio-label\">Details:</span><button class=\"details-radio-btn\" data-state=\"expanded\" onclick=\"window._setAllNotes(this,'expanded')\">Expand</button><button class=\"details-radio-btn\" data-state=\"collapsed\" onclick=\"window._setAllNotes(this,'collapsed')\">Collapse</button><button class=\"details-radio-btn details-active\" data-state=\"truncated\" onclick=\"window._setAllNotes(this,'truncated')\">Truncate</button>")
             .append(truncateLinesSelect("window._setScenarioTruncateLines(this)"))
             .append("<span class=\"truncate-lines-label\">lines</span></span><button class=\"details-radio-btn toggle-btn details-active\" data-toggle=\"headers\" data-shown=\"true\" onclick=\"window._toggleScenarioHeaders(this)\">Headers Shown</button>");
+        appendDiagramToggleButtons(body, toggles, "Scenario");
         body.append("</div>");
     }
 
@@ -877,7 +930,7 @@ public final class DotNetHtmlReportRenderer {
                                                  Map<String, Set<String>> scenarioSearchTerms,
                                                  Map<String, String> diagramByTestId,
                                                  Map<String, String> diagramData, int counter,
-                                                 boolean showStepNumbers) {
+                                                 boolean showStepNumbers, DiagramToggles toggles) {
         List<Scenario> scenarios = group.scenarios();
         boolean hasFailure = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.FAILED);
         boolean hasSkipped = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.SKIPPED);
@@ -1077,7 +1130,7 @@ public final class DotNetHtmlReportRenderer {
         if (hasAnySeqDiagrams) {
             body.append("<details class=\"example-diagrams\" open>");
             body.append("<summary class=\"h4\">Sequence Diagrams</summary>");
-            appendSeqDiagramToggle(body);
+            appendSeqDiagramToggle(body, toggles);
             if (group.identical()) {
                 String first = diagramByTestId.get(scenarios.get(0).testId());
                 if (first != null) {
