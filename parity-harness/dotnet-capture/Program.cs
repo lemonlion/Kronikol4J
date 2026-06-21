@@ -3,8 +3,10 @@
 // The Java parity tests assert (after normalising only the trailing newline) byte-equality.
 
 using System.Net;
+using Kronikol;
 using Kronikol.ComponentDiagram;
 using Kronikol.PlantUml;
+using Kronikol.Reports;
 using Kronikol.Tracking;
 
 var outDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "fixtures"));
@@ -12,6 +14,97 @@ Directory.CreateDirectory(outDir);
 
 // Component diagram (browser path → useC4:false), default options (DependencyType arrow colours).
 CaptureComponent("component", FanOut());
+
+// Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
+// httpInteractions; fixed times/ids so the fixtures are reproducible).
+CaptureReportData();
+
+void CaptureReportData()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+
+    var s1 = new Scenario
+    {
+        Id = "s1",
+        DisplayName = "Checkout succeeds",
+        IsHappyPath = true,
+        Result = ExecutionResult.Passed,
+        Duration = TimeSpan.FromMilliseconds(1500),
+        Labels = ["fast"],
+        Categories = ["api"],
+        Rule = "Happy path",
+        BackgroundSteps =
+        [
+            new ScenarioStep { Keyword = "Given", Text = "a logged-in user", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) }
+        ],
+        Steps =
+        [
+            new ScenarioStep { Keyword = "Given", Text = "an empty cart", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(20) },
+            new ScenarioStep
+            {
+                Keyword = "When", Text = "the user checks out & pays", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(500),
+                SubSteps = [ new ScenarioStep { Text = "POST /checkout", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(400) } ]
+            },
+            new ScenarioStep
+            {
+                Keyword = "Then", Text = "the order is confirmed", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(30),
+                Attachments = [ new FileAttachment("receipt.pdf", "attachments/receipt.pdf") ]
+            }
+        ],
+        Attachments = [ new FileAttachment("trace.log", "attachments/trace.log") ]
+    };
+
+    var s2 = new Scenario
+    {
+        Id = "s2",
+        DisplayName = "Checkout rejects empty cart",
+        IsHappyPath = false,
+        Result = ExecutionResult.Failed,
+        Duration = TimeSpan.FromMilliseconds(12),
+        ErrorMessage = "Expected <400> but got <500> & failed",
+        ErrorStackTrace = "at Checkout.Validate()\n  at Checkout.Run()",
+        OutlineId = "outline-1",
+        ExampleValues = new() { ["cart"] = "empty", ["expected"] = "400" },
+        ExampleDisplayName = "Empty cart"
+    };
+
+    var feature = new Feature
+    {
+        DisplayName = "Checkout",
+        Endpoint = "/checkout",
+        Description = "The checkout flow",
+        Labels = ["smoke", "critical"],
+        Scenarios = [s1, s2]
+    };
+
+    var (trace, rr) = Ids(7);
+    var logs = new[]
+    {
+        new RequestResponseLog("Checkout succeeds", "s1", HttpMethod.Post, "{\"item\":\"egg\"}",
+            new Uri("http://orders/checkout"), [("Accept", "application/json")], "OrderService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP")
+            { Timestamp = new DateTimeOffset(2024, 1, 15, 10, 0, 1, 234, TimeSpan.Zero) },
+        new RequestResponseLog("Checkout succeeds", "s1", HttpMethod.Post, "{\"ok\":true}",
+            new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test",
+            RequestResponseType.Response, trace, rr, false, StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP")
+            { Timestamp = new DateTimeOffset(2024, 1, 15, 10, 0, 1, 250, TimeSpan.Zero) }
+    };
+
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", "", "@startuml\nactor Test\nTest -> OrderService\n@enduml")
+    };
+
+    foreach (var (fmt, ext) in new[] { (DataFormat.Json, "json"), (DataFormat.Xml, "xml"), (DataFormat.Yaml, "yaml") })
+    {
+        var path = ReportGenerator.GenerateTestRunReportData(
+            [feature], start, end, $"report-data.{ext}", fmt, diagrams, logs);
+        var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+        File.WriteAllText(Path.Combine(outDir, $"report-data.{ext}"), content);
+        Console.WriteLine($"=== report-data.{ext} ({content.Length} chars) ===");
+    }
+}
 
 void CaptureComponent(string name, List<RequestResponseLog> logs)
 {

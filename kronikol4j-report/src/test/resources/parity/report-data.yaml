@@ -1,0 +1,87 @@
+KronikolVersion: 3.0.43+bd0b671c8c4f5741b97ec6a1c25f4f7dc99fdbb9
+StartTime: 2024-01-15T10:00:00Z
+EndTime: 2024-01-15T10:00:05Z
+Features:
+  - Name: Checkout
+    Endpoint: /checkout
+    Description: The checkout flow
+    Labels:
+      - smoke
+      - critical
+    Scenarios:
+      - Name: Checkout succeeds
+        StableId: 79b75f96aa4fced3
+        Result: Passed
+        DurationSeconds: 1.500
+        IsHappyPath: true
+        Labels:
+          - fast
+        Categories:
+          - api
+        Rule: Happy path
+        BackgroundSteps:
+          - Keyword: Given
+            Text: a logged-in user
+            Status: Passed
+            DurationSeconds: 0.010
+        Steps:
+          - Keyword: Given
+            Text: an empty cart
+            Status: Passed
+            DurationSeconds: 0.020
+          - Keyword: When
+            Text: the user checks out (and) pays
+            Status: Passed
+            DurationSeconds: 0.500
+            SubSteps:
+              - Keyword: 
+                Text: POST /checkout
+                Status: Passed
+                DurationSeconds: 0.400
+          - Keyword: Then
+            Text: the order is confirmed
+            Status: Passed
+            DurationSeconds: 0.030
+            Attachments:
+              - Name: receipt.pdf
+                RelativePath: attachments/receipt.pdf
+        Attachments:
+          - Name: trace.log
+            RelativePath: attachments/trace.log
+        Diagrams:
+          - |
+            @startuml
+            actor Test
+            Test -> OrderService
+            @enduml
+        HttpInteractions:
+          - Type: Request
+            Method: POST
+            Uri: http://orders/checkout
+            ServiceName: OrderService
+            CallerName: Test
+            Content: ("item":"egg")
+            TraceId: 00000000-0000-0000-0000-000000000007
+            RequestResponseId: 00000000-0000-0000-0000-000000000107
+            Timestamp: 2024-01-15T10:00:01.234Z
+            Headers:
+              - Key: Accept
+                Value: application/json
+          - Type: Response
+            Method: POST
+            Uri: http://orders/checkout
+            ServiceName: OrderService
+            CallerName: Test
+            Content: ("ok":true)
+            StatusCode: OK
+            TraceId: 00000000-0000-0000-0000-000000000007
+            RequestResponseId: 00000000-0000-0000-0000-000000000107
+            Timestamp: 2024-01-15T10:00:01.250Z
+      - Name: Checkout rejects empty cart
+        StableId: 478c03688cd2bdb0
+        Result: Failed
+        DurationSeconds: 0.012
+        IsHappyPath: false
+        ErrorMessage: Expected <400> but got <500> (and) failed
+        ErrorStackTrace: at Checkout.Validate()
+  at Checkout.Run()

@@ -1,0 +1,154 @@
+{
+  "kronikolVersion": "3.0.43\u002Bbd0b671c8c4f5741b97ec6a1c25f4f7dc99fdbb9",
+  "startTime": "2024-01-15T10:00:00Z",
+  "endTime": "2024-01-15T10:00:05Z",
+  "features": [
+    {
+      "name": "Checkout",
+      "endpoint": "/checkout",
+      "description": "The checkout flow",
+      "labels": [
+        "smoke",
+        "critical"
+      ],
+      "scenarios": [
+        {
+          "id": "s1",
+          "stableId": "79b75f96aa4fced3",
+          "name": "Checkout succeeds",
+          "result": "Passed",
+          "durationSeconds": 1.5,
+          "isHappyPath": true,
+          "errorMessage": null,
+          "errorStackTrace": null,
+          "labels": [
+            "fast"
+          ],
+          "categories": [
+            "api"
+          ],
+          "rule": "Happy path",
+          "outlineId": null,
+          "exampleValues": null,
+          "exampleDisplayName": null,
+          "attachments": [
+            {
+              "name": "trace.log",
+              "relativePath": "attachments/trace.log"
+            }
+          ],
+          "backgroundSteps": [
+            {
+              "keyword": "Given",
+              "text": "a logged-in user",
+              "status": "Passed",
+              "durationSeconds": 0.01,
+              "subSteps": [],
+              "attachments": []
+            }
+          ],
+          "steps": [
+            {
+              "keyword": "Given",
+              "text": "an empty cart",
+              "status": "Passed",
+              "durationSeconds": 0.02,
+              "subSteps": [],
+              "attachments": []
+            },
+            {
+              "keyword": "When",
+              "text": "the user checks out \u0026 pays",
+              "status": "Passed",
+              "durationSeconds": 0.5,
+              "subSteps": [
+                {
+                  "keyword": null,
+                  "text": "POST /checkout",
+                  "status": "Passed",
+                  "durationSeconds": 0.4,
+                  "subSteps": [],
+                  "attachments": []
+                }
+              ],
+              "attachments": []
+            },
+            {
+              "keyword": "Then",
+              "text": "the order is confirmed",
+              "status": "Passed",
+              "durationSeconds": 0.03,
+              "subSteps": [],
+              "attachments": [
+                {
+                  "name": "receipt.pdf",
+                  "relativePath": "attachments/receipt.pdf"
+                }
+              ]
+            }
+          ],
+          "diagrams": [
+            "@startuml\nactor Test\nTest -\u003E OrderService\n@enduml"
+          ],
+          "httpInteractions": [
+            {
+              "type": "Request",
+              "method": "POST",
+              "uri": "http://orders/checkout",
+              "serviceName": "OrderService",
+              "callerName": "Test",
+              "content": "{\u0022item\u0022:\u0022egg\u0022}",
+              "headers": [
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                }
+              ],
+              "statusCode": null,
+              "traceId": "00000000-0000-0000-0000-000000000007",
+              "requestResponseId": "00000000-0000-0000-0000-000000000107",
+              "timestamp": "2024-01-15T10:00:01.234Z"
+            },
+            {
+              "type": "Response",
+              "method": "POST",
+              "uri": "http://orders/checkout",
+              "serviceName": "OrderService",
+              "callerName": "Test",
+              "content": "{\u0022ok\u0022:true}",
+              "headers": [],
+              "statusCode": "OK",
+              "traceId": "00000000-0000-0000-0000-000000000007",
+              "requestResponseId": "00000000-0000-0000-0000-000000000107",
+              "timestamp": "2024-01-15T10:00:01.250Z"
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "stableId": "478c03688cd2bdb0",
+          "name": "Checkout rejects empty cart",
+          "result": "Failed",
+          "durationSeconds": 0.012,
+          "isHappyPath": false,
+          "errorMessage": "Expected \u003C400\u003E but got \u003C500\u003E \u0026 failed",
+          "errorStackTrace": "at Checkout.Validate()\n  at Checkout.Run()",
+          "labels": [],
+          "categories": [],
+          "rule": null,
+          "outlineId": "outline-1",
+          "exampleValues": {
+            "cart": "empty",
+            "expected": "400"
+          },
+          "exampleDisplayName": "Empty cart",
+          "attachments": [],
+          "backgroundSteps": [],
+          "steps": [],
+          "diagrams": [],
+          "httpInteractions": []
+        }
+      ]
+    }
+  ]
+}

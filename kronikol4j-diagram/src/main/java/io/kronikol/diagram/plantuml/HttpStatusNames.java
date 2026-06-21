@@ -38,6 +38,14 @@ public final class HttpStatusNames {
         Map.entry(503, "ServiceUnavailable"),
         Map.entry(504, "GatewayTimeout"));
 
+    /** The raw .NET {@code HttpStatusCode} enum name for a code (e.g. {@code 200 -> "OK"},
+     *  {@code 404 -> "NotFound"}); unknown codes return the bare number. Used where .NET emits
+     *  {@code HttpStatusCode.ToString()} verbatim (report-data {@code statusCode}). */
+    public static String enumName(int code) {
+        String name = NAMES.get(code);
+        return name == null ? Integer.toString(code) : name;
+    }
+
     /** The display label for an HTTP code, e.g. {@code "Not Found"}. */
     public static String label(int code) {
         String name = NAMES.get(code);

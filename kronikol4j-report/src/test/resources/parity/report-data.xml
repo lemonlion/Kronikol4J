@@ -1,0 +1,128 @@
+<TestRunReport>
+  <KronikolVersion>3.0.43+bd0b671c8c4f5741b97ec6a1c25f4f7dc99fdbb9</KronikolVersion>
+  <StartTime>2024-01-15T10:00:00Z</StartTime>
+  <EndTime>2024-01-15T10:00:05Z</EndTime>
+  <Features>
+    <Feature>
+      <Name>Checkout</Name>
+      <Endpoint>/checkout</Endpoint>
+      <Description>The checkout flow</Description>
+      <Labels>
+        <Label>smoke</Label>
+        <Label>critical</Label>
+      </Labels>
+      <Scenarios>
+        <Scenario>
+          <Id>s1</Id>
+          <StableId>79b75f96aa4fced3</StableId>
+          <Name>Checkout succeeds</Name>
+          <Result>Passed</Result>
+          <DurationSeconds>1.500</DurationSeconds>
+          <IsHappyPath>true</IsHappyPath>
+          <Labels>
+            <Label>fast</Label>
+          </Labels>
+          <Categories>
+            <Category>api</Category>
+          </Categories>
+          <Rule>Happy path</Rule>
+          <BackgroundSteps>
+            <Step>
+              <Keyword>Given</Keyword>
+              <Text>a logged-in user</Text>
+              <Status>Passed</Status>
+              <DurationSeconds>0.010</DurationSeconds>
+            </Step>
+          </BackgroundSteps>
+          <Steps>
+            <Step>
+              <Keyword>Given</Keyword>
+              <Text>an empty cart</Text>
+              <Status>Passed</Status>
+              <DurationSeconds>0.020</DurationSeconds>
+            </Step>
+            <Step>
+              <Keyword>When</Keyword>
+              <Text>the user checks out &amp; pays</Text>
+              <Status>Passed</Status>
+              <DurationSeconds>0.500</DurationSeconds>
+              <SubSteps>
+                <Step>
+                  <Text>POST /checkout</Text>
+                  <Status>Passed</Status>
+                  <DurationSeconds>0.400</DurationSeconds>
+                </Step>
+              </SubSteps>
+            </Step>
+            <Step>
+              <Keyword>Then</Keyword>
+              <Text>the order is confirmed</Text>
+              <Status>Passed</Status>
+              <DurationSeconds>0.030</DurationSeconds>
+              <Attachments>
+                <Attachment>
+                  <Name>receipt.pdf</Name>
+                  <RelativePath>attachments/receipt.pdf</RelativePath>
+                </Attachment>
+              </Attachments>
+            </Step>
+          </Steps>
+          <Attachments>
+            <Attachment>
+              <Name>trace.log</Name>
+              <RelativePath>attachments/trace.log</RelativePath>
+            </Attachment>
+          </Attachments>
+          <Diagrams>
+            <Diagram>@startuml
+actor Test
+Test -&gt; OrderService
+@enduml</Diagram>
+          </Diagrams>
+          <HttpInteractions>
+            <HttpInteraction>
+              <Type>Request</Type>
+              <Method>POST</Method>
+              <Uri>http://orders/checkout</Uri>
+              <ServiceName>OrderService</ServiceName>
+              <CallerName>Test</CallerName>
+              <Content>{"item":"egg"}</Content>
+              <Headers>
+                <Header>
+                  <Key>Accept</Key>
+                  <Value>application/json</Value>
+                </Header>
+              </Headers>
+              <TraceId>00000000-0000-0000-0000-000000000007</TraceId>
+              <RequestResponseId>00000000-0000-0000-0000-000000000107</RequestResponseId>
+              <Timestamp>2024-01-15T10:00:01.234Z</Timestamp>
+            </HttpInteraction>
+            <HttpInteraction>
+              <Type>Response</Type>
+              <Method>POST</Method>
+              <Uri>http://orders/checkout</Uri>
+              <ServiceName>OrderService</ServiceName>
+              <CallerName>Test</CallerName>
+              <Content>{"ok":true}</Content>
+              <StatusCode>OK</StatusCode>
+              <TraceId>00000000-0000-0000-0000-000000000007</TraceId>
+              <RequestResponseId>00000000-0000-0000-0000-000000000107</RequestResponseId>
+              <Timestamp>2024-01-15T10:00:01.250Z</Timestamp>
+            </HttpInteraction>
+          </HttpInteractions>
+        </Scenario>
+        <Scenario>
+          <Id>s2</Id>
+          <StableId>478c03688cd2bdb0</StableId>
+          <Name>Checkout rejects empty cart</Name>
+          <Result>Failed</Result>
+          <DurationSeconds>0.012</DurationSeconds>
+          <IsHappyPath>false</IsHappyPath>
+          <ErrorMessage>Expected &lt;400&gt; but got &lt;500&gt; &amp; failed</ErrorMessage>
+          <ErrorStackTrace>at Checkout.Validate()
+  at Checkout.Run()</ErrorStackTrace>
+        </Scenario>
+      </Scenarios>
+    </Feature>
+  </Features>
+</TestRunReport>

@@ -2,6 +2,27 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.9] — unreleased
+
+Ports the full report-data model and adds byte-for-byte JSON/XML/YAML report-data serializers
+(closing the YAML/XML output gap). Full suite green on JDK 17–25.
+
+### Added
+- **Full report model** — `Feature` gains `endpoint`/`description`/`labels`; `Scenario` gains
+  `isHappyPath`, `errorStackTrace`, `labels`, `categories`, `rule`, `outlineId`, `exampleValues`,
+  `exampleDisplayName`, `attachments`, `backgroundSteps`, `steps` (with a fluent builder); new
+  `ScenarioStep`, `FileAttachment`, and `ScenarioStableId` (SHA-256 → first 16 hex, lower-cased).
+  Existing call sites are unchanged — the previous shapes remain as convenience constructors.
+- **`ReportDataSerializer`** — serializes the test-run report data to **JSON, XML, and YAML**,
+  aligned **byte-for-byte** with the .NET `GenerateTestRunReportData`: System.Text.Json indentation
+  and default-encoder escaping (`"`/`&`/`<`…), `XDocument` formatting, the hand-built
+  YAML with `SanitiseForYml`, F3 vs raw-double durations, per-format field orders, and conditional
+  inclusion — including steps, attachments, diagrams, and httpInteractions. Verified by
+  `ReportDataParityTest` against fixtures captured from real .NET.
+
+The serializers are public building blocks; wiring them into the report run (emitting
+`TestRunReport.{json,xml,yaml}` with run timing + version) is the next integration step.
+
 ## [0.1.8] — unreleased
 
 Embeds the component diagram in the HTML report and fixes multi-diagram rendering. Full suite green
