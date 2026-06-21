@@ -2,6 +2,57 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.15] — unreleased
+
+**Phase 3 completeness sweep** — the remaining configurable report options and the secondary report
+artifacts, closing the port to **complete byte-for-byte parity with .NET Kronikol's reporting, minus
+only server-side PlantUML image rendering** (the Node.js / inline-SVG `ImgSrc` pre-render path; diagrams
+render in-browser instead).
+
+### Added — proven byte-parity for
+- **Parameterized option flags** — `ParameterizedOptions` (`groupParameterizedTests` /
+  `maxParameterColumns` / `titleizeParameterNames`) threaded through `render(…)`: ungrouped flat tables,
+  the `maxParameterColumns` scalar-column fallback, and the un-titleized raw parameter names.
+- **Interactive internal-flow popup** — the per-diagram popup data (`window.__iflowConfig` +
+  `window.__iflowSegments`), built from per-boundary segments (`InternalFlowSegmentBuilder.buildSegments`)
+  and an `InternalFlowPopupInput`, emitted in the head. The compact `System.Text.Json`-faithful segment
+  payload (`InternalFlowHtmlGenerator.generateSegmentDataScript`) and the inline activity-diagram
+  (`renderActivityDiagramInline`, `data-plantuml-z`) are byte/decoded-verified.
+- **Merge whole-test-flow fragments** — each test's pre-rendered internal-flow content
+  (`WholeTestFlowContent`: activity HTML + flame HTML + span count) now rides in the report fragment
+  (`ReportFragment.wholeTestFlow`, serialized in `FragmentJson` only when present), merges across shards,
+  and feeds the renderer as `precomputedWholeTestContent` — so a merged report shows each shard's
+  whole-test-flow without re-resolving from raw spans (mirrors `ResolveWholeTestFlowContent`'s precomputed
+  branch).
+- **Custom stylesheet param** — the .NET `stylesheet` positional
+  (`HtmlSpecificationsCustomStyleSheet`): `combinedStylesheet = HtmlReportStyleSheet + "\n" + (stylesheet ??
+  "")`, appended **into** the main `<style>` block right after the base sheet, distinct from `customCss`
+  (a separate trailing `<style>`). Threaded via `HtmlCustomization.customStyleSheet`.
+- **CI markdown summary** — `CiSummaryGenerator` (the `$GITHUB_STEP_SUMMARY` artifact): the metrics
+  table + failed-scenario details (error / stack trace / escaping) or passed-scenario sequence diagrams,
+  reusing the ported `PlantUmlTextEncoder` for the server diagram links. The byte-stable structure is
+  golden-verified; the non-byte-stable DEFLATE server token is masked and proven by decoding.
+- **Diagnostic report** — `DiagnosticReportGenerator` (the standalone `DiagnosticReport.html`): the
+  deterministic sections (configuration dump, request/response log summary, entries per service / per
+  test, the "unknown" entries breakdown with first/last seen, unpaired requests, orphaned test ids,
+  no-log scenarios, activity-span count), plus `FailureClusterer` (group failed scenarios by normalised
+  first-line error) and `ReportDiagnostics.analyse` (the deterministic console warnings).
+
+### Notes — deliberate boundaries (documented at the call sites)
+- **`DiagramFormat` is PlantUml-only** — the .NET enum has a single value and `ExtractDependencies`
+  ignores its `format` argument; there is no Mermaid format, so the dep-extraction port is PlantUml-only.
+- **Runtime/environment-state sections are not cross-runtime byte-parity-able** — the diagnostic
+  report's and `ReportDiagnostics`' registry-driven warnings (discovered activity sources, tracking
+  components, unmatched HTTP client names, unresolved assertion arguments) read mutable .NET DI/tracking
+  state with no portable equivalent (the same boundary as finished-span capture); they are conditional on
+  non-empty state, so an empty-registry report matches byte-for-byte. The CI writers (`CiSummaryWriter` /
+  `CiArtifactPublisher`) are pure CI-environment IO (`GITHUB_STEP_SUMMARY` / `GITHUB_OUTPUT`) — the
+  parity-able content is the ported markdown.
+- Re-scan confirmed every `GenerateHtmlReport` parameter is represented except the server-rendering trio
+  (`lazyLoadImages` / non-`BrowserJs` `plantUmlRendering` / `inlineSvgRendering`), which is the one
+  deliberate exclusion. The reflection-based `ExampleRawValues` object rendering remains a documented
+  boundary (only the deterministic string-based parameter paths are ported).
+
 ## [0.1.14] — unreleased
 
 Adds the **internal-flow / whole-test-flow** report views — the activity diagrams and flame
