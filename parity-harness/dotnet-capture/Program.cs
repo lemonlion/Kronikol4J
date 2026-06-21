@@ -99,6 +99,10 @@ CaptureHtmlParamDiagrams();
 // Commit/Pipeline/Repository) and the pie chart, in the test-run-data summary.
 CaptureHtmlCiMetadata();
 
+// Custom assets — customCss (<style> after the main stylesheet), customFaviconBase64 (favicon href),
+// customLogoHtml (custom-logo div above the <h1>).
+CaptureHtmlCustomAssets();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -341,6 +345,30 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlCustomAssets()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // customCss → <style> after the main stylesheet; customFaviconBase64 → the favicon href;
+    // customLogoHtml → a custom-logo div above the <h1>.
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Loads home page", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(40),
+        Steps = [ new ScenarioStep { Keyword = "Then", Text = "the page renders", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) } ]
+    };
+    var feature = new Feature { DisplayName = "Web", Scenarios = [s1] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-customassets.html", "Kronikol Run", includeTestRunData: false,
+        customCss: ".kx-banner { color: #c0ffee; }",
+        customFaviconBase64: "data:image/png;base64,AAAA",
+        customLogoHtml: "<img src=\"logo.png\" alt=\"Acme\">");
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-customassets.html"), content);
+    Console.WriteLine($"=== report-customassets.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlCiMetadata()

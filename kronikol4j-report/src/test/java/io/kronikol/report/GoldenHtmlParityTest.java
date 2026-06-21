@@ -403,6 +403,24 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void browserHtmlReport_customCssFaviconLogo_isByteForByteIdenticalToDotNetGolden() throws IOException {
+        Scenario s1 = Scenario.builder("Loads home page", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(40)
+            .steps(List.of(new ScenarioStep("Then", "the page renders", ExecutionStatus.PASSED, 10L,
+                List.of(), List.of())))
+            .build();
+        Feature feature = new Feature("Web", List.of(s1));
+        HtmlCustomization custom = new HtmlCustomization(null, ".kx-banner { color: #c0ffee; }",
+            "data:image/png;base64,AAAA", "<img src=\"logo.png\" alt=\"Acme\">", false, false);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION,
+            false, Instant.EPOCH, Instant.EPOCH, custom);
+
+        assertParity("report-customassets.html", actual);
+    }
+
+    @Test
     void stepDetailsBrowserHtmlReport_commentsAndDocString_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         ScenarioStep step = ScenarioStep.builder("When", "the user submits the order", ExecutionStatus.PASSED)
