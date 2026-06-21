@@ -421,6 +421,44 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void browserHtmlReport_showStepNumbers_isByteForByteIdenticalToDotNetGolden() throws IOException {
+        ScenarioStep subStep = new ScenarioStep("And", "a valid session", ExecutionStatus.PASSED, 2L,
+            List.of(), List.of());
+        ScenarioStep given = new ScenarioStep("Given", "a logged-in user", ExecutionStatus.PASSED, 10L,
+            List.of(subStep), List.of());
+        ScenarioStep when = new ScenarioStep("When", "the order is placed", ExecutionStatus.PASSED, 20L,
+            List.of(), List.of());
+        ScenarioStep then = new ScenarioStep("Then", "it is confirmed", ExecutionStatus.PASSED, 15L,
+            List.of(), List.of());
+        ScenarioStep bg = new ScenarioStep("Given", "the database is seeded", ExecutionStatus.PASSED, 5L,
+            List.of(), List.of());
+        Scenario scenario = Scenario.builder("Places an order", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(100)
+            .backgroundSteps(List.of(bg)).steps(List.of(given, when, then)).build();
+        Feature feature = new Feature("Orders", List.of(scenario));
+        HtmlCustomization custom = new HtmlCustomization(null, null, null, null, true, false);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION,
+            false, Instant.EPOCH, Instant.EPOCH, custom);
+
+        assertParity("report-stepnumbers.html", actual);
+    }
+
+    @Test
+    void browserHtmlReport_generateBlankOnFailedTests_isEmptyLikeDotNetGolden() throws IOException {
+        Scenario scenario = Scenario.builder("Fails", "s1", ExecutionStatus.FAILED).error("boom").build();
+        Feature feature = new Feature("F", List.of(scenario));
+        HtmlCustomization custom = new HtmlCustomization(null, null, null, null, false, true);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION,
+            false, Instant.EPOCH, Instant.EPOCH, custom);
+
+        assertParity("report-blankonfail.html", actual);
+    }
+
+    @Test
     void stepDetailsBrowserHtmlReport_commentsAndDocString_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         ScenarioStep step = ScenarioStep.builder("When", "the user submits the order", ExecutionStatus.PASSED)

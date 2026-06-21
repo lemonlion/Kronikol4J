@@ -375,11 +375,12 @@ public final class DotNetHtmlReportRenderer {
                 if (group != null) {
                     renderedGroupKeys.add(groupKey);
                     counter = appendParameterizedGroup(body, feature, group, "pgrp" + (paramGroupCounter++),
-                        scenarioDependencies, scenarioSearchTerms, diagramByTestId, diagramData, counter);
+                        scenarioDependencies, scenarioSearchTerms, diagramByTestId, diagramData, counter,
+                        custom.showStepNumbers());
                     continue;
                 }
                 counter = appendScenario(body, feature, scenario, diagramByTestId,
-                    scenarioDependencies, scenarioSearchTerms, diagramData, counter);
+                    scenarioDependencies, scenarioSearchTerms, diagramData, counter, custom.showStepNumbers());
             }
             if (ruleOpen) {
                 body.append("</details>"); // close last rule
@@ -728,7 +729,7 @@ public final class DotNetHtmlReportRenderer {
                                       Map<String, String> diagramByTestId,
                                       Map<String, Set<String>> scenarioDependencies,
                                       Map<String, Set<String>> scenarioSearchTerms,
-                                      Map<String, String> diagramData, int counter) {
+                                      Map<String, String> diagramData, int counter, boolean showStepNumbers) {
         boolean failed = scenario.status() == ExecutionStatus.FAILED;
         boolean skipped = scenario.status() == ExecutionStatus.SKIPPED;
 
@@ -812,8 +813,8 @@ public final class DotNetHtmlReportRenderer {
                 .append("</details>");
         }
 
-        appendBackgroundBlock(body, scenario.backgroundSteps());
-        appendStepsBlock(body, scenario.steps());
+        appendBackgroundBlock(body, scenario.backgroundSteps(), showStepNumbers);
+        appendStepsBlock(body, scenario.steps(), showStepNumbers);
         appendScenarioAttachments(body, scenario.attachments());
 
         String diagram = diagramByTestId.get(scenario.testId());
@@ -875,7 +876,8 @@ public final class DotNetHtmlReportRenderer {
                                                  Map<String, Set<String>> scenarioDependencies,
                                                  Map<String, Set<String>> scenarioSearchTerms,
                                                  Map<String, String> diagramByTestId,
-                                                 Map<String, String> diagramData, int counter) {
+                                                 Map<String, String> diagramData, int counter,
+                                                 boolean showStepNumbers) {
         List<Scenario> scenarios = group.scenarios();
         boolean hasFailure = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.FAILED);
         boolean hasSkipped = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.SKIPPED);
@@ -1044,8 +1046,8 @@ public final class DotNetHtmlReportRenderer {
                 String display = ri == 0 ? "" : " style=\"display:none\"";
                 body.append("<div class=\"param-detail-panel\" id=\"").append(prefix).append("-detail-")
                     .append(ri).append("\"").append(display).append(">");
-                appendBackgroundBlock(body, s.backgroundSteps());
-                appendStepsBlock(body, s.steps());
+                appendBackgroundBlock(body, s.backgroundSteps(), showStepNumbers);
+                appendStepsBlock(body, s.steps(), showStepNumbers);
                 appendScenarioAttachments(body, s.attachments());
                 if (s.status() == ExecutionStatus.FAILED) {
                     String diffHtml = "";
@@ -1238,34 +1240,38 @@ public final class DotNetHtmlReportRenderer {
     /** Ports .NET {@code RenderStep} for the fields the Java {@link ScenarioStep} model carries
      *  (keyword/text/status/duration/sub-steps); the .NET-only inline/tabular params, doc-strings and
      *  comments are not representable in the Java model and never reach here. */
-    private static void appendBackgroundBlock(StringBuilder body, List<ScenarioStep> steps) {
+    private static void appendBackgroundBlock(StringBuilder body, List<ScenarioStep> steps,
+                                              boolean showStepNumbers) {
         if (steps.isEmpty()) {
             return;
         }
         body.append("<details class=\"scenario-background\"><summary class=\"h4\">Background Steps</summary>");
-        for (ScenarioStep step : steps) {
-            appendStep(body, step, null, false); // background: no combined-table suppression
+        for (int i = 0; i < steps.size(); i++) {
+            String numberPrefix = showStepNumbers ? (i + 1) + "." : null;
+            appendStep(body, steps.get(i), numberPrefix, false); // background: no combined-table suppression
         }
         body.append("</details>");
     }
 
     /** The {@code scenario-steps} block: each step (with combined-table suppression for tabular
      *  assertion params), then the combined setup+assertion table when {@link #shouldRenderCombinedTable}. */
-    private static void appendStepsBlock(StringBuilder body, List<ScenarioStep> steps) {
+    private static void appendStepsBlock(StringBuilder body, List<ScenarioStep> steps, boolean showStepNumbers) {
         if (steps.isEmpty()) {
             return;
         }
         body.append("<details class=\"scenario-steps\" open><summary class=\"h4\">Steps</summary>");
         boolean renderCombined = shouldRenderCombinedTable(steps);
         boolean afterThen = false;
-        for (ScenarioStep step : steps) {
+        for (int i = 0; i < steps.size(); i++) {
+            ScenarioStep step = steps.get(i);
             String kw = step.keyword() == null ? null : step.keyword().trim();
             if ("Then".equalsIgnoreCase(kw)) {
                 afterThen = true;
             } else if ("Given".equalsIgnoreCase(kw) || "When".equalsIgnoreCase(kw)) {
                 afterThen = false;
             }
-            appendStep(body, step, null, renderCombined && afterThen);
+            String numberPrefix = showStepNumbers ? (i + 1) + "." : null;
+            appendStep(body, step, numberPrefix, renderCombined && afterThen);
         }
         if (renderCombined) {
             appendCombinedTabularParameters(body, steps);

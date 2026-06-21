@@ -103,6 +103,12 @@ CaptureHtmlCiMetadata();
 // customLogoHtml (custom-logo div above the <h1>).
 CaptureHtmlCustomAssets();
 
+// showStepNumbers — background/scenario step number prefixes (1., 2., …) incl. nested sub-steps (1.1.).
+CaptureHtmlStepNumbers();
+
+// generateBlankOnFailedTests — an empty report file when any scenario failed.
+CaptureHtmlBlankOnFail();
+
 void CaptureHtml()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -345,6 +351,56 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlStepNumbers()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // showStepNumbers=true → background steps numbered 1., 2.…; scenario steps 1., 2., 3.; sub-steps 1.1.
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Places an order", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(100),
+        BackgroundSteps =
+        [
+            new ScenarioStep { Keyword = "Given", Text = "the database is seeded", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(5) }
+        ],
+        Steps =
+        [
+            new ScenarioStep
+            {
+                Keyword = "Given", Text = "a logged-in user", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10),
+                SubSteps = [ new ScenarioStep { Keyword = "And", Text = "a valid session", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(2) } ]
+            },
+            new ScenarioStep { Keyword = "When", Text = "the order is placed", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(20) },
+            new ScenarioStep { Keyword = "Then", Text = "it is confirmed", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(15) }
+        ]
+    };
+    var feature = new Feature { DisplayName = "Orders", Scenarios = [scenario] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-stepnumbers.html", "Kronikol Run", includeTestRunData: false,
+        showStepNumbers: true);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-stepnumbers.html"), content);
+    Console.WriteLine($"=== report-stepnumbers.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlBlankOnFail()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // generateBlankOnFailedTests=true with a failed scenario → an empty report file.
+    var scenario = new Scenario { Id = "s1", DisplayName = "Fails", Result = ExecutionResult.Failed, ErrorMessage = "boom" };
+    var feature = new Feature { DisplayName = "F", Scenarios = [scenario] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-blankonfail.html", "Kronikol Run", includeTestRunData: false,
+        generateBlankOnFailedTests: true);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-blankonfail.html"), content);
+    Console.WriteLine($"=== report-blankonfail.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlCustomAssets()
