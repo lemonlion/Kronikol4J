@@ -109,6 +109,11 @@ CaptureHtmlCustomAssets();
 // stylesheet (combinedStylesheet), distinct from the trailing customCss <style>.
 CaptureHtmlCustomStyleSheet();
 
+// CI markdown summary (CiSummaryGenerator.GenerateMarkdown) — the metrics table + failed-scenario
+// details (error/stack-trace/escaping) is byte-stable; the diagram case has a deflate-encoded server URL.
+CaptureCiSummaryFailed();
+CaptureCiSummaryDiagrams();
+
 // showStepNumbers — background/scenario step number prefixes (1., 2., …) incl. nested sub-steps (1.1.).
 CaptureHtmlStepNumbers();
 
@@ -888,6 +893,39 @@ void CaptureHtmlCustomStyleSheet()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-customstylesheet.html"), content);
     Console.WriteLine($"=== report-customstylesheet.html ({content.Length} chars) ===");
+}
+
+void CaptureCiSummaryFailed()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc); // 5s
+    // A mixed run with no diagrams: the metrics table + ## Failed Scenarios details (error with a pipe to
+    // exercise EscapeMarkdown, a name with < & to exercise EscapeHtml, a stack trace) — all byte-stable.
+    var passedS = new Scenario { Id = "s0", DisplayName = "Loads home", IsHappyPath = true, Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(40) };
+    var failed1 = new Scenario { Id = "s1", DisplayName = "Login <fails> & burns", Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(50), ErrorMessage = "expected 200 | got 500", ErrorStackTrace = "at Login.Do()\n  at Test.Run()" };
+    var failed2 = new Scenario { Id = "s2", DisplayName = "Checkout fails", Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(20), ErrorMessage = "boom" };
+    var skippedS = new Scenario { Id = "s3", DisplayName = "Deferred", Result = ExecutionResult.Skipped, Duration = TimeSpan.Zero };
+    var feature = new Feature { DisplayName = "Web", Scenarios = [passedS, failed1, failed2, skippedS] };
+    var none = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var md = CiSummaryGenerator.GenerateMarkdown([feature], none, none, start, end).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "ci-summary-failed.md"), md);
+    Console.WriteLine($"=== ci-summary-failed.md ({md.Length} chars) ===");
+}
+
+void CaptureCiSummaryDiagrams()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 1, 5, DateTimeKind.Utc); // 1m 5s
+    // An all-passed run with one (un-truncated) diagram per scenario → ## Sequence Diagrams with the
+    // ![diagram](server/svg/<encoded>) link + the ```plantuml source block. The <encoded> DEFLATE token is
+    // masked in the Java compare; the source block + structure are byte-stable.
+    var s1 = new Scenario { Id = "s1", DisplayName = "Places an order", IsHappyPath = true, Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(120) };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [s1] };
+    var puml = "@startuml\nTest -> orderService: POST: http://svc/orders\norderService --> Test: 201\n@enduml";
+    var diagrams = new[] { new DefaultDiagramsFetcher.DiagramAsCode("s1", string.Empty, puml) };
+    var md = CiSummaryGenerator.GenerateMarkdown([feature], diagrams, diagrams, start, end).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "ci-summary-diagrams.md"), md);
+    Console.WriteLine($"=== ci-summary-diagrams.md ({md.Length} chars) ===");
 }
 
 void CaptureHtmlCiMetadata()

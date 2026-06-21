@@ -2296,6 +2296,14 @@ public final class DotNetHtmlReportRenderer {
         sb.append('"');
     }
 
+    /**
+     * The participant dependencies declared in a diagram's PlantUML (.NET {@code ExtractDependencies}).
+     *
+     * <p>.NET takes a {@code DiagramFormat format} argument here, but {@code DiagramFormat} is a
+     * single-value enum ({@code PlantUml}) and {@code ExtractDependencies} <em>ignores</em> the argument
+     * entirely — it always parses PlantUML participant syntax. There is no Mermaid format or alternate
+     * dep-extraction, so the port is deliberately PlantUml-only and the vestigial parameter is dropped.
+     */
     static Set<String> extractDependencies(String codeBehind) {
         Set<String> deps = new LinkedHashSet<>();
         if (codeBehind == null || codeBehind.isEmpty()) {

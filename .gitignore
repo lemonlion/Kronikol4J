@@ -50,6 +50,8 @@ parity-harness/dotnet-capture/fixtures/report-paramdiagrams.html
 parity-harness/dotnet-capture/fixtures/report-cimetadata.html
 parity-harness/dotnet-capture/fixtures/report-customassets.html
 parity-harness/dotnet-capture/fixtures/report-customstylesheet.html
+parity-harness/dotnet-capture/fixtures/ci-summary-failed.md
+parity-harness/dotnet-capture/fixtures/ci-summary-diagrams.md
 parity-harness/dotnet-capture/fixtures/report-stepnumbers.html
 parity-harness/dotnet-capture/fixtures/report-blankonfail.html
 parity-harness/dotnet-capture/fixtures/report-diagramtoggles.html
