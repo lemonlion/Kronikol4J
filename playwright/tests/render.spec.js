@@ -17,7 +17,7 @@ test.beforeAll(() => {
   }
 });
 
-test('generated report paints a PlantUML SVG with real dimensions, offline', async ({ page }, testInfo) => {
+test('the .NET-parity report paints its PlantUML SVGs in a real browser, offline', async ({ page }, testInfo) => {
   const consoleErrors = [];
   page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
   page.on('pageerror', (err) => consoleErrors.push('pageerror: ' + err.message));
@@ -29,40 +29,42 @@ test('generated report paints a PlantUML SVG with real dimensions, offline', asy
 
   await page.goto(reportUrl, { waitUntil: 'load' });
 
-  // The container is present from the server-rendered HTML.
-  const container = page.locator('.plantuml-browser#puml-0');
-  await expect(container).toBeAttached();
-
   // The bundled renderer signals the WASM library finished loading.
   await expect(page.locator('body.plantuml-ready')).toBeAttached({ timeout: 30_000 });
 
-  // PlantUML-WASM injects an <svg> into the container.
-  const svg = container.locator('svg').first();
-  await expect(svg).toBeVisible({ timeout: 30_000 });
+  // Features/scenarios are collapsed by default (.NET parity); the toolbar's Expand-All reveals them.
+  await page.getByRole('button', { name: 'Expand All Features' }).click();
+  await page.getByRole('button', { name: 'Expand All Scenarios' }).click();
+
+  // The scenario's sequence diagram is now visible and PlantUML-WASM injected an <svg>.
+  const seq = page.locator('.example-diagrams .plantuml-browser').first();
+  await expect(seq).toBeAttached();
+  const seqSvg = seq.locator('svg').first();
+  await expect(seqSvg).toBeVisible({ timeout: 30_000 });
 
   // Pixel check: the SVG actually has a non-zero layout box (it painted, not just attached).
-  const box = await svg.boundingBox();
-  expect(box, 'rendered <svg> should have a layout box').not.toBeNull();
-  expect(box.width).toBeGreaterThan(10);
-  expect(box.height).toBeGreaterThan(10);
+  const seqBox = await seqSvg.boundingBox();
+  expect(seqBox, 'rendered sequence <svg> should have a layout box').not.toBeNull();
+  expect(seqBox.width).toBeGreaterThan(10);
+  expect(seqBox.height).toBeGreaterThan(10);
 
-  // It is a real sequence diagram, not an empty canvas: it has text glyphs...
-  const textCount = await svg.locator('text').count();
-  expect(textCount, 'diagram should contain text glyphs').toBeGreaterThan(0);
+  // It is a real sequence diagram, not an empty canvas: text glyphs + the tracked participant.
+  expect(await seqSvg.locator('text').count(), 'diagram should contain text glyphs').toBeGreaterThan(0);
+  expect(await seqSvg.evaluate((el) => el.outerHTML)).toContain('OrderService');
 
-  // ...and the participants from our tracked interaction are drawn.
-  const svgMarkup = await svg.evaluate((el) => el.outerHTML);
-  expect(svgMarkup).toContain('OrderService');
+  // The run-level component diagram is hidden until toggled, then lazy-renders (matching .NET).
+  const componentSection = page.locator('#component-diagram');
+  await expect(componentSection).toBeHidden();
+  await page.locator('button[onclick*="toggle_component_diagram"]').click();
+  await expect(componentSection).toBeVisible();
 
-  // The run-level component diagram also paints (a second diagram type in the same report).
-  const componentSvg = page.locator('.plantuml-browser#puml-component svg').first();
+  const componentSvg = componentSection.locator('.plantuml-browser svg').first();
   await expect(componentSvg).toBeVisible({ timeout: 30_000 });
   const componentBox = await componentSvg.boundingBox();
   expect(componentBox, 'component <svg> should have a layout box').not.toBeNull();
   expect(componentBox.width).toBeGreaterThan(10);
   expect(componentBox.height).toBeGreaterThan(10);
-  const componentMarkup = await componentSvg.evaluate((el) => el.outerHTML);
-  expect(componentMarkup).toContain('OrderService'); // the aggregated component is drawn
+  expect(await componentSvg.evaluate((el) => el.outerHTML)).toContain('OrderService');
 
   // The whole thing ran from local files only, and cleanly.
   expect(networkAttempts, 'report must render with no network').toEqual([]);
