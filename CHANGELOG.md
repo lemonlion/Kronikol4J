@@ -2,6 +2,33 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.12] — unreleased
+
+Extends the byte-for-byte HTML report parity (v0.1.11) across the report's richer
+features, each proven against a dedicated golden fixture captured from the real .NET
+`ReportGenerator` (the no-diagram goldens are byte-identical end to end). Full suite green
+on JDK 17–25; the Playwright render check still passes.
+
+### Added — proven byte-parity for
+- **BDD steps + background steps** — the `scenario-steps`/`scenario-background` `<details>`,
+  `RenderStep` (status icon/tooltip, keyword, duration, nested sub-steps).
+- **Skipped + bypassed scenarios** — `data-status`, summary classes, tooltips, timeline bars.
+- **Attachments** — scenario-level (`target="_blank"`) and step-level (lightbox) image/link forms.
+- **Rule grouping** — consecutive same-`Rule` scenarios under `<details class="rule">`.
+- **`ErrorDiffParser`** — the expected/actual character-level LCS diff in the failure-result block
+  (xUnit / NUnit / FluentAssertions / Shouldly message shapes).
+- **Parameterized groups** — OutlineId-grouped `ScalarColumns` parameter table + per-example
+  detail panels (new `Humanize` = Titleize/FormatScenarioDisplayName port, and `ParameterGrouper`).
+- **`includeTestRunData`** — the Features Summary table (conditional Steps/Duration columns), the
+  Test Execution Summary and the status pie-chart SVG; a `render(…)` overload adds the
+  `includeTestRunData` + start/end-time inputs (production stays `false`).
+
+### Notes
+- Out of scope (not representable in the Java model, which has no `ExampleRawValues`/
+  `ExampleFlatValues` or rich step parameters): R2 flattened-object detection, the parameter
+  flatten-toggle, complex-object (R3/R4) cells, display-name-prefix grouping, and inline/tabular
+  step parameters + doc-strings. Documented at the call sites.
+
 ## [0.1.11] — unreleased
 
 Completes the **browser-only HTML report port**: `TestRunReport.html` is now a byte-for-byte
