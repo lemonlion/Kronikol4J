@@ -2,6 +2,37 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.16] — unreleased
+
+**Audit follow-up** — closes the three gaps a deep parity re-audit surfaced after the v0.1.15
+"complete report parity" milestone: the merge path was a reduced subset, the report-data schema was
+unported, and the diagram-generation styling options were missing (the latter exposing a real bug).
+
+### Fixed
+- **Diagram header rendering** — a pre-existing divergence: headers in diagram notes rendered as
+  `Key: Value`, but .NET renders gray, bracketed, ordinal-sorted `<color:gray>[Key=Value]` (batched into
+  ≤80-char chunks) with `Cache-Control`/`Pragma` excluded by default. Undetected because every `.puml`
+  golden corpus used `NoHeaders()`. `NoteFormatter` now matches `FormatNoteContent` exactly.
+
+### Added — proven byte-parity for
+- **Full-fidelity merge** — the merged HTML report now equals what a single combined run would render:
+  the fragment carries the complete `Feature`/`Scenario`/`ScenarioStep` model (steps, parameters,
+  attachments, rules), per-test diagrams, aggregated `componentRelationships` (re-summed across shards),
+  interactive `internalFlowSegments`, `ciMetadata`, `wholeTestVisualization` and `wholeTestFlow`, and the
+  renderer feeds the component diagram + popup + CI banner + `includeTestRunData` summary. A generic
+  `RecordJson` converter round-trips the whole nested model. Proven by a merge-equals-direct-render
+  equivalence test.
+- **Report-data schema** — `ReportDataSchema.jsonSchema()` (JSON Schema draft 2020-12, for the Json + Yaml
+  formats) and `xmlSchema()` (the XSD), byte-identical to .NET `GenerateTestRunReportSchema`; the runtime
+  emits `TestRunReport.schema.{json,xsd}` per data format under `ReportOptions.generateSchema`.
+- **Diagram-generation styling options** (`PlantUmlCreator` via the new `DiagramOptions` /
+  `NoteProcessors`): the `plantUmlTheme` `!theme` directive; `ExcludedHeaders` (+ the default exclusion);
+  `SeparateSetup`/`HighlightSetup`/`SetupHighlightColor` (the `partition <color> Setup … end` block);
+  `FocusEmphasis`/`FocusDeEmphasis` (the `JsonFocusFormatter`); and the request/response pre/mid/post
+  content-processor hooks (caller-supplied — placement proven by unit test). `plantUmlTheme` is wired
+  through `ReportOptions`; the advanced options are available via `PlantUmlCreator.create(logs,
+  DiagramOptions)` and applied at the .NET defaults from the report path.
+
 ## [0.1.15] — unreleased
 
 **Phase 3 completeness sweep** — the remaining configurable report options and the secondary report
