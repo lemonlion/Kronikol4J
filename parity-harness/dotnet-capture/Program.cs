@@ -53,6 +53,11 @@ CaptureHtmlErrorDiff();
 // scenario-parameterized aggregate <details> + the ScalarColumns param table.
 CaptureHtmlParameterized();
 
+// Escaping audit: every user-text field carries the markup-trigger marker <b>&"' so any report call
+// site that emits raw (or over-escapes) shows up as a byte diff against the real WebUtility output.
+CaptureHtmlEscaping();
+CaptureHtmlEscapingParams();
+
 // includeTestRunData=true: the Features Summary table (conditional Steps/Duration columns), the
 // Test Execution Summary, the pie chart, and the header-row wrapping.
 CaptureHtmlSummary();
@@ -416,6 +421,73 @@ void CaptureHtmlParameterized()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlEscaping()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    const string M = "<b>&\"'"; // markup-trigger → &lt;b&gt;&amp;&quot;&#39; wherever a call site escapes
+    var passed = new Scenario
+    {
+        Id = "s1", DisplayName = "Adds " + M, IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(1500),
+        Rule = "Rule " + M,
+        Steps =
+        [
+            new ScenarioStep
+            {
+                Keyword = "Given " + M, Text = "a step " + M, Status = ExecutionResult.Passed,
+                Duration = TimeSpan.FromMilliseconds(20),
+                SubSteps = [ new ScenarioStep { Text = "substep " + M, Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(5) } ],
+                Attachments = [ new FileAttachment("file " + M, "attachments/x.png") ]
+            }
+        ],
+        Attachments = [ new FileAttachment("att " + M, "attachments/y.pdf") ]
+    };
+    var failed = new Scenario
+    {
+        Id = "s2", DisplayName = "Rejects " + M, IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(12),
+        ErrorMessage = "Error " + M, ErrorStackTrace = "at " + M
+    };
+    var feature = new Feature { DisplayName = "Feature " + M, Scenarios = [passed, failed] };
+    var diagrams = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", "", "@startuml\nactor Test\nTest -> X : POST\n@enduml"),
+        new DefaultDiagramsFetcher.DiagramAsCode("s2", "", "@startuml\nactor Test\nTest -> X : POST\n@enduml")
+    };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-escaping.html", "Title " + M, includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-escaping.html"), content);
+    Console.WriteLine($"=== report-escaping.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlEscapingParams()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    const string M = "<b>&\"'";
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Case A", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50),
+        OutlineId = "Outline " + M, ExampleValues = new() { ["in " + M] = "v1 " + M, ["out"] = "r1" }
+    };
+    var s2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Case B", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60),
+        OutlineId = "Outline " + M, ExampleValues = new() { ["in " + M] = "v2 " + M, ["out"] = "r2" }
+    };
+    var feature = new Feature { DisplayName = "Math", Scenarios = [s1, s2] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-escaping-params.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-escaping-params.html"), content);
+    Console.WriteLine($"=== report-escaping-params.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlParamOptions()
@@ -1603,6 +1675,7 @@ Capture("graphql-json", GraphQlQuery(), arrowColors: false, graphQlBodyFormat: G
 Capture("graphql-mutation", GraphQlMutation(), arrowColors: false);
 Capture("graphql-complex", GraphQlComplex(), arrowColors: false); // fragments, spreads, directives, aliases
 CaptureGraphQlLabels(); // GraphQlOperationDetector.TryExtractLabel branch coverage (text fixture)
+CaptureHtmlEscapeSamples(); // pin WebUtility.HtmlEncode vs the Java HtmlEscaper (text fixture)
 // Internal-flow tracking wraps each request label in a clickable [[#iflow-<requestResponseId> …]] link.
 Capture("internal-flow", SimpleHttp(), arrowColors: false, internalFlowTracking: true);
 // excludeAllHeaders drops every header from notes (vs the default Cache-Control/Pragma-only exclusion).
@@ -1913,6 +1986,45 @@ void CaptureGraphQlLabels()
     ];
     var lines = inputs.Select(input => $"{input}\t{GraphQlOperationDetector.TryExtractLabel(input) ?? "null"}");
     File.WriteAllText(Path.Combine(outDir, "graphql-labels.txt"), string.Join("\n", lines) + "\n");
+}
+
+void CaptureHtmlEscapeSamples()
+{
+    // Pins System.Net.WebUtility.HtmlEncode (what the report uses) against the Java HtmlEscaper for the
+    // cases the report goldens never exercise: the apostrophe, the C1-control range (0x80–0x9F), Latin-1
+    // supplement (≥0xA0), a BMP symbol, an astral emoji (surrogate pair), and raw whitespace controls.
+    // Each line is "<input>\t<expected>" with every non-printable-ASCII char written as \uXXXX so the TSV
+    // stays clean ASCII; the Java HtmlEscaperParityTest un-escapes both columns and compares.
+    string[] inputs =
+    [
+        "plain text",
+        "a<b>c",
+        "a&b",
+        "a\"b",
+        "a'b",
+        "caf\u00E9",
+        "\u2713\u20AC",
+        "\u0080\u0085\u009F",
+        "\u00A0\u00FF",
+        "\uD83D\uDE00",
+        "tab\tnl\ncr\r",
+        "<a href=\"x\">&'\u00E9\uD83D\uDE00",
+    ];
+    var lines = inputs.Select(s => FixtureEscape(s) + "\t" + FixtureEscape(System.Net.WebUtility.HtmlEncode(s)));
+    File.WriteAllText(Path.Combine(outDir, "html-escape-samples.txt"), string.Join("\n", lines) + "\n");
+
+    static string FixtureEscape(string s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var c in s)
+        {
+            if (c >= 0x20 && c <= 0x7E && c != '\\')
+                sb.Append(c);
+            else
+                sb.Append("\\u").Append(((int)c).ToString("X4"));
+        }
+        return sb.ToString();
+    }
 }
 
 static List<RequestResponseLog> SimpleHttp()

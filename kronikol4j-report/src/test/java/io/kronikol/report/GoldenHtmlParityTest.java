@@ -205,6 +205,57 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void escapingBrowserHtmlReport_specialCharsInEveryTextField_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // Every user-text field carries the markup-trigger marker <b>&"' (which WebUtility renders
+        // &lt;b&gt;&amp;&quot;&#39;) so any call site that emits raw / over-escapes diverges byte-for-byte.
+        String m = "<b>&\"'";
+        ScenarioStep substep =
+            new ScenarioStep(null, "substep " + m, ExecutionStatus.PASSED, 5L, List.of(), List.of());
+        ScenarioStep step = new ScenarioStep("Given " + m, "a step " + m, ExecutionStatus.PASSED, 20L,
+            List.of(substep), List.of(new FileAttachment("file " + m, "attachments/x.png")));
+        Scenario passed = Scenario.builder("Adds " + m, "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(1500).rule("Rule " + m)
+            .steps(List.of(step))
+            .attachments(List.of(new FileAttachment("att " + m, "attachments/y.pdf")))
+            .build();
+        Scenario failed = Scenario.builder("Rejects " + m, "s2", ExecutionStatus.FAILED)
+            .durationMs(12).error("Error " + m).errorStackTrace("at " + m).build();
+        Feature feature = new Feature("Feature " + m, List.of(passed, failed));
+        String diagram = "@startuml\nactor Test\nTest -> X : POST\n@enduml";
+        Map<String, String> diagramByTestId = Map.of("s1", diagram, "s2", diagram);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Title " + m, PINNED_VERSION);
+
+        assertParity("report-escaping.html", actual);
+    }
+
+    @Test
+    void escapingBrowserHtmlReport_specialCharsInParameters_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // Parameter names + values (and the OutlineId) carry the marker — covers the ParameterValueRenderer
+        // + the scalar-column table call sites.
+        String m = "<b>&\"'";
+        LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();
+        ev1.put("in " + m, "v1 " + m);
+        ev1.put("out", "r1");
+        LinkedHashMap<String, String> ev2 = new LinkedHashMap<>();
+        ev2.put("in " + m, "v2 " + m);
+        ev2.put("out", "r2");
+        Scenario s1 = Scenario.builder("Case A", "s1", ExecutionStatus.PASSED)
+            .durationMs(50).outlineId("Outline " + m).exampleValues(ev1).build();
+        Scenario s2 = Scenario.builder("Case B", "s2", ExecutionStatus.PASSED)
+            .durationMs(60).outlineId("Outline " + m).exampleValues(ev2).build();
+        Feature feature = new Feature("Math", List.of(s1, s2));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-escaping-params.html", actual);
+    }
+
+    @Test
     void parameterizedBrowserHtmlReport_outlineGroupScalarColumns_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();

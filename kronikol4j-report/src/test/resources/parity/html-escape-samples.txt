@@ -1,0 +1,12 @@
+plain text	plain text
+a<b>c	a&lt;b&gt;c
+a&b	a&amp;b
+a"b	a&quot;b
+a'b	a&#39;b
+caf\u00E9	caf&#233;
+\u2713\u20AC	\u2713\u20AC
+\u0080\u0085\u009F	\u0080\u0085\u009F
+\u00A0\u00FF	&#160;&#255;
+\uD83D\uDE00	&#128512;
+tab\u0009nl\u000Acr\u000D	tab\u0009nl\u000Acr\u000D
+<a href="x">&'\u00E9\uD83D\uDE00	&lt;a href=&quot;x&quot;&gt;&amp;&#39;&#233;&#128512;
