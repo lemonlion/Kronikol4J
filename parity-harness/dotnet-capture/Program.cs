@@ -65,6 +65,8 @@ CaptureHtmlEdgeFields();
 CaptureHtmlParamEdgeValues();
 // A feature with zero scenarios alongside a populated one (the report renders, it does not bail).
 CaptureHtmlEmptyFeature();
+// Scenario Categories → category-filters box; diagram toggle markers → Assertions/Steps/Databases buttons.
+CaptureHtmlFiltersToggles();
 
 // includeTestRunData=true: the Features Summary table (conditional Steps/Duration columns), the
 // Test Execution Summary, the pie chart, and the header-row wrapping.
@@ -470,6 +472,29 @@ void CaptureHtmlEscaping()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-escaping.html"), content);
     Console.WriteLine($"=== report-escaping.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlFiltersToggles()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // Triggers the untested toolbar/filter branches: scenario Categories → the category-filters box, and
+    // a diagram carrying all three toggle markers → the Assertions/Steps/Databases toolbar buttons.
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Rich diagram", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(100),
+        Categories = ["Smoke", "Regression"]
+    };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [scenario] };
+    var diagram = "@startuml\nactor Test\ndatabase \"OrderDb\" as orderDb\nTest -> orderDb : SELECT\n"
+        + "note<<assertionNote>> right\nassert ok\nend note\nnote<<stepDelimiter>> right\n-- step --\nend note\n@enduml";
+    var diagrams = new[] { new DefaultDiagramsFetcher.DiagramAsCode("s1", "", diagram) };
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-filterstoggles.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-filterstoggles.html"), content);
+    Console.WriteLine($"=== report-filterstoggles.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlEmptyFeature()

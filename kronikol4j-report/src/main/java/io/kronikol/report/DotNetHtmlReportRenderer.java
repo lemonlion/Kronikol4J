@@ -783,6 +783,26 @@ public final class DotNetHtmlReportRenderer {
             body.append("</div>");
         }
 
+        // .NET category-filters: shown when any scenario carries Categories (distinct, sorted), with an
+        // "All" + per-category + "Uncategorized" toggle set.
+        java.util.TreeSet<String> allCategories = new java.util.TreeSet<>();
+        for (Feature f : features) {
+            for (Scenario s : f.scenarios()) {
+                allCategories.addAll(s.categories());
+            }
+        }
+        if (!allCategories.isEmpty()) {
+            body.append("<div class=\"category-filters\"><span class=\"category-filters-label\">Categories:</span><button class=\"cat-mode-toggle\" title=\"OR: show scenarios matching ANY selected category. AND: show scenarios matching ALL selected categories. Click to toggle.\" onclick=\"toggle_cat_mode(this)\">OR</button>");
+            body.append("<button class=\"category-toggle category-active\" data-category=\"\" onclick=\"toggle_category(this)\">All</button>");
+            for (String cat : allCategories) {
+                String enc = HtmlEscaper.encode(cat);
+                body.append("<button class=\"category-toggle\" data-category=\"").append(enc)
+                    .append("\" onclick=\"toggle_category(this)\">").append(enc).append("</button>");
+            }
+            body.append("<button class=\"category-toggle\" data-category=\"__uncategorized__\" onclick=\"toggle_category(this)\">Uncategorized</button>");
+            body.append("</div>");
+        }
+
         body.append("</div>"); // close filters
         body.append("</div>"); // close filtering-box
     }

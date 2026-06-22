@@ -318,6 +318,27 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void filtersTogglesBrowserHtmlReport_categoriesAndDiagramToggles_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // Scenario categories → the category-filters box; a diagram carrying all three toggle markers
+        // (database participant, <<assertionNote>>, <<stepDelimiter>>) → the Assertions/Steps/Databases
+        // toolbar buttons — branches the simple-diagram goldens never trigger.
+        Scenario scenario = Scenario.builder("Rich diagram", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(100)
+            .categories(List.of("Smoke", "Regression"))
+            .build();
+        Feature feature = new Feature("Checkout", List.of(scenario));
+        String diagram = "@startuml\nactor Test\ndatabase \"OrderDb\" as orderDb\nTest -> orderDb : SELECT\n"
+            + "note<<assertionNote>> right\nassert ok\nend note\nnote<<stepDelimiter>> right\n-- step --\nend note\n@enduml";
+        Map<String, String> diagramByTestId = Map.of("s1", diagram);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), diagramByTestId, null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-filterstoggles.html", actual);
+    }
+
+    @Test
     void parameterizedBrowserHtmlReport_outlineGroupScalarColumns_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();

@@ -81,3 +81,4 @@ parity-harness/dotnet-capture/fixtures/graphql-labels.txt
 parity-harness/dotnet-capture/fixtures/html-escape-samples.txt
 parity-harness/dotnet-capture/fixtures/report-paramedge.html
 parity-harness/dotnet-capture/fixtures/report-emptyfeature.html
+parity-harness/dotnet-capture/fixtures/report-filterstoggles.html
