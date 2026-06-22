@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 /**
@@ -32,11 +33,18 @@ public final class NoteFormatter {
         return format(content, headers, excludedHeaders, null, Set.of(), Set.of());
     }
 
-    /** Builds the note body (may be empty): excluded headers dropped + gray-rendered, then the content
-     *  (pretty-printed, with focus emphasis/de-emphasis applied when {@code focusFields} are present). */
+    /** As {@link #format(String, List, List, List, Set, Set, UnaryOperator)} with no mid processor. */
     public static String format(String content, List<Header> headers, List<String> excludedHeaders,
                                 List<String> focusFields, Set<FocusEmphasis> focusEmphasis,
                                 Set<FocusDeEmphasis> focusDeEmphasis) {
+        return format(content, headers, excludedHeaders, focusFields, focusEmphasis, focusDeEmphasis, null);
+    }
+
+    /** Builds the note body (may be empty): excluded headers dropped + gray-rendered, then the content
+     *  (pretty-printed, then the {@code midProcessor} hook, then focus emphasis/de-emphasis). */
+    public static String format(String content, List<Header> headers, List<String> excludedHeaders,
+                                List<String> focusFields, Set<FocusEmphasis> focusEmphasis,
+                                Set<FocusDeEmphasis> focusDeEmphasis, UnaryOperator<String> midProcessor) {
         String headersOnTop = "";
         if (headers != null && !headers.isEmpty()) {
             headersOnTop = headers.stream()
@@ -50,6 +58,9 @@ public final class NoteFormatter {
         if (content != null && !content.isBlank()) {
             String pretty = Json.tryPrettyPrint(content);
             formattedContent = pretty != null ? pretty : content;
+        }
+        if (midProcessor != null) { // .NET midFormattingProcessor — after formatting, before focus
+            formattedContent = midProcessor.apply(formattedContent);
         }
         if (focusFields != null && !focusFields.isEmpty()) {
             formattedContent = JsonFocusFormatter.formatWithFocus(formattedContent, focusFields,

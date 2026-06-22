@@ -72,6 +72,13 @@ public final class PlantUmlCreator {
     /** Builds one diagram per test honouring the full {@link DiagramOptions} — the .NET
      *  {@code PlantUmlCreator.Create} surface (colours, theme, excluded headers, setup, focus). */
     public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, DiagramOptions options) {
+        return create(logs, options, NoteProcessors.NONE);
+    }
+
+    /** As {@link #create(List, DiagramOptions)}, additionally applying the caller-supplied note content
+     *  processors (the .NET pre/mid/post {@code Func<string,string>} formatting hooks). */
+    public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, DiagramOptions options,
+                                               NoteProcessors processors) {
         Map<String, List<RequestResponseLog>> byTest = new LinkedHashMap<>();
         for (RequestResponseLog log : logs) {
             if (log.trackingIgnore()) {
@@ -83,11 +90,12 @@ public final class PlantUmlCreator {
         List<PlantUmlForTest> result = new ArrayList<>();
         byTest.forEach((testId, testLogs) ->
             result.add(new PlantUmlForTest(testId, testLogs.get(0).testName(),
-                List.of(buildDiagram(testLogs, options)), testLogs)));
+                List.of(buildDiagram(testLogs, options, processors)), testLogs)));
         return result;
     }
 
-    private static String buildDiagram(List<RequestResponseLog> logs, DiagramOptions options) {
+    private static String buildDiagram(List<RequestResponseLog> logs, DiagramOptions options,
+                                       NoteProcessors processors) {
         boolean arrowColors = options.arrowColors();
         boolean hasEvents = logs.stream()
             .anyMatch(l -> l.plantUml() == null && l.metaType() == RequestResponseMetaType.EVENT);
@@ -156,8 +164,9 @@ public final class PlantUmlCreator {
             String caller = alias(log.callerName());
             String service = alias(log.serviceName());
             String color = DependencyPalette.colorFor(log.dependencyCategory());
+            boolean isRequest = log.type() == RequestResponseType.REQUEST;
             String side;
-            if (log.type() == RequestResponseType.REQUEST) {
+            if (isRequest) {
                 String arrow = arrowColors ? "-[" + color + "]>" : "->";
                 sb.append(caller).append(' ').append(arrow).append(' ').append(service)
                     .append(": ").append(requestLabel(log)).append(NL);
@@ -169,9 +178,15 @@ public final class PlantUmlCreator {
                 side = "right";
             }
             String opener = (log.metaType() == RequestResponseMetaType.EVENT ? "note<<eventNote>> " : "note ") + side;
-            appendNote(sb, opener, NoteFormatter.format(log.content(), log.headers(),
-                options.excludedHeaders(), log.focusFields(), options.focusEmphasis(),
-                options.focusDeEmphasis()));
+            // .NET pre/mid/post Func hooks: pre on raw content, mid inside the formatter (before focus),
+            // post on the final note body.
+            String content = NoteProcessors.apply(
+                isRequest ? processors.requestPre() : processors.responsePre(), log.content());
+            String note = NoteFormatter.format(content, log.headers(), options.excludedHeaders(),
+                log.focusFields(), options.focusEmphasis(), options.focusDeEmphasis(),
+                isRequest ? processors.requestMid() : processors.responseMid());
+            note = NoteProcessors.apply(isRequest ? processors.requestPost() : processors.responsePost(), note);
+            appendNote(sb, opener, note);
         }
 
         sb.append("@enduml");
