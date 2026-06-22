@@ -393,6 +393,34 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void backgroundDetectBrowserHtmlReport_extractsSharedPrefix_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // Two scenarios in the same Rule sharing a Given/When prefix → BackgroundStepsDetector extracts it
+        // into each scenario's backgroundSteps and trims the steps; the rendered report must match .NET.
+        Scenario s1 = Scenario.builder("Order confirmed", "s1", ExecutionStatus.PASSED)
+            .durationMs(100).rule("Checkout")
+            .steps(List.of(
+                new ScenarioStep("Given", "a logged-in user", ExecutionStatus.PASSED, 10L, List.of(), List.of()),
+                new ScenarioStep("When", "the user checks out", ExecutionStatus.PASSED, 20L, List.of(), List.of()),
+                new ScenarioStep("Then", "the order is confirmed", ExecutionStatus.PASSED, 30L, List.of(), List.of())))
+            .build();
+        Scenario s2 = Scenario.builder("Receipt sent", "s2", ExecutionStatus.PASSED)
+            .durationMs(110).rule("Checkout")
+            .steps(List.of(
+                new ScenarioStep("Given", "a logged-in user", ExecutionStatus.PASSED, 10L, List.of(), List.of()),
+                new ScenarioStep("When", "the user checks out", ExecutionStatus.PASSED, 20L, List.of(), List.of()),
+                new ScenarioStep("Then", "a receipt is sent", ExecutionStatus.PASSED, 25L, List.of(), List.of())))
+            .build();
+        List<Scenario> extracted = BackgroundStepsDetector.detectAndExtract(List.of(s1, s2));
+        Feature feature = new Feature("Shop", extracted);
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-background.html", actual);
+    }
+
+    @Test
     void parameterizedBrowserHtmlReport_outlineGroupScalarColumns_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();

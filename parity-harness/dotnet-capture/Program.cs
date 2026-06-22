@@ -73,6 +73,8 @@ CaptureHtmlFailureClusters();
 CaptureHtmlDuplicateNames();
 // A scenario + step with empty names — degenerate but deterministic.
 CaptureHtmlBlankName();
+// BackgroundStepsDetector extracts a shared step prefix into a Background section.
+CaptureHtmlBackgroundDetect();
 
 // includeTestRunData=true: the Features Summary table (conditional Steps/Duration columns), the
 // Test Execution Summary, the pie chart, and the header-row wrapping.
@@ -478,6 +480,45 @@ void CaptureHtmlEscaping()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-escaping.html"), content);
     Console.WriteLine($"=== report-escaping.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlBackgroundDetect()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // Two scenarios in the same Rule sharing a Given/When prefix with distinct Then tails →
+    // BackgroundStepsDetector extracts the prefix into a Background section.
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Order confirmed", IsHappyPath = false, Rule = "Checkout",
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(100),
+        Steps =
+        [
+            new ScenarioStep { Keyword = "Given", Text = "a logged-in user", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) },
+            new ScenarioStep { Keyword = "When", Text = "the user checks out", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(20) },
+            new ScenarioStep { Keyword = "Then", Text = "the order is confirmed", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(30) }
+        ]
+    };
+    var s2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Receipt sent", IsHappyPath = false, Rule = "Checkout",
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(110),
+        Steps =
+        [
+            new ScenarioStep { Keyword = "Given", Text = "a logged-in user", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(10) },
+            new ScenarioStep { Keyword = "When", Text = "the user checks out", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(20) },
+            new ScenarioStep { Keyword = "Then", Text = "a receipt is sent", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(25) }
+        ]
+    };
+    var scenarios = new[] { s1, s2 };
+    BackgroundStepsDetector.DetectAndExtract(scenarios); // mutates: extracts the common prefix in-place
+    var feature = new Feature { DisplayName = "Shop", Scenarios = scenarios };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-background.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-background.html"), content);
+    Console.WriteLine($"=== report-background.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlBlankName()
