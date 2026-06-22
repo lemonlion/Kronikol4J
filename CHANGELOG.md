@@ -2,6 +2,25 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.21] — unreleased
+
+**Report re-sweep, batch 2** — continuing the audit of `ReportGenerator`'s input-conditional branches
+against the golden corpora, two whole report features turned out to be **unported** (invisible because no
+golden supplied their triggering input).
+
+### Added — proven byte-parity for
+- **The category-filters box** — a scenario carrying `Categories` renders a `<div class="category-filters">`
+  toggle set (`All` + one button per distinct, sorted category + `Uncategorized`). The Java already consumed
+  categories for the `data-categories` attribute + search, but never rendered the filter box. Golden:
+  `report-filterstoggles` (which also covers the Assertions/Steps/Databases toolbar toggles — diagram
+  markers `<<assertionNote>>`/`<<stepDelimiter>>`/`database "` — and the dependency-filters box with a
+  database participant + the scenario timeline).
+- **The Failure Clusters section** — failed scenarios sharing a normalised first-line error are grouped
+  (clusters of ≥2) into a collapsible `<details class="failure-clusters">` list with per-scenario deep-link
+  anchors, rendered before the timeline (.NET `ReportGenerator` lines 816-840). The Java `FailureClusterer`
+  (already ported for the diagnostic report) is reused. Golden: `report-failureclusters` (two clusters of
+  two).
+
 ## [0.1.20] — unreleased
 
 **Report edge-branch re-sweep** — an audit of `ReportGenerator`'s input-conditional branches against the
