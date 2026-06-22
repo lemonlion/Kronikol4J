@@ -173,7 +173,7 @@ public final class PlantUmlCreator {
             if (isRequest) {
                 String arrow = arrowColors ? "-[" + color + "]>" : "->";
                 sb.append(caller).append(' ').append(arrow).append(' ').append(service)
-                    .append(": ").append(requestLabel(log, content)).append(NL);
+                    .append(": ").append(requestLabel(log, content, options.internalFlowTracking())).append(NL);
                 side = log.noteOnRight() ? "right" : "left"; // .NET trace.NoteOnRight (request note side)
             } else {
                 String arrow = arrowColors ? "-[" + color + "]->" : "-->";
@@ -233,7 +233,7 @@ public final class PlantUmlCreator {
 
     private static final int MAX_URL_LENGTH = 100; // .NET maxUrlLength — wrap longer path+query
 
-    private static String requestLabel(RequestResponseLog log, String content) {
+    private static String requestLabel(RequestResponseLog log, String content, boolean internalFlowTracking) {
         URI uri = log.uri();
         String path = uri.getRawPath();
         if (path == null || path.isEmpty()) {
@@ -258,6 +258,11 @@ public final class PlantUmlCreator {
         String graphQlLabel = GraphQlOperationDetector.tryExtractLabel(content);
         if (graphQlLabel != null) {
             label = label + "\\n(" + graphQlLabel + ")";
+        }
+        // .NET: wrap the whole label in a "[[#iflow-<id> …]]" link the internal-flow popup keys on
+        // (#iflow-<requestResponseId> matches the segment key from InternalFlowSegmentBuilder).
+        if (internalFlowTracking) {
+            label = "[[#iflow-" + log.requestResponseId() + " " + label + "]]";
         }
         return label;
     }

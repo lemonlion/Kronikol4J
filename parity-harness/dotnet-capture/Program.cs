@@ -1603,10 +1603,13 @@ Capture("graphql-json", GraphQlQuery(), arrowColors: false, graphQlBodyFormat: G
 Capture("graphql-mutation", GraphQlMutation(), arrowColors: false);
 Capture("graphql-complex", GraphQlComplex(), arrowColors: false); // fragments, spreads, directives, aliases
 CaptureGraphQlLabels(); // GraphQlOperationDetector.TryExtractLabel branch coverage (text fixture)
+// Internal-flow tracking wraps each request label in a clickable [[#iflow-<requestResponseId> …]] link.
+Capture("internal-flow", SimpleHttp(), arrowColors: false, internalFlowTracking: true);
 
 void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool participantColors = false,
     string? plantUmlTheme = null, bool separateSetup = false, bool highlightSetup = true,
-    string? setupHighlightColor = null, GraphQlBodyFormat graphQlBodyFormat = GraphQlBodyFormat.FormattedWithMetadata)
+    string? setupHighlightColor = null, GraphQlBodyFormat graphQlBodyFormat = GraphQlBodyFormat.FormattedWithMetadata,
+    bool internalFlowTracking = false)
 {
     var results = PlantUmlCreator.GetPlantUmlImageTagsPerTestId(
         logs,
@@ -1617,6 +1620,7 @@ void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool 
         highlightSetup: highlightSetup,
         setupHighlightColor: setupHighlightColor,
         graphQlBodyFormat: graphQlBodyFormat,
+        internalFlowTracking: internalFlowTracking,
         clientSideSplitting: true);
 
     foreach (var test in results)

@@ -3,6 +3,7 @@ package io.kronikol.report;
 import io.kronikol.diagram.plantuml.DiagramOptions;
 import io.kronikol.diagram.plantuml.FocusDeEmphasis;
 import io.kronikol.diagram.plantuml.FocusEmphasis;
+import io.kronikol.diagram.plantuml.GraphQlBodyFormat;
 import io.kronikol.report.data.ReportDataFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,6 +54,11 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     public static final String FOCUS_EMPHASIS_PROPERTY = "kronikol.diagram.focusEmphasis";
     /** System property (comma-separated {@code LIGHT_GRAY}/{@code SMALLER_TEXT}/{@code HIDDEN}). */
     public static final String FOCUS_DE_EMPHASIS_PROPERTY = "kronikol.diagram.focusDeEmphasis";
+    /** System property (one of {@code JSON}/{@code FORMATTED_QUERY_ONLY}/{@code FORMATTED}/
+     *  {@code FORMATTED_WITH_METADATA}) selecting how GraphQL request bodies render in notes. */
+    public static final String GRAPHQL_BODY_FORMAT_PROPERTY = "kronikol.diagram.graphQlBodyFormat";
+    /** System property (boolean) wrapping each request label in a clickable {@code [[#iflow-…]]} link. */
+    public static final String INTERNAL_FLOW_TRACKING_PROPERTY = "kronikol.diagram.internalFlowTracking";
 
     public ReportOptions {
         diagram = diagram == null ? DiagramOptions.defaults() : diagram;
@@ -92,6 +98,14 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     public String plantUmlTheme() {
         return diagram.plantUmlTheme();
+    }
+
+    public GraphQlBodyFormat graphQlBodyFormat() {
+        return diagram.graphQlBodyFormat();
+    }
+
+    public boolean internalFlowTracking() {
+        return diagram.internalFlowTracking();
     }
 
     // --- withers ---
@@ -135,6 +149,14 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return withDiagram(diagram.withFocusDeEmphasis(value));
     }
 
+    public ReportOptions withGraphQlBodyFormat(GraphQlBodyFormat format) {
+        return withDiagram(diagram.withGraphQlBodyFormat(format));
+    }
+
+    public ReportOptions withInternalFlowTracking(boolean value) {
+        return withDiagram(diagram.withInternalFlowTracking(value));
+    }
+
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
         return new ReportOptions(diagram, formats, generateSchema);
     }
@@ -161,7 +183,9 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
             stringProperty(SETUP_HIGHLIGHT_COLOR_PROPERTY, d.setupHighlightColor()),
             parseEnumSet(System.getProperty(FOCUS_EMPHASIS_PROPERTY), FocusEmphasis.class, d.focusEmphasis()),
             parseEnumSet(System.getProperty(FOCUS_DE_EMPHASIS_PROPERTY), FocusDeEmphasis.class,
-                d.focusDeEmphasis()));
+                d.focusDeEmphasis()),
+            parseGraphQlBodyFormat(System.getProperty(GRAPHQL_BODY_FORMAT_PROPERTY), d.graphQlBodyFormat()),
+            boolProperty(INTERNAL_FLOW_TRACKING_PROPERTY, d.internalFlowTracking()));
         return new ReportOptions(diagram,
             parseDataFormats(System.getProperty(DATA_FORMATS_PROPERTY)),
             boolProperty(GENERATE_SCHEMA_PROPERTY, false));
@@ -175,6 +199,17 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     private static boolean boolProperty(String name, boolean fallback) {
         String value = System.getProperty(name);
         return value == null || value.isBlank() ? fallback : Boolean.parseBoolean(value);
+    }
+
+    private static GraphQlBodyFormat parseGraphQlBodyFormat(String value, GraphQlBodyFormat fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            return GraphQlBodyFormat.valueOf(value.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return fallback; // unknown token — keep the default (matches the lenient enum-set parsing)
+        }
     }
 
     private static Set<ReportDataFormat> parseDataFormats(String value) {

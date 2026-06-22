@@ -222,6 +222,15 @@ class PlantUmlParityTest {
     }
 
     @Test
+    void internalFlowTrackingRequestLink() throws IOException {
+        // internalFlowTracking wraps each request label in a clickable "[[#iflow-<requestResponseId> …]]"
+        // link the internal-flow popup keys on (#iflow-<id> matches the InternalFlowSegmentBuilder key).
+        DiagramOptions opts = DiagramOptions.defaults().withArrowColors(false).withInternalFlowTracking(true);
+        assertParity("internal-flow",
+            PlantUmlCreator.create(internalFlowExchange(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
     void componentDiagram() throws IOException {
         // Run-level component diagram (browser/non-C4 mode) over the fan-out corpus: deterministic
         // first-seen participant order, per-type shapes + arrow colours, aggregated call/test counts.
@@ -425,6 +434,23 @@ class PlantUmlParityTest {
             log("GraphQL complex", Method.Http.POST, "http://api/graphql", "ApiService",
                 DependencyCategories.HTTP, RequestResponseType.RESPONSE,
                 "{\"data\":{\"user\":{\"id\":\"1\"}}}", StatusCode.of(200)));
+    }
+
+    private static List<RequestResponseLog> internalFlowExchange() {
+        // The request label embeds requestResponseId, so it must match the harness Ids(1) value exactly.
+        UUID rrid = UUID.fromString("00000000-0000-0000-0000-000000000101");
+        return List.of(
+            RequestResponseLog.builder()
+                .testName("Checkout succeeds").testId("t1").method(Method.Http.POST)
+                .uri(URI.create("http://orders/checkout")).serviceName("OrderService").callerName("Test")
+                .type(RequestResponseType.REQUEST).traceId(UUID.randomUUID()).requestResponseId(rrid)
+                .dependencyCategory(DependencyCategories.HTTP).content("{\"item\":\"egg\"}").build(),
+            RequestResponseLog.builder()
+                .testName("Checkout succeeds").testId("t1").method(Method.Http.POST)
+                .uri(URI.create("http://orders/checkout")).serviceName("OrderService").callerName("Test")
+                .type(RequestResponseType.RESPONSE).traceId(UUID.randomUUID()).requestResponseId(rrid)
+                .dependencyCategory(DependencyCategories.HTTP).statusCode(StatusCode.of(200))
+                .content("{\"ok\":true}").build());
     }
 
     private static RequestResponseLog log(String testName, Method method, String uri, String service,
