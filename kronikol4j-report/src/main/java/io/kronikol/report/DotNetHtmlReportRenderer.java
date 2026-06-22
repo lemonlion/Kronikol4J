@@ -414,6 +414,7 @@ public final class DotNetHtmlReportRenderer {
         DiagramToggles toggles = computeDiagramToggles(diagramByTestId);
         int median = medianSpanCount(wtfInput);
         appendToolbar(body, hasDurations, componentDiagram != null, toggles);
+        appendFailureClusters(body, features); // .NET: before the timeline
         appendTimeline(body, features, hasDurations);
 
         int counter = 0;
@@ -824,6 +825,50 @@ public final class DotNetHtmlReportRenderer {
         appendDiagramToggleButtons(body, toggles, "");
         body.append("</div>");
         body.append("</div>");
+    }
+
+    /** The "Failure Clusters" section (.NET lines 816-840): groups failed scenarios sharing a normalised
+     *  first-line error (clusters of ≥2) into a collapsible list with deep-link anchors. Rendered only when
+     *  at least one such cluster exists — so a run with 0 or 1 failure shows nothing. */
+    private static void appendFailureClusters(StringBuilder body, List<Feature> features) {
+        List<Scenario> allScenarios = new ArrayList<>();
+        Map<String, String> scenarioFeatureLookup = new HashMap<>();
+        for (Feature f : features) {
+            for (Scenario s : f.scenarios()) {
+                allScenarios.add(s);
+                scenarioFeatureLookup.put(s.testId(), f.displayName()); // .NET keys by scenario.Id
+            }
+        }
+        List<io.kronikol.report.diagnostics.FailureClusterer.FailureCluster> clusters =
+            io.kronikol.report.diagnostics.FailureClusterer.cluster(allScenarios);
+        if (clusters.isEmpty()) {
+            return;
+        }
+        body.append("<details class=\"failure-clusters\" open>");
+        body.append("<summary>Failure Clusters (").append(clusters.size())
+            .append(clusters.size() == 1 ? " root cause" : " root causes").append(")</summary>");
+        for (var cluster : clusters) {
+            body.append("<details class=\"failure-cluster\"><summary>")
+                .append(HtmlEscaper.encode(cluster.clusterKey()))
+                .append("<span class=\"failure-cluster-count\">").append(cluster.scenarios().size())
+                .append(" scenarios</span></summary>");
+            body.append("<ul class=\"failure-cluster-scenarios\">");
+            for (Scenario s : cluster.scenarios()) {
+                String anchorId = scenarioAnchorId(s.name());
+                String featureName = scenarioFeatureLookup.getOrDefault(s.testId(), "");
+                String prefix = featureName.isEmpty() ? ""
+                    : "<span style=\"color:rgb(100,100,100);font-size:0.85em\">"
+                        + HtmlEscaper.encode(featureName) + " &rsaquo;</span> ";
+                body.append("<li>").append(prefix)
+                    .append("<a class=\"failure-cluster-scenario-link\" href=\"#").append(anchorId)
+                    .append("\" onclick=\"event.preventDefault();var el=document.getElementById('").append(anchorId)
+                    .append("');if(el){var p=el;while(p){if(p.tagName==='DETAILS')p.setAttribute('open','');p=p.parentElement;}if(el.tagName==='TR')el.click();else el.setAttribute('open','');el.scrollIntoView({behavior:'smooth',block:'start'});history.replaceState(null,'',location.pathname+location.search+'#")
+                    .append(anchorId).append("');}\">")
+                    .append(HtmlEscaper.encode(s.name())).append("</a></li>");
+            }
+            body.append("</ul></details>");
+        }
+        body.append("</details>");
     }
 
     private static void appendTimeline(StringBuilder body, List<Feature> features, boolean hasDurations) {

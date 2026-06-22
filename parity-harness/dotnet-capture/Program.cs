@@ -67,6 +67,8 @@ CaptureHtmlParamEdgeValues();
 CaptureHtmlEmptyFeature();
 // Scenario Categories → category-filters box; diagram toggle markers → Assertions/Steps/Databases buttons.
 CaptureHtmlFiltersToggles();
+// Two clusters of ≥2 same-error failures → the Failure Clusters section.
+CaptureHtmlFailureClusters();
 
 // includeTestRunData=true: the Features Summary table (conditional Steps/Duration columns), the
 // Test Execution Summary, the pie chart, and the header-row wrapping.
@@ -472,6 +474,33 @@ void CaptureHtmlEscaping()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-escaping.html"), content);
     Console.WriteLine($"=== report-escaping.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlFailureClusters()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // Two clusters of two: scenarios sharing a normalised first-line error group → the Failure Clusters
+    // section (needs ≥2 per cluster, so no existing 0/1-failure golden reaches it).
+    var a1 = new Scenario { Id = "s1", DisplayName = "Login fails", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(10),
+        ErrorMessage = "Timeout connecting to server\n  at Login()" };
+    var a2 = new Scenario { Id = "s2", DisplayName = "Checkout fails", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(12),
+        ErrorMessage = "Timeout connecting to server\n  at Checkout()" };
+    var b1 = new Scenario { Id = "s3", DisplayName = "Cart empty", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(8),
+        ErrorMessage = "Assertion failed: expected 200" };
+    var b2 = new Scenario { Id = "s4", DisplayName = "Cart full", IsHappyPath = false,
+        Result = ExecutionResult.Failed, Duration = TimeSpan.FromMilliseconds(9),
+        ErrorMessage = "Assertion failed: expected 200" };
+    var feature = new Feature { DisplayName = "Shop", Scenarios = [a1, a2, b1, b2] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-failureclusters.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-failureclusters.html"), content);
+    Console.WriteLine($"=== report-failureclusters.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlFiltersToggles()

@@ -339,6 +339,27 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void failureClustersBrowserHtmlReport_groupedFailures_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // Two clusters of two failures sharing a normalised first-line error → the Failure Clusters section
+        // (needs ≥2 per cluster; no 0/1-failure golden reaches it).
+        Scenario a1 = Scenario.builder("Login fails", "s1", ExecutionStatus.FAILED)
+            .durationMs(10).error("Timeout connecting to server\n  at Login()").build();
+        Scenario a2 = Scenario.builder("Checkout fails", "s2", ExecutionStatus.FAILED)
+            .durationMs(12).error("Timeout connecting to server\n  at Checkout()").build();
+        Scenario b1 = Scenario.builder("Cart empty", "s3", ExecutionStatus.FAILED)
+            .durationMs(8).error("Assertion failed: expected 200").build();
+        Scenario b2 = Scenario.builder("Cart full", "s4", ExecutionStatus.FAILED)
+            .durationMs(9).error("Assertion failed: expected 200").build();
+        Feature feature = new Feature("Shop", List.of(a1, a2, b1, b2));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-failureclusters.html", actual);
+    }
+
+    @Test
     void parameterizedBrowserHtmlReport_outlineGroupScalarColumns_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();
