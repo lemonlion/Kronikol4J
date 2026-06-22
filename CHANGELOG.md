@@ -2,6 +2,45 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.18] — unreleased
+
+**Diagram-creator parameter completeness** — ports the four remaining deterministic
+`GetPlantUmlImageTagsPerTestId` parameters no golden corpus exercised, completing the full
+`PlantUmlCreator.Create` surface (every parameter except the server-rendering ones —
+`plantUmlServerRendererUrl`/`lazyLoadImages` — and server-side splitting `maxEncodedDiagramLength`, all
+documented boundaries). Closing this also fixed two latent participant/arrow divergences the simpler Java
+algorithm carried.
+
+### Added — proven byte-parity for
+- **`excludeAllHeaders`** — drops every header from notes (vs the default `Cache-Control`/`Pragma`-only
+  exclusion). Golden: `exclude-all-headers`.
+- **`truncateNotesAfterLines`** — caps each note body at N lines, the rest replaced by a trailing `...`
+  line (.NET `TruncateNoteContent`). Golden: `truncate-notes`.
+- **`dependencyColors`** — a `category → colour` override map, honoured by both the arrow colour and the
+  participant declaration. Golden: `dependency-colors`.
+- **`serviceTypeOverrides`** — a `serviceName/callerName → category` override map that changes a
+  participant's detected category, hence its shape <em>and</em> colour. Golden: `service-type-overrides`.
+
+### Fixed — participant declaration now a faithful port of `CreateEntitiesPlantUml`
+- The **pure caller** (a `CallerName` never appearing as a `ServiceName`) is declared **first**, even when
+  it is not the first-seen caller — the previous first-seen algorithm mis-ordered it. Golden:
+  `pure-caller-order`.
+- A caller carrying a **`CallerDependencyCategory`** is now **shaped** (queue/database/…) instead of always
+  rendering as an `actor`, and the **arrow colour falls back** to the caller's category when the service
+  has none (event-consume arrows). Golden: `caller-category`.
+- Arrow colours now use an override-aware, first-non-null **service-category cache** over all traces
+  (.NET `GetArrowColor`), with `OrdinalIgnoreCase` category lookups.
+
+### Exposed
+- All four are first-class on `DiagramOptions`/`ReportOptions` with `with…` methods and
+  `kronikol.diagram.{excludeAllHeaders,truncateNotesAfterLines,dependencyColors,serviceTypeOverrides}`
+  system properties (the map properties parse `key=value,key=value`).
+
+### Notes
+- The full `PlantUmlCreator.Create` diagram-generation surface is now ported and byte-parity-proven. The
+  remaining lower-risk audit item is the main `TestRunReport.html` escaping of scenario/feature **names**
+  containing `<&">` (the `HtmlEscaper` is proven; its application at those call sites is unverified).
+
 ## [0.1.17] — unreleased
 
 **Diagram note + label parity** — closes the diagram-note and arrow-label gaps a corpus-coverage
