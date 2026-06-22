@@ -1,0 +1,173 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="ExecutionResult">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Passed" />
+      <xs:enumeration value="Failed" />
+      <xs:enumeration value="Skipped" />
+      <xs:enumeration value="Bypassed" />
+      <xs:enumeration value="SkippedAfterFailure" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="HeaderType">
+    <xs:sequence>
+      <xs:element name="Key" type="xs:string" />
+      <xs:element name="Value" type="xs:string" minOccurs="0" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="StepType">
+    <xs:sequence>
+      <xs:element name="Keyword" type="xs:string" minOccurs="0" />
+      <xs:element name="Text" type="xs:string" />
+      <xs:element name="Status" type="ExecutionResult" minOccurs="0" />
+      <xs:element name="DurationSeconds" type="xs:decimal" minOccurs="0" />
+      <xs:element name="SubSteps" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Step" type="StepType" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Attachments" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Attachment" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="Name" type="xs:string" />
+                  <xs:element name="RelativePath" type="xs:string" />
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="HttpInteractionType">
+    <xs:sequence>
+      <xs:element name="Type" type="xs:string" />
+      <xs:element name="Method" type="xs:string" minOccurs="0" />
+      <xs:element name="Uri" type="xs:string" />
+      <xs:element name="ServiceName" type="xs:string" />
+      <xs:element name="CallerName" type="xs:string" />
+      <xs:element name="Content" type="xs:string" minOccurs="0" />
+      <xs:element name="Headers" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Header" type="HeaderType" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="StatusCode" type="xs:string" minOccurs="0" />
+      <xs:element name="TraceId" type="xs:string" />
+      <xs:element name="RequestResponseId" type="xs:string" />
+      <xs:element name="Timestamp" type="xs:string" minOccurs="0" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ScenarioType">
+    <xs:sequence>
+      <xs:element name="Id" type="xs:string" />
+      <xs:element name="StableId" type="xs:string" />
+      <xs:element name="Name" type="xs:string" />
+      <xs:element name="Result" type="ExecutionResult" />
+      <xs:element name="DurationSeconds" type="xs:decimal" />
+      <xs:element name="IsHappyPath" type="xs:boolean" />
+      <xs:element name="ErrorMessage" type="xs:string" minOccurs="0" />
+      <xs:element name="ErrorStackTrace" type="xs:string" minOccurs="0" />
+      <xs:element name="Labels" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Label" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Categories" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Category" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Rule" type="xs:string" minOccurs="0" />
+      <xs:element name="BackgroundSteps" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Step" type="StepType" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Steps" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Step" type="StepType" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Attachments" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Attachment" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="Name" type="xs:string" />
+                  <xs:element name="RelativePath" type="xs:string" />
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Diagrams" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Diagram" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="HttpInteractions" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="HttpInteraction" type="HttpInteractionType" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="FeatureType">
+    <xs:sequence>
+      <xs:element name="Name" type="xs:string" />
+      <xs:element name="Endpoint" type="xs:string" minOccurs="0" />
+      <xs:element name="Description" type="xs:string" minOccurs="0" />
+      <xs:element name="Labels" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Label" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Scenarios">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Scenario" type="ScenarioType" minOccurs="0" maxOccurs="unbounded" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="TestRunReport">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="KronikolVersion" type="xs:string" minOccurs="0" />
+        <xs:element name="StartTime" type="xs:string" />
+        <xs:element name="EndTime" type="xs:string" />
+        <xs:element name="Features">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Feature" type="FeatureType" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

@@ -17,7 +17,7 @@ import java.util.Set;
  * listeners pick them up without an API change).
  */
 public record ReportOptions(boolean arrowColors, boolean participantColors,
-                            Set<ReportDataFormat> dataFormats) {
+                            Set<ReportDataFormat> dataFormats, boolean generateSchema) {
 
     /** System property (boolean) enabling per-dependency-type arrow colours. */
     public static final String ARROW_COLORS_PROPERTY = "kronikol.diagram.arrowColors";
@@ -25,6 +25,8 @@ public record ReportOptions(boolean arrowColors, boolean participantColors,
     public static final String PARTICIPANT_COLORS_PROPERTY = "kronikol.diagram.participantColors";
     /** System property (comma-separated: {@code json,xml,yaml}) selecting report-data formats to emit. */
     public static final String DATA_FORMATS_PROPERTY = "kronikol.report.dataFormats";
+    /** System property (boolean) enabling the {@code TestRunReport.schema.*} schema for each data format. */
+    public static final String GENERATE_SCHEMA_PROPERTY = "kronikol.report.generateSchema";
 
     public ReportOptions {
         dataFormats = dataFormats == null
@@ -33,24 +35,34 @@ public record ReportOptions(boolean arrowColors, boolean participantColors,
 
     /** Diagram colours only (no data files) — the back-compatible shape. */
     public ReportOptions(boolean arrowColors, boolean participantColors) {
-        this(arrowColors, participantColors, Set.of());
+        this(arrowColors, participantColors, Set.of(), false);
+    }
+
+    /** Colours + data formats, no schema — the back-compatible shape. */
+    public ReportOptions(boolean arrowColors, boolean participantColors, Set<ReportDataFormat> dataFormats) {
+        this(arrowColors, participantColors, dataFormats, false);
     }
 
     /** The .NET defaults: arrows coloured per dependency type, participants uncoloured, no data files. */
     public static ReportOptions defaults() {
-        return new ReportOptions(true, false, Set.of());
+        return new ReportOptions(true, false, Set.of(), false);
     }
 
     public ReportOptions withArrowColors(boolean value) {
-        return new ReportOptions(value, participantColors, dataFormats);
+        return new ReportOptions(value, participantColors, dataFormats, generateSchema);
     }
 
     public ReportOptions withParticipantColors(boolean value) {
-        return new ReportOptions(arrowColors, value, dataFormats);
+        return new ReportOptions(arrowColors, value, dataFormats, generateSchema);
     }
 
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
-        return new ReportOptions(arrowColors, participantColors, formats);
+        return new ReportOptions(arrowColors, participantColors, formats, generateSchema);
+    }
+
+    /** Enables the {@code TestRunReport.schema.json}/{@code .xsd} schema alongside each data format. */
+    public ReportOptions withGenerateSchema(boolean value) {
+        return new ReportOptions(arrowColors, participantColors, dataFormats, value);
     }
 
     /**
@@ -64,7 +76,8 @@ public record ReportOptions(boolean arrowColors, boolean participantColors,
         return new ReportOptions(
             boolProperty(ARROW_COLORS_PROPERTY, defaults.arrowColors()),
             boolProperty(PARTICIPANT_COLORS_PROPERTY, defaults.participantColors()),
-            parseDataFormats(System.getProperty(DATA_FORMATS_PROPERTY)));
+            parseDataFormats(System.getProperty(DATA_FORMATS_PROPERTY)),
+            boolProperty(GENERATE_SCHEMA_PROPERTY, defaults.generateSchema()));
     }
 
     private static boolean boolProperty(String name, boolean fallback) {

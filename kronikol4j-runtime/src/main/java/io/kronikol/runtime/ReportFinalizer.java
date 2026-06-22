@@ -86,7 +86,23 @@ public final class ReportFinalizer {
         for (ReportDataFormat format : options.dataFormats()) {
             Files.writeString(outputDir.resolve("TestRunReport." + format.extension()),
                 format.serialize(data), StandardCharsets.UTF_8);
+            if (options.generateSchema()) {
+                Files.writeString(outputDir.resolve("TestRunReport.schema." + schemaExtension(format)),
+                    schemaContent(format), StandardCharsets.UTF_8);
+            }
         }
+    }
+
+    /** The schema file extension for a data format (.NET {@code GetSchemaExtension}): XML &rarr; XSD,
+     *  JSON/YAML &rarr; JSON Schema. */
+    private static String schemaExtension(ReportDataFormat format) {
+        return format == ReportDataFormat.XML ? "xsd" : "json";
+    }
+
+    private static String schemaContent(ReportDataFormat format) {
+        return format == ReportDataFormat.XML
+            ? io.kronikol.report.data.ReportDataSchema.xmlSchema()
+            : io.kronikol.report.data.ReportDataSchema.jsonSchema();
     }
 
     /**

@@ -123,6 +123,10 @@ CaptureDiagnosticReport();
 // 0-spans note). Captured as the newline-joined array; the runtime-store warnings are empty here.
 CaptureReportDiagnostics();
 
+// Report-data JSON Schema (GenerateTestRunReportJsonSchema) — the static draft-2020-12 schema describing
+// TestRunReport.json (also used for the YAML format).
+CaptureReportDataSchema();
+
 // showStepNumbers — background/scenario step number prefixes (1., 2., …) incl. nested sub-steps (1.1.).
 CaptureHtmlStepNumbers();
 
@@ -968,6 +972,19 @@ void CaptureDiagnosticReport()
     var html = File.ReadAllText(generated).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "diagnostic-report.html"), html);
     Console.WriteLine($"=== diagnostic-report.html ({html.Length} chars) ===");
+}
+
+void CaptureReportDataSchema()
+{
+    var path = ReportGenerator.GenerateTestRunReportSchema("testrunreport.schema.json", DataFormat.Json);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "testrunreport-schema.json"), content);
+    Console.WriteLine($"=== testrunreport-schema.json ({content.Length} chars) ===");
+
+    var xsdPath = ReportGenerator.GenerateTestRunReportSchema("testrunreport.schema.xsd", DataFormat.Xml);
+    var xsd = File.ReadAllText(xsdPath).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "testrunreport-schema.xsd"), xsd);
+    Console.WriteLine($"=== testrunreport-schema.xsd ({xsd.Length} chars) ===");
 }
 
 void CaptureReportDiagnostics()

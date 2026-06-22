@@ -152,6 +152,14 @@ public final class ReportDataSerializer {
     }
 
     @SuppressWarnings("unchecked")
+    /** Serializes an arbitrary Map/List/String/Boolean/Double tree with the System.Text.Json
+     *  {@code WriteIndented} format (shared by the report-data JSON and {@link ReportDataSchema}). */
+    static String toIndentedJson(Object tree) {
+        StringBuilder sb = new StringBuilder();
+        writeJson(sb, tree, "");
+        return sb.toString();
+    }
+
     private static void writeJson(StringBuilder sb, Object value, String indent) {
         if (value == null) {
             sb.append("null");

@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TestRunReport",
+  "description": "Schema for Kronikol test run report data",
+  "type": "object",
+  "required": [
+    "startTime",
+    "endTime",
+    "features"
+  ],
+  "properties": {
+    "kronikolVersion": {
+      "type": "string",
+      "description": "Version of Kronikol that generated this report"
+    },
+    "startTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC start time of the test run"
+    },
+    "endTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC end time of the test run"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "labels",
+          "scenarios"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scenarios": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "stableId",
+                "name",
+                "result",
+                "durationSeconds",
+                "isHappyPath",
+                "labels",
+                "categories",
+                "steps"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "stableId": {
+                  "type": "string",
+                  "description": "Deterministic cross-run identifier derived from feature name \u002B scenario display name (\u002B outline ID for parameterized scenarios). Use this for matching the same test across runs."
+                },
+                "name": {
+                  "type": "string"
+                },
+                "result": {
+                  "type": "string",
+                  "enum": [
+                    "Passed",
+                    "Failed",
+                    "Skipped",
+                    "Bypassed",
+                    "SkippedAfterFailure"
+                  ]
+                },
+                "durationSeconds": {
+                  "type": "number"
+                },
+                "isHappyPath": {
+                  "type": "boolean"
+                },
+                "errorMessage": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "errorStackTrace": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "labels": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "categories": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rule": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Gherkin Rule grouping this scenario belongs to"
+                },
+                "outlineId": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Original scenario outline name for parameterized scenarios"
+                },
+                "exampleValues": {
+                  "type": "object",
+                  "nullable": true,
+                  "description": "Example parameter values for parameterized scenarios",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "backgroundSteps": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/step"
+                  }
+                },
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/step"
+                  }
+                },
+                "attachments": {
+                  "type": "array",
+                  "description": "Scenario-level file attachments (added when no step was active)",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "relativePath": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "diagrams": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "httpInteractions": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/httpInteraction"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "properties": {
+        "keyword": {
+          "type": "string",
+          "nullable": true
+        },
+        "text": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Passed",
+            "Failed",
+            "Skipped",
+            "Bypassed",
+            "SkippedAfterFailure"
+          ],
+          "nullable": true
+        },
+        "durationSeconds": {
+          "type": "number",
+          "nullable": true
+        },
+        "subSteps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "relativePath": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "httpInteraction": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "Request",
+            "Response"
+          ]
+        },
+        "method": {
+          "type": "string",
+          "nullable": true
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "serviceName": {
+          "type": "string"
+        },
+        "callerName": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "nullable": true
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          }
+        },
+        "statusCode": {
+          "type": "string",
+          "nullable": true
+        },
+        "traceId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "requestResponseId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true
+        }
+      }
+    }
+  }
+}

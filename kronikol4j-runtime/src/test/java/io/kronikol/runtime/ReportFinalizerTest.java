@@ -163,6 +163,24 @@ class ReportFinalizerTest {
         }
     }
 
+    @Test
+    void finalizeEmitsSchemaWhenRequested(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults()
+            .withDataFormats(Set.of(ReportDataFormat.JSON, ReportDataFormat.XML)).withGenerateSchema(true));
+
+        assertThat(Files.readString(dir.resolve("TestRunReport.schema.json")))
+            .contains("\"title\": \"TestRunReport\"").contains("https://json-schema.org/draft/2020-12/schema");
+        assertThat(Files.readString(dir.resolve("TestRunReport.schema.xsd")))
+            .startsWith("<xs:schema").contains("name=\"ExecutionResult\"");
+        // not emitted without the flag
+        ReportFinalizer.finalizeRun(dir.resolve("noschema"), "Run",
+            ReportOptions.defaults().withDataFormats(Set.of(ReportDataFormat.JSON)));
+        assertThat(dir.resolve("noschema/TestRunReport.schema.json")).doesNotExist();
+    }
+
     private static void trackCheckout() {
         UUID trace = UUID.randomUUID();
         UUID rr = UUID.randomUUID();
