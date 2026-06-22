@@ -1,0 +1,23 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "CartService" as cartService
+
+test -> cartService: POST: /add
+note left
+item=egg<font color="lightgray">&
+qty=2<font color="lightgray">&
+note=hello world
+end note
+cartService --> test: OK
+note right
+{
+  "ok": true
+}
+end note
+@enduml

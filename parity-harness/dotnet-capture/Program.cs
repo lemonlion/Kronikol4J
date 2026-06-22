@@ -1551,6 +1551,9 @@ Capture("theme", SimpleHttp(), arrowColors: false, plantUmlTheme: "cyborg"); // 
 Capture("headers", HttpWithHeaders(), arrowColors: false); // gray [Key=Value] notes, sorted, Cache-Control excluded
 Capture("setup", SetupCorpus(), arrowColors: false, separateSetup: true); // partition #F6F6F6 Setup … end
 Capture("focus", FocusCorpus(), arrowColors: false); // focusFields → <b> focused, <color:lightgray> the rest
+Capture("binary-content", BinaryContent(), arrowColors: false); // >10% control chars → [binary content]
+Capture("form-encoded", FormEncoded(), arrowColors: false);     // non-JSON request body → form-url-encoded
+Capture("long-url", LongUrl(), arrowColors: false);             // path+query > 100 chars → wrapped
 Capture("multi-trace", MultiTrace(), arrowColors: false);
 Capture("sql", Sql(), arrowColors: false);
 Capture("event", Event(), arrowColors: false);
@@ -1594,6 +1597,50 @@ void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool 
 // --- corpora ---
 
 static (string, string?)[] NoHeaders() => Array.Empty<(string, string?)>();
+
+static List<RequestResponseLog> BinaryContent()
+{
+    var (trace, rr) = Ids(1);
+    var binary = "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u000e\u000fbin"; // 10/13 control → binary
+    return
+    [
+        new RequestResponseLog("Uploads a file", "t1", HttpMethod.Post, binary,
+            new Uri("http://files/upload"), NoHeaders(), "FileService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Uploads a file", "t1", HttpMethod.Post, "{\"ok\":true}",
+            new Uri("http://files/upload"), NoHeaders(), "FileService", "Test",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
+
+static List<RequestResponseLog> FormEncoded()
+{
+    var (trace, rr) = Ids(1);
+    return
+    [
+        new RequestResponseLog("Submits a form", "t1", HttpMethod.Post, "item=egg&qty=2&note=hello world",
+            new Uri("http://cart/add"), NoHeaders(), "CartService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Submits a form", "t1", HttpMethod.Post, "{\"ok\":true}",
+            new Uri("http://cart/add"), NoHeaders(), "CartService", "Test",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
+
+static List<RequestResponseLog> LongUrl()
+{
+    var (trace, rr) = Ids(1);
+    var longPath = "/api/v1/orders/search?filter=status:pending,priority:high&sort=created_desc"
+        + "&page=1&size=50&include=items,customer,shipping,billing,payments,history";
+    return
+    [
+        new RequestResponseLog("Searches orders", "t1", HttpMethod.Get, null,
+            new Uri("http://orders" + longPath), NoHeaders(), "OrderService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP"),
+    ];
+}
 
 static List<RequestResponseLog> FocusCorpus()
 {

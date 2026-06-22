@@ -1,0 +1,12 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "OrderService" as orderService
+
+test -> orderService: GET: /api/v1/orders/search?filter=status:pending,priority:high&sort=created_desc&page=1&size=50&include=i\n        tems,customer,shipping,billing,payments,history
+@enduml

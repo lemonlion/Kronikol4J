@@ -53,6 +53,40 @@ class PlantUmlParityTest {
     }
 
     @Test
+    void binaryContentPlaceholder() throws IOException {
+        // >10% control chars in the body → the "[binary content]" placeholder (.NET IsBinaryContent).
+        List<RequestResponseLog> corpus = List.of(
+            log("Uploads a file", Method.Http.POST, "http://files/upload", "FileService",
+                DependencyCategories.HTTP, RequestResponseType.REQUEST,
+                "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u000e\u000fbin", null),
+            log("Uploads a file", Method.Http.POST, "http://files/upload", "FileService",
+                DependencyCategories.HTTP, RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
+        assertParity("binary-content", PlantUmlCreator.create(corpus, false).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void formUrlEncodedRequestBody() throws IOException {
+        // a non-JSON request body is rendered form-url-encoded: each field on its own line, gray "&".
+        List<RequestResponseLog> corpus = List.of(
+            log("Submits a form", Method.Http.POST, "http://cart/add", "CartService",
+                DependencyCategories.HTTP, RequestResponseType.REQUEST, "item=egg&qty=2&note=hello world", null),
+            log("Submits a form", Method.Http.POST, "http://cart/add", "CartService",
+                DependencyCategories.HTTP, RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
+        assertParity("form-encoded", PlantUmlCreator.create(corpus, false).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void longUrlWrapping() throws IOException {
+        // a path+query over 100 chars is wrapped into "\n        "-joined chunks in the arrow label.
+        String longPath = "http://orders/api/v1/orders/search?filter=status:pending,priority:high"
+            + "&sort=created_desc&page=1&size=50&include=items,customer,shipping,billing,payments,history";
+        List<RequestResponseLog> corpus = List.of(
+            log("Searches orders", Method.Http.GET, longPath, "OrderService",
+                DependencyCategories.HTTP, RequestResponseType.REQUEST, null, null));
+        assertParity("long-url", PlantUmlCreator.create(corpus, false).get(0).diagrams().get(0));
+    }
+
+    @Test
     void focusFieldsEmphasis() throws IOException {
         // focusFields → focused lines <b>bold</b>, the rest <color:lightgray> (the .NET Bold/LightGray default).
         assertParity("focus", PlantUmlCreator.create(focusCorpus(), false).get(0).diagrams().get(0));

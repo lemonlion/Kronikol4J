@@ -40,11 +40,21 @@ public final class NoteFormatter {
         return format(content, headers, excludedHeaders, focusFields, focusEmphasis, focusDeEmphasis, null);
     }
 
-    /** Builds the note body (may be empty): excluded headers dropped + gray-rendered, then the content
-     *  (pretty-printed, then the {@code midProcessor} hook, then focus emphasis/de-emphasis). */
+    /** As {@link #format(String, List, List, List, Set, Set, UnaryOperator, boolean)} for a request. */
     public static String format(String content, List<Header> headers, List<String> excludedHeaders,
                                 List<String> focusFields, Set<FocusEmphasis> focusEmphasis,
                                 Set<FocusDeEmphasis> focusDeEmphasis, UnaryOperator<String> midProcessor) {
+        return format(content, headers, excludedHeaders, focusFields, focusEmphasis, focusDeEmphasis,
+            midProcessor, true);
+    }
+
+    /** Builds the note body (may be empty): excluded headers dropped + gray-rendered, then the content
+     *  (binary → {@code [binary content]}; else pretty-printed JSON, or for a request a form-url-encoded
+     *  body; then the {@code midProcessor} hook, then focus emphasis/de-emphasis). */
+    public static String format(String content, List<Header> headers, List<String> excludedHeaders,
+                                List<String> focusFields, Set<FocusEmphasis> focusEmphasis,
+                                Set<FocusDeEmphasis> focusDeEmphasis, UnaryOperator<String> midProcessor,
+                                boolean isRequest) {
         String headersOnTop = "";
         if (headers != null && !headers.isEmpty()) {
             headersOnTop = headers.stream()
@@ -54,11 +64,7 @@ public final class NoteFormatter {
                 .collect(Collectors.joining("\n"));
         }
 
-        String formattedContent = "";
-        if (content != null && !content.isBlank()) {
-            String pretty = Json.tryPrettyPrint(content);
-            formattedContent = pretty != null ? pretty : content;
-        }
+        String formattedContent = formatBody(content, isRequest);
         if (midProcessor != null) { // .NET midFormattingProcessor — after formatting, before focus
             formattedContent = midProcessor.apply(formattedContent);
         }
@@ -70,6 +76,60 @@ public final class NoteFormatter {
         // .NET: ((headersOnTop + "\n\n").TrimStart() + formattedContent.Trim()).TrimEnd()
         String combined = (headersOnTop + "\n\n").stripLeading() + formattedContent.strip();
         return escapeForNote(combined.stripTrailing());
+    }
+
+    /** Formats a content body (.NET {@code FormatNoteContent} body path): binary content becomes a
+     *  placeholder; JSON is pretty-printed; otherwise a request body is treated as form-url-encoded and a
+     *  response body is kept verbatim. */
+    private static String formatBody(String content, boolean isRequest) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        String body = isBinaryContent(content) ? "<i>[binary content]</i>" : content;
+        String pretty = Json.tryPrettyPrint(body);
+        if (pretty != null) {
+            return pretty;
+        }
+        return isRequest ? formatFormUrlEncoded(body) : body;
+    }
+
+    /** .NET {@code IsBinaryContent}: &gt;10% non-tab/newline control chars in the first 512 chars. */
+    private static boolean isBinaryContent(String content) {
+        int checkLength = Math.min(content.length(), 512);
+        int controlCount = 0;
+        for (int i = 0; i < checkLength; i++) {
+            char c = content.charAt(i);
+            if (c != '\t' && c != '\n' && c != '\r' && c < ' ') {
+                controlCount++;
+            }
+        }
+        return controlCount > checkLength * 0.1;
+    }
+
+    /** .NET {@code FormatFormUrlEncodedContent}: each {@code &}-separated field on its own line, the
+     *  separator rendered as a gray {@code <font color="lightgray">&} after every field but the last. */
+    private static String formatFormUrlEncoded(String content) {
+        String divider = "<font color=\"lightgray\">&";
+        List<String> out = new ArrayList<>();
+        for (String part : content.split("&", -1)) {
+            List<String> chunks = chunk(part);
+            if (chunks.isEmpty()) {
+                continue;
+            }
+            chunks.set(chunks.size() - 1, chunks.get(chunks.size() - 1) + divider);
+            out.addAll(chunks);
+        }
+        String joined = String.join("\n", out);
+        return joined.endsWith(divider) ? joined.substring(0, joined.length() - divider.length()) : joined;
+    }
+
+    /** Splits {@code value} into &le;80-char chunks (.NET {@code ChunksUpTo(MaxNoteChunkChars)}). */
+    private static List<String> chunk(String value) {
+        List<String> chunks = new ArrayList<>();
+        for (int i = 0; i < value.length(); i += MAX_NOTE_CHUNK_CHARS) {
+            chunks.add(value.substring(i, Math.min(i + MAX_NOTE_CHUNK_CHARS, value.length())));
+        }
+        return chunks;
     }
 
     /** Splits {@code value} into &le;80-char chunks, each prefixed {@code <color:gray>} (.NET {@code BatchGray}). */

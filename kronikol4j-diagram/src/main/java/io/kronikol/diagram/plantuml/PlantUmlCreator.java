@@ -184,7 +184,7 @@ public final class PlantUmlCreator {
                 isRequest ? processors.requestPre() : processors.responsePre(), log.content());
             String note = NoteFormatter.format(content, log.headers(), options.excludedHeaders(),
                 log.focusFields(), options.focusEmphasis(), options.focusDeEmphasis(),
-                isRequest ? processors.requestMid() : processors.responseMid());
+                isRequest ? processors.requestMid() : processors.responseMid(), isRequest);
             note = NoteProcessors.apply(isRequest ? processors.requestPost() : processors.responsePost(), note);
             appendNote(sb, opener, note);
         }
@@ -230,6 +230,8 @@ public final class PlantUmlCreator {
         sb.append(opener).append(NL).append(body).append(NL).append("end note").append(NL);
     }
 
+    private static final int MAX_URL_LENGTH = 100; // .NET maxUrlLength — wrap longer path+query
+
     private static String requestLabel(RequestResponseLog log) {
         URI uri = log.uri();
         String path = uri.getRawPath();
@@ -239,6 +241,16 @@ public final class PlantUmlCreator {
         String query = uri.getRawQuery();
         if (query != null && !query.isEmpty()) {
             path = path + "?" + query;
+        }
+        if (path.length() > MAX_URL_LENGTH) { // .NET: split a long URL into "\n        "-joined chunks
+            StringBuilder wrapped = new StringBuilder();
+            for (int i = 0; i < path.length(); i += MAX_URL_LENGTH) {
+                if (i > 0) {
+                    wrapped.append("\\n        "); // literal "\n" + 8 spaces — a PlantUML label line break
+                }
+                wrapped.append(path, i, Math.min(i + MAX_URL_LENGTH, path.length()));
+            }
+            path = wrapped.toString();
         }
         return log.method().value() + ": " + path;
     }

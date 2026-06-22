@@ -1,0 +1,21 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "FileService" as fileService
+
+test -> fileService: POST: /upload
+note left
+<i>[binary content]</i>
+end note
+fileService --> test: OK
+note right
+{
+  "ok": true
+}
+end note
+@enduml
