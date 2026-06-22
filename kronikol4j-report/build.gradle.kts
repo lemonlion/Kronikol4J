@@ -20,3 +20,15 @@ tasks.register<JavaExec>("generatePlaywrightFixture") {
     args(layout.buildDirectory.dir("playwright").get().asFile.absolutePath)
     dependsOn("testClasses")
 }
+
+// Dogfoods the CI markdown summary (CiSummaryGenerator): writes a sample all-passing/all-failing/mixed
+// summary to $GITHUB_STEP_SUMMARY — the Java equivalent of the .NET ci-summary-preview workflow.
+// Usage: ./gradlew :kronikol4j-report:ciSummaryPreview -Pvariant=mixed
+tasks.register<JavaExec>("ciSummaryPreview") {
+    group = "verification"
+    description = "Generates a sample CI summary (variant = allPassing | allFailing | mixed)."
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("io.kronikol.report.ci.CiSummaryPreview")
+    args((project.findProperty("variant") ?: "mixed").toString())
+    dependsOn("testClasses")
+}

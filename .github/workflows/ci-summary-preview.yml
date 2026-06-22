@@ -1,0 +1,41 @@
+name: CI Summary Preview
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci-preview:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "CI Preview — All Passing (10 scenarios)"
+            variant: allPassing
+          - name: "CI Preview — All Failing (10 scenarios)"
+            variant: allFailing
+          - name: "CI Preview — Mixed (5 pass, 5 fail)"
+            variant: mixed
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Dogfoods CiSummaryGenerator — the markdown is appended to $GITHUB_STEP_SUMMARY, so the rendered
+      # CI summary is visible on the workflow run's summary page (the .NET ci-summary-preview equivalent).
+      - name: Generate CI summary preview
+        run: ./gradlew :kronikol4j-report:ciSummaryPreview -Pvariant=${{ matrix.variant }} --no-daemon
