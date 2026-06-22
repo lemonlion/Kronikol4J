@@ -113,6 +113,7 @@ CaptureHtmlCustomStyleSheet();
 // details (error/stack-trace/escaping) is byte-stable; the diagram case has a deflate-encoded server URL.
 CaptureCiSummaryFailed();
 CaptureCiSummaryDiagrams();
+CaptureCiSummaryMultipart();
 
 // Diagnostic report (DiagnosticReportGenerator.BuildHtml) — the deterministic sections driven by
 // logs + features + config (log summary, per-service/per-test, unknown entries, unpaired, orphaned,
@@ -925,6 +926,29 @@ void CaptureCiSummaryFailed()
     Console.WriteLine($"=== ci-summary-failed.md ({md.Length} chars) ===");
 }
 
+void CaptureCiSummaryMultipart()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 1, 5, DateTimeKind.Utc);
+    // truncated != full (truncation occurred) AND 2 parts per scenario → the wasTruncated + multipart
+    // branches: "Truncated/Full Sequence Diagram (Part N)" + the "(Part N) - PlantUML" source blocks.
+    var s1 = new Scenario { Id = "s1", DisplayName = "Places an order", IsHappyPath = true, Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(120) };
+    var feature = new Feature { DisplayName = "Checkout", Scenarios = [s1] };
+    var truncated = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", string.Empty, "@startuml\nTest -> A: part1 short\n@enduml"),
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", string.Empty, "@startuml\nTest -> B: part2 short\n@enduml"),
+    };
+    var full = new[]
+    {
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", string.Empty, "@startuml\nTest -> A: part1 full body content\n@enduml"),
+        new DefaultDiagramsFetcher.DiagramAsCode("s1", string.Empty, "@startuml\nTest -> B: part2 full body content\n@enduml"),
+    };
+    var md = CiSummaryGenerator.GenerateMarkdown([feature], truncated, full, start, end).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "ci-summary-multipart.md"), md);
+    Console.WriteLine($"=== ci-summary-multipart.md ({md.Length} chars) ===");
+}
+
 void CaptureCiSummaryDiagrams()
 {
     var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -1554,6 +1578,7 @@ Capture("focus", FocusCorpus(), arrowColors: false); // focusFields → <b> focu
 Capture("binary-content", BinaryContent(), arrowColors: false); // >10% control chars → [binary content]
 Capture("form-encoded", FormEncoded(), arrowColors: false);     // non-JSON request body → form-url-encoded
 Capture("long-url", LongUrl(), arrowColors: false);             // path+query > 100 chars → wrapped
+Capture("note-on-right", NoteOnRightCorpus(), arrowColors: false); // request NoteOnRight → note on the right
 Capture("multi-trace", MultiTrace(), arrowColors: false);
 Capture("sql", Sql(), arrowColors: false);
 Capture("event", Event(), arrowColors: false);
@@ -1597,6 +1622,21 @@ void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool 
 // --- corpora ---
 
 static (string, string?)[] NoHeaders() => Array.Empty<(string, string?)>();
+
+static List<RequestResponseLog> NoteOnRightCorpus()
+{
+    var (trace, rr) = Ids(1);
+    return
+    [
+        new RequestResponseLog("Checkout succeeds", "t1", HttpMethod.Post, "{\"item\":\"egg\"}",
+            new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP") { NoteOnRight = true },
+        new RequestResponseLog("Checkout succeeds", "t1", HttpMethod.Post, "{\"ok\":true}",
+            new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
 
 static List<RequestResponseLog> BinaryContent()
 {

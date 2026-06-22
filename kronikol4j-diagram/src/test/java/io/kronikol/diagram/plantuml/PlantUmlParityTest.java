@@ -65,6 +65,18 @@ class PlantUmlParityTest {
     }
 
     @Test
+    void noteOnRightForRequest() throws IOException {
+        // a request with NoteOnRight renders its note on the right (.NET trace.NoteOnRight).
+        RequestResponseLog req = log("Checkout succeeds", Method.Http.POST, "http://orders/checkout",
+            "OrderService", DependencyCategories.HTTP, RequestResponseType.REQUEST, "{\"item\":\"egg\"}", null);
+        req.noteOnRight(true);
+        List<RequestResponseLog> corpus = List.of(req,
+            log("Checkout succeeds", Method.Http.POST, "http://orders/checkout", "OrderService",
+                DependencyCategories.HTTP, RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
+        assertParity("note-on-right", PlantUmlCreator.create(corpus, false).get(0).diagrams().get(0));
+    }
+
+    @Test
     void formUrlEncodedRequestBody() throws IOException {
         // a non-JSON request body is rendered form-url-encoded: each field on its own line, gray "&".
         List<RequestResponseLog> corpus = List.of(

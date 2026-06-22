@@ -71,6 +71,26 @@ class CiSummaryGeneratorTest {
     }
 
     @Test
+    void multipartTruncatedDiagrams_structureMatchesDotNet() {
+        // truncated != full (truncation occurred) + 2 parts → the wasTruncated + multipart branches
+        // (Truncated/Full "(Part N)" + the "(Part N) - PlantUML" source blocks), DEFLATE tokens masked.
+        Scenario s1 = Scenario.builder("Places an order", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(120).build();
+        Feature feature = new Feature("Checkout", List.of(s1));
+        List<CiDiagram> truncated = List.of(
+            new CiDiagram("s1", "@startuml\nTest -> A: part1 short\n@enduml"),
+            new CiDiagram("s1", "@startuml\nTest -> B: part2 short\n@enduml"));
+        List<CiDiagram> full = List.of(
+            new CiDiagram("s1", "@startuml\nTest -> A: part1 full body content\n@enduml"),
+            new CiDiagram("s1", "@startuml\nTest -> B: part2 full body content\n@enduml"));
+
+        String md = CiSummaryGenerator.generateMarkdown(
+            List.of(feature), truncated, full, T0, T0.plusSeconds(65));
+
+        assertThat(maskSvgToken(md)).isEqualTo(maskSvgToken(readFixture("ci-summary-multipart.md")));
+    }
+
+    @Test
     void formatDuration_matchesDotNetThresholds() {
         assertThat(CiSummaryGenerator.formatDuration(Duration.ofMillis(0))).isEqualTo("0ms");
         assertThat(CiSummaryGenerator.formatDuration(Duration.ofMillis(999))).isEqualTo("999ms");

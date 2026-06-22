@@ -170,7 +170,7 @@ public final class PlantUmlCreator {
                 String arrow = arrowColors ? "-[" + color + "]>" : "->";
                 sb.append(caller).append(' ').append(arrow).append(' ').append(service)
                     .append(": ").append(requestLabel(log)).append(NL);
-                side = "left";
+                side = log.noteOnRight() ? "right" : "left"; // .NET trace.NoteOnRight (request note side)
             } else {
                 String arrow = arrowColors ? "-[" + color + "]->" : "-->";
                 sb.append(service).append(' ').append(arrow).append(' ').append(caller)
