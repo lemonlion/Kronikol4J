@@ -53,6 +53,14 @@ class PlantUmlParityTest {
     }
 
     @Test
+    void separateSetupPartition() throws IOException {
+        // separateSetup wraps the setup-phase traces in "partition #F6F6F6 Setup … end"; the action-start
+        // marker is skipped (not a participant), action-phase traces follow outside the partition.
+        DiagramOptions opts = DiagramOptions.defaults().withArrowColors(false).withSeparateSetup(true);
+        assertParity("setup", PlantUmlCreator.create(setupCorpus(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
     void multiTrace() throws IOException {
         List<RequestResponseLog> corpus = new java.util.ArrayList<>(httpExchange());
         corpus.addAll(sqlExchange("Checkout succeeds"));
@@ -137,6 +145,35 @@ class PlantUmlParityTest {
                 DependencyCategories.HTTP, RequestResponseType.REQUEST, "{\"item\":\"egg\"}", null),
             log("Checkout succeeds", Method.Http.POST, "http://orders/checkout", "OrderService",
                 DependencyCategories.HTTP, RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
+    }
+
+    private static List<RequestResponseLog> setupCorpus() {
+        return List.of(
+            setupLog(Method.Http.GET, "http://config/settings", "ConfigService",
+                RequestResponseType.REQUEST, null, null, false),
+            setupLog(Method.Http.GET, "http://config/settings", "ConfigService",
+                RequestResponseType.RESPONSE, null, StatusCode.of(200), false),
+            setupLog(Method.Http.GET, "http://marker/", "Marker",
+                RequestResponseType.REQUEST, null, null, true), // the IsActionStart marker
+            setupLog(Method.Http.POST, "http://orders/checkout", "OrderService",
+                RequestResponseType.REQUEST, "{\"item\":\"egg\"}", null, false),
+            setupLog(Method.Http.POST, "http://orders/checkout", "OrderService",
+                RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200), false));
+    }
+
+    private static RequestResponseLog setupLog(Method method, String uri, String service,
+                                               RequestResponseType type, String content, StatusCode status,
+                                               boolean actionStart) {
+        RequestResponseLog log = RequestResponseLog.builder()
+            .testName("Places an order").testId("t1").method(method).uri(URI.create(uri))
+            .serviceName(service).callerName("Test").type(type)
+            .traceId(UUID.randomUUID()).requestResponseId(UUID.randomUUID())
+            .dependencyCategory(actionStart ? null : DependencyCategories.HTTP).statusCode(status)
+            .content(content).build();
+        if (actionStart) {
+            log.actionStart(true);
+        }
+        return log;
     }
 
     private static List<RequestResponseLog> httpWithHeaders() {

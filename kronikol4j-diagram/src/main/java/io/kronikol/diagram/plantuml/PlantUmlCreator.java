@@ -92,6 +92,28 @@ public final class PlantUmlCreator {
         boolean hasEvents = logs.stream()
             .anyMatch(l -> l.plantUml() == null && l.metaType() == RequestResponseMetaType.EVENT);
 
+        // Setup/assertion separation (.NET separateSetup): wrap the setup-phase traces in a
+        // "partition <color> Setup" … "end" block, closed when the IsActionStart marker is reached.
+        int actionStartIndex = -1;
+        for (int i = 0; i < logs.size(); i++) {
+            if (logs.get(i).actionStart()) {
+                actionStartIndex = i;
+                break;
+            }
+        }
+        boolean hasActionStart = options.separateSetup() && actionStartIndex >= 0;
+        boolean hasSetupTraces = false;
+        for (int i = 0; hasActionStart && i < actionStartIndex; i++) {
+            if (logs.get(i).plantUml() == null && !logs.get(i).actionStart()) {
+                hasSetupTraces = true;
+                break;
+            }
+        }
+        String setupColor = options.setupHighlightColor() != null ? options.setupHighlightColor() : "#F6F6F6";
+        String partitionLine = options.highlightSetup() ? "partition " + setupColor + " Setup" : "partition Setup";
+        boolean partitionOpen = false;
+        boolean setupPartitionClosed = false;
+
         StringBuilder sb = new StringBuilder(512);
         sb.append("@startuml").append(NL);
         if (options.plantUmlTheme() != null && !options.plantUmlTheme().isBlank()) {
@@ -108,9 +130,28 @@ public final class PlantUmlCreator {
         sb.append(NL);
 
         for (RequestResponseLog log : logs) {
+            if (log.actionStart()) { // phase-boundary marker — closes Setup, never rendered (.NET parity)
+                if (partitionOpen) {
+                    sb.append("end").append(NL);
+                    partitionOpen = false;
+                }
+                setupPartitionClosed = true;
+                continue;
+            }
             if (log.plantUml() != null) { // override path (assertion notes, custom fragments) — §3.9
+                if (hasActionStart && !setupPartitionClosed) { // .NET closes the Setup partition before an override
+                    if (partitionOpen) {
+                        sb.append("end").append(NL);
+                        partitionOpen = false;
+                    }
+                    setupPartitionClosed = true;
+                }
                 sb.append(log.plantUml()).append(NL);
                 continue;
+            }
+            if (hasSetupTraces && !partitionOpen && !setupPartitionClosed) { // open Setup before the first setup trace
+                sb.append(partitionLine).append(NL);
+                partitionOpen = true;
             }
             String caller = alias(log.callerName());
             String service = alias(log.serviceName());
@@ -142,8 +183,8 @@ public final class PlantUmlCreator {
         Set<String> services = new HashSet<>();             // names that appear as a service
         Map<String, String> categoryByService = new HashMap<>(); // first non-null category per service
         for (RequestResponseLog log : logs) {
-            if (log.plantUml() != null) {
-                continue; // override fragments declare no participants
+            if (log.plantUml() != null || log.actionStart()) {
+                continue; // override fragments + action-start markers declare no participants
             }
             order.add(log.callerName());
             order.add(log.serviceName());

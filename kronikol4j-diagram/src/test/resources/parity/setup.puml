@@ -1,0 +1,28 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "ConfigService" as configService
+entity "OrderService" as orderService
+
+partition #F6F6F6 Setup
+test -> configService: GET: /settings
+configService --> test: OK
+end
+test -> orderService: POST: /checkout
+note left
+{
+  "item": "egg"
+}
+end note
+orderService --> test: OK
+note right
+{
+  "ok": true
+}
+end note
+@enduml

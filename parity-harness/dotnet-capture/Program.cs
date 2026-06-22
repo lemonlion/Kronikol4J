@@ -1549,6 +1549,7 @@ Capture("simple-http", SimpleHttp(), arrowColors: false);
 Capture("simple-http-colored", SimpleHttp(), arrowColors: true);
 Capture("theme", SimpleHttp(), arrowColors: false, plantUmlTheme: "cyborg"); // !theme directive after @startuml
 Capture("headers", HttpWithHeaders(), arrowColors: false); // gray [Key=Value] notes, sorted, Cache-Control excluded
+Capture("setup", SetupCorpus(), arrowColors: false, separateSetup: true); // partition #F6F6F6 Setup … end
 Capture("multi-trace", MultiTrace(), arrowColors: false);
 Capture("sql", Sql(), arrowColors: false);
 Capture("event", Event(), arrowColors: false);
@@ -1565,13 +1566,17 @@ Capture("participant-colors", SimpleHttp(), arrowColors: false, participantColor
 Capture("participant-colors-fanout", FanOut(), arrowColors: true, participantColors: true);
 
 void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool participantColors = false,
-    string? plantUmlTheme = null)
+    string? plantUmlTheme = null, bool separateSetup = false, bool highlightSetup = true,
+    string? setupHighlightColor = null)
 {
     var results = PlantUmlCreator.GetPlantUmlImageTagsPerTestId(
         logs,
         sequenceDiagramArrowColors: arrowColors,
         sequenceDiagramParticipantColors: participantColors,
         plantUmlTheme: plantUmlTheme,
+        separateSetup: separateSetup,
+        highlightSetup: highlightSetup,
+        setupHighlightColor: setupHighlightColor,
         clientSideSplitting: true);
 
     foreach (var test in results)
@@ -1588,6 +1593,22 @@ void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool 
 // --- corpora ---
 
 static (string, string?)[] NoHeaders() => Array.Empty<(string, string?)>();
+
+static List<RequestResponseLog> SetupCorpus()
+{
+    var (t1, r1) = Ids(1);
+    var (t2, r2) = Ids(2);
+    var (t3, r3) = Ids(3);
+    // A setup-phase GET, an IsActionStart marker (skipped), then the action-phase POST.
+    return
+    [
+        new RequestResponseLog("Places an order", "t1", HttpMethod.Get, null, new Uri("http://config/settings"), NoHeaders(), "ConfigService", "Test", RequestResponseType.Request, t1, r1, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Places an order", "t1", HttpMethod.Get, null, new Uri("http://config/settings"), NoHeaders(), "ConfigService", "Test", RequestResponseType.Response, t1, r1, false, StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Places an order", "t1", HttpMethod.Get, null, new Uri("http://marker/"), NoHeaders(), "Marker", "Test", RequestResponseType.Request, t2, r2, false) { IsActionStart = true },
+        new RequestResponseLog("Places an order", "t1", HttpMethod.Post, "{\"item\":\"egg\"}", new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test", RequestResponseType.Request, t3, r3, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Places an order", "t1", HttpMethod.Post, "{\"ok\":true}", new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test", RequestResponseType.Response, t3, r3, false, StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
 
 static List<RequestResponseLog> HttpWithHeaders()
 {
