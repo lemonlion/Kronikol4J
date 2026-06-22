@@ -2,6 +2,51 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.17] — unreleased
+
+**Diagram note + label parity** — closes the diagram-note and arrow-label gaps a corpus-coverage
+re-audit surfaced (code paths gated on inputs no `.puml` golden corpus exercised), and exposes the full
+diagram-option surface on `ReportOptions`. The lesson driving this round: a "complete parity" claim is
+only as strong as the golden corpora's input coverage, so each fix ships with a corpus that triggers it.
+
+### Added — proven byte-parity for
+- **GraphQL request bodies + operation labels** (`PlantUmlCreator` / `NoteFormatter`): a GraphQL request
+  note renders as its formatted query (brace-driven indentation, inline parentheses, directives, aliases,
+  fragment spreads, inline + top-level fragments), and the arrow label gains an operation label
+  (`\n(query GetUser)`, `(mutation PlaceOrder)`, …) in every mode. The `GraphQlBodyFormat` mode (`Json` /
+  `FormattedQueryOnly` / `Formatted` / `FormattedWithMetadata`, the default) controls header + metadata
+  display; the `variables`/`extensions` sections use System.Text.Json's indented *default* (HTML-safe)
+  encoder, distinct from the relaxed encoder JSON-mode bodies use. Ported `GraphQlOperationDetector`,
+  `GraphQlQueryFormatter`, `GraphQlBodyFormatter`. Goldens: `graphql`, `graphql-query-only`,
+  `graphql-json`, `graphql-mutation`, `graphql-complex`, plus a `graphql-labels` detector fixture
+  covering the branches the rendered diagrams don't reach (subscription, anonymous shorthand,
+  `operationName` override, escaped whitespace, non-GraphQL rejection).
+- **Internal-flow tracking links** — with `internalFlowTracking` on, each request arrow label is wrapped
+  in a clickable `[[#iflow-<requestResponseId> …]]` PlantUML link — the anchor the interactive
+  internal-flow popup keys on (`#iflow-<id>` matches the `InternalFlowSegmentBuilder` segment id). Golden:
+  `internal-flow`.
+- **Note-content branches** the goldens never exercised: binary content → `[binary content]`, non-JSON
+  request bodies → form-url-encoded rendering, request URLs over 100 chars → wrapped labels, and the
+  request `NoteOnRight` side. Goldens: `binary-content`, `form-encoded`, `long-url`, `note-on-right`.
+- **Full diagram-option surface on `ReportOptions`** — `excludedHeaders`, `separateSetup`,
+  `highlightSetup`, `setupHighlightColor`, `focusEmphasis`, `focusDeEmphasis`, `graphQlBodyFormat` and
+  `internalFlowTracking` are now first-class `with…` methods + system properties (e.g.
+  `-Dkronikol.diagram.internalFlowTracking=true`), alongside the existing colour/theme options.
+
+### Fixed
+- `ReportOptions.fromSystemProperties` built a reduced `DiagramOptions` shape (it stopped at
+  `focusDeEmphasis`) — now threads every field, including `graphQlBodyFormat`/`internalFlowTracking`.
+
+### Notes
+- CI-summary multipart/truncated rendering gained golden coverage (the code already matched .NET).
+- Response-note chunking (>15k) remains a documented server-only boundary (`!clientSideSplitting`).
+- **Still unported in the diagram creator** (the next parity target): `truncateNotesAfterLines`,
+  `excludeAllHeaders`, and the `dependencyColors`/`serviceTypeOverrides` palette/shape override maps —
+  four deterministic `GetPlantUmlImageTagsPerTestId` parameters no golden yet exercises (the participant
+  declaration also needs verifying against `CreateEntitiesPlantUml`'s caller-category/pure-caller logic).
+  The earlier "complete report parity" milestone holds for the default option set, not these advanced
+  per-call overrides.
+
 ## [0.1.16] — unreleased
 
 **Audit follow-up** — closes the three gaps a deep parity re-audit surfaced after the v0.1.15
