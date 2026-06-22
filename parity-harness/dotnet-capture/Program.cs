@@ -69,6 +69,8 @@ CaptureHtmlEmptyFeature();
 CaptureHtmlFiltersToggles();
 // Two clusters of ≥2 same-error failures → the Failure Clusters section.
 CaptureHtmlFailureClusters();
+// Two scenarios sharing a DisplayName → anchor-id dedup ("-2" suffix).
+CaptureHtmlDuplicateNames();
 
 // includeTestRunData=true: the Features Summary table (conditional Steps/Duration columns), the
 // Test Execution Summary, the pie chart, and the header-row wrapping.
@@ -474,6 +476,25 @@ void CaptureHtmlEscaping()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-escaping.html"), content);
     Console.WriteLine($"=== report-escaping.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlDuplicateNames()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // Two scenarios with the SAME DisplayName → .NET dedups the anchor id ("scenario-checkout" then
+    // "scenario-checkout-2"); the Java scenarioAnchorId does not.
+    var s1 = new Scenario { Id = "s1", DisplayName = "Checkout", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(100) };
+    var s2 = new Scenario { Id = "s2", DisplayName = "Checkout", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(110) };
+    var feature = new Feature { DisplayName = "Shop", Scenarios = [s1, s2] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-dupnames.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-dupnames.html"), content);
+    Console.WriteLine($"=== report-dupnames.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlFailureClusters()

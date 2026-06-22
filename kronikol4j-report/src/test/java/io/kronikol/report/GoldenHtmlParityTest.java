@@ -360,6 +360,23 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void duplicateNamesBrowserHtmlReport_anchorIdDedup_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // Two scenarios sharing a DisplayName → .NET dedups the anchor id (first "scenario-checkout",
+        // second "scenario-checkout-2"); the Java must do the same or the section ids + links collide.
+        Scenario s1 = Scenario.builder("Checkout", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(100).build();
+        Scenario s2 = Scenario.builder("Checkout", "s2", ExecutionStatus.PASSED)
+            .durationMs(110).build();
+        Feature feature = new Feature("Shop", List.of(s1, s2));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-dupnames.html", actual);
+    }
+
+    @Test
     void parameterizedBrowserHtmlReport_outlineGroupScalarColumns_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();

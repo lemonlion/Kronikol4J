@@ -414,7 +414,11 @@ public final class DotNetHtmlReportRenderer {
         DiagramToggles toggles = computeDiagramToggles(diagramByTestId);
         int median = medianSpanCount(wtfInput);
         appendToolbar(body, hasDurations, componentDiagram != null, toggles);
-        appendFailureClusters(body, features); // .NET: before the timeline
+        // .NET pre-computes a unique anchor id per scenario, deduping duplicate display names with a -N
+        // suffix (the first keeps the base). Used by the scenario sections, parameterized rows, and the
+        // failure-cluster links (the parameterized-group anchor is NOT deduped — it slugs the group name).
+        Map<String, String> scenarioAnchorIds = buildScenarioAnchorIds(features);
+        appendFailureClusters(body, features, scenarioAnchorIds); // .NET: before the timeline
         appendTimeline(body, features, hasDurations);
 
         int counter = 0;
@@ -494,12 +498,12 @@ public final class DotNetHtmlReportRenderer {
                     counter = appendParameterizedGroup(body, feature, group, "pgrp" + (paramGroupCounter++),
                         scenarioDependencies, scenarioSearchTerms, diagramByTestId, diagramData, counter,
                         custom.showStepNumbers(), toggles, wtfInput, median,
-                        paramOptions.titleizeParameterNames());
+                        paramOptions.titleizeParameterNames(), scenarioAnchorIds);
                     continue;
                 }
                 counter = appendScenario(body, feature, scenario, diagramByTestId,
                     scenarioDependencies, scenarioSearchTerms, diagramData, counter, custom.showStepNumbers(),
-                    toggles, wtfInput, median);
+                    toggles, wtfInput, median, scenarioAnchorIds);
             }
             if (ruleOpen) {
                 body.append("</details>"); // close last rule
@@ -830,7 +834,8 @@ public final class DotNetHtmlReportRenderer {
     /** The "Failure Clusters" section (.NET lines 816-840): groups failed scenarios sharing a normalised
      *  first-line error (clusters of ≥2) into a collapsible list with deep-link anchors. Rendered only when
      *  at least one such cluster exists — so a run with 0 or 1 failure shows nothing. */
-    private static void appendFailureClusters(StringBuilder body, List<Feature> features) {
+    private static void appendFailureClusters(StringBuilder body, List<Feature> features,
+                                              Map<String, String> scenarioAnchorIds) {
         List<Scenario> allScenarios = new ArrayList<>();
         Map<String, String> scenarioFeatureLookup = new HashMap<>();
         for (Feature f : features) {
@@ -854,7 +859,7 @@ public final class DotNetHtmlReportRenderer {
                 .append(" scenarios</span></summary>");
             body.append("<ul class=\"failure-cluster-scenarios\">");
             for (Scenario s : cluster.scenarios()) {
-                String anchorId = scenarioAnchorId(s.name());
+                String anchorId = scenarioAnchorIds.get(s.testId());
                 String featureName = scenarioFeatureLookup.getOrDefault(s.testId(), "");
                 String prefix = featureName.isEmpty() ? ""
                     : "<span style=\"color:rgb(100,100,100);font-size:0.85em\">"
@@ -915,7 +920,8 @@ public final class DotNetHtmlReportRenderer {
                                       Map<String, Set<String>> scenarioDependencies,
                                       Map<String, Set<String>> scenarioSearchTerms,
                                       Map<String, String> diagramData, int counter, boolean showStepNumbers,
-                                      DiagramToggles toggles, WholeTestFlowInput wtfInput, int medianSpanCount) {
+                                      DiagramToggles toggles, WholeTestFlowInput wtfInput, int medianSpanCount,
+                                      Map<String, String> scenarioAnchorIds) {
         boolean failed = scenario.status() == ExecutionStatus.FAILED;
         boolean skipped = scenario.status() == ExecutionStatus.SKIPPED;
 
@@ -938,7 +944,7 @@ public final class DotNetHtmlReportRenderer {
         String labelsAttr = scenario.labels().isEmpty() ? ""
             : " data-labels=\"" + HtmlEscaper.encode(String.join(",", scenario.labels())) + "\"";
 
-        String anchorId = scenarioAnchorId(scenario.name());
+        String anchorId = scenarioAnchorIds.get(scenario.testId());
 
         List<String> searchParts = new ArrayList<>();
         searchParts.add(feature.displayName());
@@ -1150,7 +1156,7 @@ public final class DotNetHtmlReportRenderer {
                                                  Map<String, String> diagramData, int counter,
                                                  boolean showStepNumbers, DiagramToggles toggles,
                                                  WholeTestFlowInput wtfInput, int medianSpanCount,
-                                                 boolean titleize) {
+                                                 boolean titleize, Map<String, String> scenarioAnchorIds) {
         List<Scenario> scenarios = group.scenarios();
         boolean hasFailure = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.FAILED);
         boolean hasSkipped = scenarios.stream().anyMatch(s -> s.status() == ExecutionStatus.SKIPPED);
@@ -1277,7 +1283,7 @@ public final class DotNetHtmlReportRenderer {
 
             String rowSearchAttr = paramRowSearchAttr(feature, s, scenarioSearchTerms);
 
-            String rowAnchor = scenarioAnchorId(s.name());
+            String rowAnchor = scenarioAnchorIds.getOrDefault(s.testId(), scenarioAnchorId(s.name()));
             body.append("<tr class=\"").append(rowStatusClass).append(activeClass).append("\" data-row-idx=\"")
                 .append(ri).append("\" id=\"").append(rowAnchor).append("\" data-scenario-id=\"").append(rowAnchor)
                 .append("\"").append(rowSearchAttr).append(" onclick=\"selectRow(this,'").append(prefix).append("')\">");
@@ -2409,6 +2415,28 @@ public final class DotNetHtmlReportRenderer {
         String slug = ANCHOR_NON_ALNUM.matcher(displayName.toLowerCase(Locale.ROOT)).replaceAll("-");
         slug = trimHyphens(slug);
         return "scenario-" + slug;
+    }
+
+    /** Pre-computes a unique anchor id per scenario (keyed by testId), deduping duplicate display names
+     *  with a {@code -N} suffix — the first keeps the base, the next is {@code -2}, etc. (.NET
+     *  {@code ReportGenerator} lines 798-814). */
+    private static Map<String, String> buildScenarioAnchorIds(List<Feature> features) {
+        Map<String, String> anchorIds = new HashMap<>();
+        Map<String, Integer> counts = new HashMap<>();
+        for (Feature f : features) {
+            for (Scenario s : f.scenarios()) {
+                String base = scenarioAnchorId(s.name());
+                Integer count = counts.get(base);
+                if (count != null) {
+                    counts.put(base, count + 1);
+                    anchorIds.put(s.testId(), base + "-" + (count + 1));
+                } else {
+                    counts.put(base, 1);
+                    anchorIds.put(s.testId(), base);
+                }
+            }
+        }
+        return anchorIds;
     }
 
     private static String trimHyphens(String s) {
