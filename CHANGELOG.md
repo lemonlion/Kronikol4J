@@ -2,6 +2,29 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.19] — unreleased
+
+**HTML-escaping fidelity** — a report-level corpus-coverage audit (no golden ever fed a name/value with
+special characters) found that the `HtmlEscaper` — used at the report's 60+ escaping call sites — diverged
+from .NET's `System.Net.WebUtility.HtmlEncode` in four ways. The **application** was already correct (every
+call site escapes); the bug was the **encoder** itself.
+
+### Fixed
+- **The apostrophe `'`** was left raw — WebUtility escapes it to `&#39;`. The most impactful case: any .NET
+  report with a name like *"User's cart"* would not have been byte-identical.
+- **The C1 control range** `U+0080..U+009F` was escaped — WebUtility leaves it raw.
+- **The BMP above `U+00FF`** (`✓`, `€`, CJK, …) was escaped — WebUtility escapes <em>only</em> the Latin-1
+  supplement `U+00A0..U+00FF`; higher BMP stays raw.
+- **Surrogate pairs** were emitted as two `&#half;` entities — WebUtility emits the combined code point
+  (`😀` → `&#128512;`).
+
+### Proven
+- `html-escape-samples.txt` (`HtmlEscaperParityTest`) pins the encoder against real WebUtility across the
+  apostrophe, C1, Latin-1, higher-BMP and astral-emoji cases.
+- Two special-char report goldens (`report-escaping`, `report-escaping-params`) carry the markup-trigger
+  marker `<b>&"'` in every user-text field — feature/scenario/rule/step/substep/attachment/error/title and
+  parameter name/value/`outlineId` — and match .NET byte-for-byte, confirming every call site escapes.
+
 ## [0.1.18] — unreleased
 
 **Diagram-creator parameter completeness** — ports the four remaining deterministic
