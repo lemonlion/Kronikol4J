@@ -1,0 +1,12 @@
+{"query":"query GetUser { user { id } }"}	query GetUser
+{"query":"mutation CreateOrder { x }"}	mutation CreateOrder
+{"query":"subscription OnMsg { x }"}	subscription OnMsg
+{"query":"{ user { name } }"}	query
+{"query":"query { x }","operationName":"Named"}	query Named
+{"query":"SELECT * FROM users"}	null
+{"foo":"bar"}	null
+SELECT 1	null
+{"data":{"query":"query Nested { x }"}}	null
+{"query":"   query   Spaced   { x }"}	query Spaced
+{"query":"\n\tquery GetX { x }"}	query GetX
+{"query":"query GetUser { x }","operationName":"Override"}	query Override

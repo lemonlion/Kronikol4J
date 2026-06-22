@@ -182,6 +182,46 @@ class PlantUmlParityTest {
     }
 
     @Test
+    void graphQlFormattedWithMetadata() throws IOException {
+        // Default GraphQlBodyFormat: "query GetUser" arrow label, headers shown, formatted query, and a
+        // variables section whose <>&+ are HTML-escaped (\\u003C\\u003E\\u0026\\u002B) by the default encoder.
+        assertParity("graphql", PlantUmlCreator.create(graphQlQuery(), false).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void graphQlFormattedQueryOnly() throws IOException {
+        // FormattedQueryOnly suppresses the HTTP headers and the variables/extensions metadata.
+        DiagramOptions opts = DiagramOptions.defaults().withArrowColors(false)
+            .withGraphQlBodyFormat(GraphQlBodyFormat.FORMATTED_QUERY_ONLY);
+        assertParity("graphql-query-only", PlantUmlCreator.create(graphQlQuery(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void graphQlJsonMode() throws IOException {
+        // Json mode skips GraphQL formatting (the query stays a single-line string) and pretty-prints with
+        // the relaxed encoder, so <>&+ pass through verbatim — yet the arrow label still gets the op-label.
+        DiagramOptions opts = DiagramOptions.defaults().withArrowColors(false)
+            .withGraphQlBodyFormat(GraphQlBodyFormat.JSON);
+        assertParity("graphql-json", PlantUmlCreator.create(graphQlQuery(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void graphQlMutationOperationName() throws IOException {
+        // An anonymous "mutation { … }" with an explicit operationName → "mutation PlaceOrder" label; the
+        // createOrder(input: {sku: $sku}) parentheses keep their inner braces inline.
+        assertParity("graphql-mutation",
+            PlantUmlCreator.create(graphQlMutation(), false).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void graphQlComplexQueryFormatting() throws IOException {
+        // The query formatter's harder branches: @include directive (stays attached), short: alias (inline),
+        // ...userFields spread, ... on Admin inline fragment, and a top-level fragment (double newline).
+        assertParity("graphql-complex",
+            PlantUmlCreator.create(graphQlComplex(), false).get(0).diagrams().get(0));
+    }
+
+    @Test
     void componentDiagram() throws IOException {
         // Run-level component diagram (browser/non-C4 mode) over the fan-out corpus: deterministic
         // first-seen participant order, per-type shapes + arrow colours, aggregated call/test counts.
@@ -341,6 +381,50 @@ class PlantUmlParityTest {
         corpus.add(log("Places an order", Method.of("GET"), "redis://cache/", "CartCache",
             DependencyCategories.REDIS, RequestResponseType.RESPONSE, "{\"items\":2}", StatusCode.of("OK")));
         return corpus;
+    }
+
+    private static List<RequestResponseLog> graphQlQuery() {
+        // Named operation + variables carrying <>&+ (to exercise the default/HTML-safe encoder); the
+        // Content-Type/Authorization headers appear above the body in metadata mode, suppressed in query-only.
+        String body = "{\"query\":\"query GetUser($id: ID!) { user(id: $id) { id name email } }\","
+            + "\"variables\":{\"id\":\"42\",\"note\":\"a<b>&c+d\"}}";
+        RequestResponseLog req = RequestResponseLog.builder()
+            .testName("GraphQL query").testId("t1").method(Method.Http.POST)
+            .uri(URI.create("http://api/graphql")).serviceName("ApiService").callerName("Test")
+            .type(RequestResponseType.REQUEST).traceId(UUID.randomUUID()).requestResponseId(UUID.randomUUID())
+            .dependencyCategory(DependencyCategories.HTTP).content(body)
+            .headers(List.of(new Header("Content-Type", "application/json"),
+                new Header("Authorization", "Bearer xyz")))
+            .build();
+        return List.of(req,
+            log("GraphQL query", Method.Http.POST, "http://api/graphql", "ApiService",
+                DependencyCategories.HTTP, RequestResponseType.RESPONSE,
+                "{\"data\":{\"user\":{\"id\":\"42\",\"name\":\"Ada\"}}}", StatusCode.of(200)));
+    }
+
+    private static List<RequestResponseLog> graphQlMutation() {
+        // Anonymous mutation + explicit operationName (the override branch); the createOrder(input: {…})
+        // parentheses keep their inner braces inline.
+        String body = "{\"query\":\"mutation { createOrder(input: {sku: $sku}) { id status } }\","
+            + "\"operationName\":\"PlaceOrder\",\"variables\":{\"sku\":\"ABC\"}}";
+        return List.of(
+            log("GraphQL mutation", Method.Http.POST, "http://api/graphql", "ApiService",
+                DependencyCategories.HTTP, RequestResponseType.REQUEST, body, null),
+            log("GraphQL mutation", Method.Http.POST, "http://api/graphql", "ApiService",
+                DependencyCategories.HTTP, RequestResponseType.RESPONSE,
+                "{\"data\":{\"createOrder\":{\"id\":\"o-1\",\"status\":\"PLACED\"}}}", StatusCode.of(200)));
+    }
+
+    private static List<RequestResponseLog> graphQlComplex() {
+        String query = "query GetData($flag: Boolean!) { user { id name @include(if: $flag) short: emailAddress "
+            + "...userFields ... on Admin { role } } } fragment userFields on User { createdAt status }";
+        String body = "{\"query\":\"" + query + "\",\"variables\":{\"flag\":true}}";
+        return List.of(
+            log("GraphQL complex", Method.Http.POST, "http://api/graphql", "ApiService",
+                DependencyCategories.HTTP, RequestResponseType.REQUEST, body, null),
+            log("GraphQL complex", Method.Http.POST, "http://api/graphql", "ApiService",
+                DependencyCategories.HTTP, RequestResponseType.RESPONSE,
+                "{\"data\":{\"user\":{\"id\":\"1\"}}}", StatusCode.of(200)));
     }
 
     private static RequestResponseLog log(String testName, Method method, String uri, String service,

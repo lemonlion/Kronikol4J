@@ -1,0 +1,36 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "ApiService" as apiService
+
+test -> apiService: POST: /graphql\n(mutation PlaceOrder)
+note left
+mutation {
+  createOrder(input: {sku: $sku}) {
+    id
+    status
+  }
+}
+
+variables:
+{
+  "sku": "ABC"
+}
+end note
+apiService --> test: OK
+note right
+{
+  "data": {
+    "createOrder": {
+      "id": "o-1",
+      "status": "PLACED"
+    }
+  }
+}
+end note
+@enduml

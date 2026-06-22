@@ -1,0 +1,35 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "ApiService" as apiService
+
+test -> apiService: POST: /graphql\n(query GetUser)
+note left
+<color:gray>[Authorization=Bearer xyz]
+<color:gray>[Content-Type=application/json]
+
+{
+  "query": "query GetUser($id: ID!) { user(id: $id) { id name email } }",
+  "variables": {
+    "id": "42",
+    "note": "a<b>&c+d"
+  }
+}
+end note
+apiService --> test: OK
+note right
+{
+  "data": {
+    "user": {
+      "id": "42",
+      "name": "Ada"
+    }
+  }
+}
+end note
+@enduml

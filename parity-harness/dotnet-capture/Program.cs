@@ -1593,10 +1593,20 @@ Capture("fan-out", FanOut(), arrowColors: true);           // 3 services, one tr
 // Participant-colour mode: the colour is appended to each categorised participant declaration.
 Capture("participant-colors", SimpleHttp(), arrowColors: false, participantColors: true);
 Capture("participant-colors-fanout", FanOut(), arrowColors: true, participantColors: true);
+// GraphQL: op-label on the arrow + formatted query body. Default (FormattedWithMetadata) shows headers
+// + variables (special chars HTML-escaped); FormattedQueryOnly suppresses headers + metadata; Json keeps
+// the raw query string (no GraphQL formatting). The mutation corpus exercises the operationName override.
+Capture("graphql", GraphQlQuery(), arrowColors: false);
+Capture("graphql-query-only", GraphQlQuery(), arrowColors: false,
+    graphQlBodyFormat: GraphQlBodyFormat.FormattedQueryOnly);
+Capture("graphql-json", GraphQlQuery(), arrowColors: false, graphQlBodyFormat: GraphQlBodyFormat.Json);
+Capture("graphql-mutation", GraphQlMutation(), arrowColors: false);
+Capture("graphql-complex", GraphQlComplex(), arrowColors: false); // fragments, spreads, directives, aliases
+CaptureGraphQlLabels(); // GraphQlOperationDetector.TryExtractLabel branch coverage (text fixture)
 
 void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool participantColors = false,
     string? plantUmlTheme = null, bool separateSetup = false, bool highlightSetup = true,
-    string? setupHighlightColor = null)
+    string? setupHighlightColor = null, GraphQlBodyFormat graphQlBodyFormat = GraphQlBodyFormat.FormattedWithMetadata)
 {
     var results = PlantUmlCreator.GetPlantUmlImageTagsPerTestId(
         logs,
@@ -1606,6 +1616,7 @@ void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool 
         separateSetup: separateSetup,
         highlightSetup: highlightSetup,
         setupHighlightColor: setupHighlightColor,
+        graphQlBodyFormat: graphQlBodyFormat,
         clientSideSplitting: true);
 
     foreach (var test in results)
@@ -1731,6 +1742,92 @@ static List<RequestResponseLog> HttpWithHeaders()
             RequestResponseType.Response, trace, rr, false,
             StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
     ];
+}
+
+static List<RequestResponseLog> GraphQlQuery()
+{
+    var (trace, rr) = Ids(1);
+    // Named operation (query GetUser) → "query GetUser" arrow label; variables carry <>&+ to exercise the
+    // default/HTML-safe encoder (escaped to < > & +). Headers appear above in the
+    // default FormattedWithMetadata mode and are suppressed in FormattedQueryOnly.
+    var body = "{\"query\":\"query GetUser($id: ID!) { user(id: $id) { id name email } }\"," +
+        "\"variables\":{\"id\":\"42\",\"note\":\"a<b>&c+d\"}}";
+    (string, string?)[] reqHeaders = [("Content-Type", "application/json"), ("Authorization", "Bearer xyz")];
+    return
+    [
+        new RequestResponseLog("GraphQL query", "t1", HttpMethod.Post, body,
+            new Uri("http://api/graphql"), reqHeaders, "ApiService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("GraphQL query", "t1", HttpMethod.Post,
+            "{\"data\":{\"user\":{\"id\":\"42\",\"name\":\"Ada\"}}}",
+            new Uri("http://api/graphql"), NoHeaders(), "ApiService", "Test",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
+
+static List<RequestResponseLog> GraphQlMutation()
+{
+    var (trace, rr) = Ids(1);
+    // Anonymous operation + explicit operationName → "mutation PlaceOrder" (operationName override branch).
+    // The createOrder(input: {sku: $sku}) parentheses keep their inner braces inline.
+    var body = "{\"query\":\"mutation { createOrder(input: {sku: $sku}) { id status } }\"," +
+        "\"operationName\":\"PlaceOrder\",\"variables\":{\"sku\":\"ABC\"}}";
+    return
+    [
+        new RequestResponseLog("GraphQL mutation", "t1", HttpMethod.Post, body,
+            new Uri("http://api/graphql"), NoHeaders(), "ApiService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("GraphQL mutation", "t1", HttpMethod.Post,
+            "{\"data\":{\"createOrder\":{\"id\":\"o-1\",\"status\":\"PLACED\"}}}",
+            new Uri("http://api/graphql"), NoHeaders(), "ApiService", "Test",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
+
+static List<RequestResponseLog> GraphQlComplex()
+{
+    var (trace, rr) = Ids(1);
+    // Exercises the query formatter's harder branches: a named operation, an @include directive (stays
+    // attached), an alias (short:), a fragment spread (...userFields), an inline fragment (... on Admin),
+    // and a top-level fragment definition (double newline between top-level constructs).
+    var query = "query GetData($flag: Boolean!) { user { id name @include(if: $flag) short: emailAddress "
+        + "...userFields ... on Admin { role } } } fragment userFields on User { createdAt status }";
+    var body = "{\"query\":\"" + query + "\",\"variables\":{\"flag\":true}}";
+    return
+    [
+        new RequestResponseLog("GraphQL complex", "t1", HttpMethod.Post, body,
+            new Uri("http://api/graphql"), NoHeaders(), "ApiService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("GraphQL complex", "t1", HttpMethod.Post, "{\"data\":{\"user\":{\"id\":\"1\"}}}",
+            new Uri("http://api/graphql"), NoHeaders(), "ApiService", "Test",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
+
+void CaptureGraphQlLabels()
+{
+    // Pure GraphQlOperationDetector branch coverage: each input → its real .NET label (or "null"),
+    // TAB-separated. The Java GraphQlOperationDetectorParityTest reads the same fixture and asserts parity.
+    string[] inputs =
+    [
+        "{\"query\":\"query GetUser { user { id } }\"}",            // named query
+        "{\"query\":\"mutation CreateOrder { x }\"}",               // named mutation
+        "{\"query\":\"subscription OnMsg { x }\"}",                 // named subscription
+        "{\"query\":\"{ user { name } }\"}",                        // anonymous shorthand → "query"
+        "{\"query\":\"query { x }\",\"operationName\":\"Named\"}",  // operationName supplies the name
+        "{\"query\":\"SELECT * FROM users\"}",                      // not GraphQL → null
+        "{\"foo\":\"bar\"}",                                        // no query key → null
+        "SELECT 1",                                                 // not a JSON object → null
+        "{\"data\":{\"query\":\"query Nested { x }\"}}",            // query key nested, not top-level → null
+        "{\"query\":\"   query   Spaced   { x }\"}",                // literal leading whitespace
+        "{\"query\":\"\\n\\tquery GetX { x }\"}",                   // JSON-escaped leading whitespace
+        "{\"query\":\"query GetUser { x }\",\"operationName\":\"Override\"}", // operationName overrides inline
+    ];
+    var lines = inputs.Select(input => $"{input}\t{GraphQlOperationDetector.TryExtractLabel(input) ?? "null"}");
+    File.WriteAllText(Path.Combine(outDir, "graphql-labels.txt"), string.Join("\n", lines) + "\n");
 }
 
 static List<RequestResponseLog> SimpleHttp()

@@ -48,23 +48,26 @@ public final class NoteFormatter {
             midProcessor, true);
     }
 
-    /** Builds the note body (may be empty): excluded headers dropped + gray-rendered, then the content
-     *  (binary → {@code [binary content]}; else pretty-printed JSON, or for a request a form-url-encoded
-     *  body; then the {@code midProcessor} hook, then focus emphasis/de-emphasis). */
+    /** As {@link #format(String, List, List, List, Set, Set, UnaryOperator, boolean, GraphQlBodyFormat)}
+     *  with the .NET default GraphQL body format. */
     public static String format(String content, List<Header> headers, List<String> excludedHeaders,
                                 List<String> focusFields, Set<FocusEmphasis> focusEmphasis,
                                 Set<FocusDeEmphasis> focusDeEmphasis, UnaryOperator<String> midProcessor,
                                 boolean isRequest) {
-        String headersOnTop = "";
-        if (headers != null && !headers.isEmpty()) {
-            headersOnTop = headers.stream()
-                .filter(h -> excludedHeaders == null || !excludedHeaders.contains(h.key()))
-                .sorted(Comparator.comparing(Header::key)) // String.compareTo is ordinal (§6.5)
-                .flatMap(h -> batchGray("[" + h.key() + "=" + (h.value() == null ? "" : h.value()) + "]").stream())
-                .collect(Collectors.joining("\n"));
-        }
+        return format(content, headers, excludedHeaders, focusFields, focusEmphasis, focusDeEmphasis,
+            midProcessor, isRequest, GraphQlBodyFormat.FORMATTED_WITH_METADATA);
+    }
 
-        String formattedContent = formatBody(content, isRequest);
+    /** Builds the note body (may be empty): the content (binary → {@code [binary content]}; a GraphQL
+     *  request → formatted query [+ variables/extensions]; else pretty-printed JSON or a form-url-encoded
+     *  request body; then the {@code midProcessor} hook and focus emphasis/de-emphasis), with the excluded
+     *  headers gray-rendered above — unless a GraphQL query-only body suppresses them. */
+    public static String format(String content, List<Header> headers, List<String> excludedHeaders,
+                                List<String> focusFields, Set<FocusEmphasis> focusEmphasis,
+                                Set<FocusDeEmphasis> focusDeEmphasis, UnaryOperator<String> midProcessor,
+                                boolean isRequest, GraphQlBodyFormat graphQlBodyFormat) {
+        Body body = formatBody(content, isRequest, graphQlBodyFormat, focusFields);
+        String formattedContent = body.content();
         if (midProcessor != null) { // .NET midFormattingProcessor — after formatting, before focus
             formattedContent = midProcessor.apply(formattedContent);
         }
@@ -73,24 +76,44 @@ public final class NoteFormatter {
                 focusEmphasis, focusDeEmphasis);
         }
 
+        String headersOnTop = "";
+        if (!body.suppressHeaders() && headers != null && !headers.isEmpty()) {
+            headersOnTop = headers.stream()
+                .filter(h -> excludedHeaders == null || !excludedHeaders.contains(h.key()))
+                .sorted(Comparator.comparing(Header::key)) // String.compareTo is ordinal (§6.5)
+                .flatMap(h -> batchGray("[" + h.key() + "=" + (h.value() == null ? "" : h.value()) + "]").stream())
+                .collect(Collectors.joining("\n"));
+        }
+
         // .NET: ((headersOnTop + "\n\n").TrimStart() + formattedContent.Trim()).TrimEnd()
         String combined = (headersOnTop + "\n\n").stripLeading() + formattedContent.strip();
         return escapeForNote(combined.stripTrailing());
     }
 
+    private record Body(String content, boolean suppressHeaders) {
+    }
+
     /** Formats a content body (.NET {@code FormatNoteContent} body path): binary content becomes a
-     *  placeholder; JSON is pretty-printed; otherwise a request body is treated as form-url-encoded and a
-     *  response body is kept verbatim. */
-    private static String formatBody(String content, boolean isRequest) {
+     *  placeholder; a GraphQL request becomes its formatted query (suppressing headers in query-only
+     *  mode); else JSON is pretty-printed, a request body is form-url-encoded, and a response is verbatim. */
+    private static Body formatBody(String content, boolean isRequest, GraphQlBodyFormat graphQlBodyFormat,
+                                   List<String> focusFields) {
         if (content == null || content.isBlank()) {
-            return "";
+            return new Body("", false);
         }
         String body = isBinaryContent(content) ? "<i>[binary content]</i>" : content;
+        boolean noFocus = focusFields == null || focusFields.isEmpty();
+        if (isRequest && graphQlBodyFormat != GraphQlBodyFormat.JSON && noFocus) {
+            String gql = GraphQlBodyFormatter.tryFormat(body, graphQlBodyFormat);
+            if (gql != null) {
+                return new Body(gql, graphQlBodyFormat == GraphQlBodyFormat.FORMATTED_QUERY_ONLY);
+            }
+        }
         String pretty = Json.tryPrettyPrint(body);
         if (pretty != null) {
-            return pretty;
+            return new Body(pretty, false);
         }
-        return isRequest ? formatFormUrlEncoded(body) : body;
+        return new Body(isRequest ? formatFormUrlEncoded(body) : body, false);
     }
 
     /** .NET {@code IsBinaryContent}: &gt;10% non-tab/newline control chars in the first 512 chars. */

@@ -165,11 +165,15 @@ public final class PlantUmlCreator {
             String service = alias(log.serviceName());
             String color = DependencyPalette.colorFor(log.dependencyCategory());
             boolean isRequest = log.type() == RequestResponseType.REQUEST;
+            // .NET pre/mid/post Func hooks: pre on raw content (also feeds the GraphQL request label),
+            // mid inside the formatter (before focus), post on the final note body.
+            String content = NoteProcessors.apply(
+                isRequest ? processors.requestPre() : processors.responsePre(), log.content());
             String side;
             if (isRequest) {
                 String arrow = arrowColors ? "-[" + color + "]>" : "->";
                 sb.append(caller).append(' ').append(arrow).append(' ').append(service)
-                    .append(": ").append(requestLabel(log)).append(NL);
+                    .append(": ").append(requestLabel(log, content)).append(NL);
                 side = log.noteOnRight() ? "right" : "left"; // .NET trace.NoteOnRight (request note side)
             } else {
                 String arrow = arrowColors ? "-[" + color + "]->" : "-->";
@@ -178,13 +182,10 @@ public final class PlantUmlCreator {
                 side = "right";
             }
             String opener = (log.metaType() == RequestResponseMetaType.EVENT ? "note<<eventNote>> " : "note ") + side;
-            // .NET pre/mid/post Func hooks: pre on raw content, mid inside the formatter (before focus),
-            // post on the final note body.
-            String content = NoteProcessors.apply(
-                isRequest ? processors.requestPre() : processors.responsePre(), log.content());
             String note = NoteFormatter.format(content, log.headers(), options.excludedHeaders(),
                 log.focusFields(), options.focusEmphasis(), options.focusDeEmphasis(),
-                isRequest ? processors.requestMid() : processors.responseMid(), isRequest);
+                isRequest ? processors.requestMid() : processors.responseMid(), isRequest,
+                options.graphQlBodyFormat());
             note = NoteProcessors.apply(isRequest ? processors.requestPost() : processors.responsePost(), note);
             appendNote(sb, opener, note);
         }
@@ -232,7 +233,7 @@ public final class PlantUmlCreator {
 
     private static final int MAX_URL_LENGTH = 100; // .NET maxUrlLength — wrap longer path+query
 
-    private static String requestLabel(RequestResponseLog log) {
+    private static String requestLabel(RequestResponseLog log, String content) {
         URI uri = log.uri();
         String path = uri.getRawPath();
         if (path == null || path.isEmpty()) {
@@ -252,7 +253,13 @@ public final class PlantUmlCreator {
             }
             path = wrapped.toString();
         }
-        return log.method().value() + ": " + path;
+        String label = log.method().value() + ": " + path;
+        // .NET: a GraphQL request appends "\n(query GetUser)" / "(mutation …)" to the arrow label.
+        String graphQlLabel = GraphQlOperationDetector.tryExtractLabel(content);
+        if (graphQlLabel != null) {
+            label = label + "\\n(" + graphQlLabel + ")";
+        }
+        return label;
     }
 
     private static String responseLabel(RequestResponseLog log) {
