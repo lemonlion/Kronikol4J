@@ -2,6 +2,25 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.22] — unreleased
+
+**Report re-sweep, batch 3** — continuing the audit of `ReportGenerator`'s input-conditional branches.
+
+### Fixed
+- **Scenario anchor-id dedup** — .NET pre-computes a unique anchor id per scenario, suffixing duplicate
+  display names with `-N` (the first keeps the base, the next is `-2`, …; `ReportGenerator` lines 798-814).
+  The Java slugged the name inline at each site, so two scenarios sharing a `DisplayName` collided on the
+  same section id + deep-link target. Added `buildScenarioAnchorIds` (computed once, keyed by test id) and
+  threaded it into the scenario sections, the parameterized rows, and the failure-cluster links. (The
+  parameterized-group anchor stays a raw slug of the group name, matching .NET line 1601.) Golden:
+  `report-dupnames`. Untested — no golden had two identically-named scenarios.
+
+### Notes
+- The tabular-param key-alignment branches (`useKeyAlignment`/`sharedKeyNames`/`IsLinkedOutput`) are
+  already ported and covered by the `report-combinedtable` golden; the merge diagram/log-lookup branches
+  are covered by the merge tests. Remaining minor/wrapper-level items: `GetTestRunReportTitle`'s default
+  resolution (the renderer is faithful for any given title) and blank/empty scenario names.
+
 ## [0.1.21] — unreleased
 
 **Report re-sweep, batch 2** — continuing the audit of `ReportGenerator`'s input-conditional branches
