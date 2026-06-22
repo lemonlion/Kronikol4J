@@ -1,5 +1,6 @@
 package io.kronikol.diagram.plantuml;
 
+import io.kronikol.core.tracking.Header;
 import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseMetaType;
 import io.kronikol.core.tracking.RequestResponseType;
@@ -182,11 +183,14 @@ public final class PlantUmlCreator {
                 side = "right";
             }
             String opener = (log.metaType() == RequestResponseMetaType.EVENT ? "note<<eventNote>> " : "note ") + side;
-            String note = NoteFormatter.format(content, log.headers(), options.excludedHeaders(),
+            // .NET: excludeAllHeaders passes [] to FormatNoteContent (drops every header from the note).
+            List<Header> noteHeaders = options.excludeAllHeaders() ? List.of() : log.headers();
+            String note = NoteFormatter.format(content, noteHeaders, options.excludedHeaders(),
                 log.focusFields(), options.focusEmphasis(), options.focusDeEmphasis(),
                 isRequest ? processors.requestMid() : processors.responseMid(), isRequest,
                 options.graphQlBodyFormat());
             note = NoteProcessors.apply(isRequest ? processors.requestPost() : processors.responsePost(), note);
+            note = truncateNote(note, options.truncateNotesAfterLines()); // .NET TruncateNoteContent
             appendNote(sb, opener, note);
         }
 
@@ -222,6 +226,29 @@ public final class PlantUmlCreator {
             }
             sb.append(NL);
         }
+    }
+
+    /** .NET {@code TruncateNoteContent}: cap the note at {@code maxLines} lines, the rest replaced by a
+     *  trailing {@code ...} line. {@code maxLines <= 0} disables truncation. Applied after note formatting
+     *  + escaping — equivalent to .NET's truncate-before-escape because backslash-doubling preserves
+     *  newlines (so {@code truncate∘escape == escape∘truncate}). */
+    static String truncateNote(String noteContent, int maxLines) {
+        if (maxLines <= 0) {
+            return noteContent;
+        }
+        String[] lines = noteContent.split("\n", -1); // -1 keeps trailing empties (.NET String.Split('\n'))
+        if (lines.length <= maxLines) {
+            return noteContent;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < maxLines; i++) {
+            if (i > 0) {
+                sb.append('\n');
+            }
+            sb.append(lines[i]);
+        }
+        sb.append("\n...");
+        return sb.toString();
     }
 
     private static void appendNote(StringBuilder sb, String opener, String body) {

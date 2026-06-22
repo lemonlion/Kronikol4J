@@ -231,6 +231,22 @@ class PlantUmlParityTest {
     }
 
     @Test
+    void excludeAllHeaders() throws IOException {
+        // excludeAllHeaders drops every header from notes (vs the default Cache-Control/Pragma exclusion).
+        DiagramOptions opts = DiagramOptions.defaults().withArrowColors(false).withExcludeAllHeaders(true);
+        assertParity("exclude-all-headers",
+            PlantUmlCreator.create(httpWithHeaders(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void truncateNotesAfterLines() throws IOException {
+        // truncateNotesAfterLines caps each note at N lines, the rest replaced by a trailing "..." line.
+        DiagramOptions opts = DiagramOptions.defaults().withArrowColors(false).withTruncateNotesAfterLines(3);
+        assertParity("truncate-notes",
+            PlantUmlCreator.create(truncateCorpus(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
     void componentDiagram() throws IOException {
         // Run-level component diagram (browser/non-C4 mode) over the fan-out corpus: deterministic
         // first-seen participant order, per-type shapes + arrow colours, aggregated call/test counts.
@@ -451,6 +467,16 @@ class PlantUmlParityTest {
                 .type(RequestResponseType.RESPONSE).traceId(UUID.randomUUID()).requestResponseId(rrid)
                 .dependencyCategory(DependencyCategories.HTTP).statusCode(StatusCode.of(200))
                 .content("{\"ok\":true}").build());
+    }
+
+    private static List<RequestResponseLog> truncateCorpus() {
+        return List.of(
+            log("Places an order", Method.Http.POST, "http://orders/checkout", "OrderService",
+                DependencyCategories.HTTP, RequestResponseType.REQUEST,
+                "{\"orderId\":\"A-100\",\"item\":\"egg\",\"qty\":2}", null),
+            log("Places an order", Method.Http.POST, "http://orders/checkout", "OrderService",
+                DependencyCategories.HTTP, RequestResponseType.RESPONSE,
+                "{\"ok\":true,\"id\":\"A-100\",\"status\":\"placed\"}", StatusCode.of(200)));
     }
 
     private static RequestResponseLog log(String testName, Method method, String uri, String service,

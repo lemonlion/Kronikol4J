@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -59,6 +60,16 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     public static final String GRAPHQL_BODY_FORMAT_PROPERTY = "kronikol.diagram.graphQlBodyFormat";
     /** System property (boolean) wrapping each request label in a clickable {@code [[#iflow-…]]} link. */
     public static final String INTERNAL_FLOW_TRACKING_PROPERTY = "kronikol.diagram.internalFlowTracking";
+    /** System property (int) capping note bodies at N lines (the rest replaced by {@code ...}); 0 = off. */
+    public static final String TRUNCATE_NOTES_PROPERTY = "kronikol.diagram.truncateNotesAfterLines";
+    /** System property (boolean) dropping all headers from diagram notes. */
+    public static final String EXCLUDE_ALL_HEADERS_PROPERTY = "kronikol.diagram.excludeAllHeaders";
+    /** System property (comma-separated {@code category=#RRGGBB}) overriding per-category arrow/participant
+     *  colours. */
+    public static final String DEPENDENCY_COLORS_PROPERTY = "kronikol.diagram.dependencyColors";
+    /** System property (comma-separated {@code ServiceName=category}) overriding a service's/caller's
+     *  detected dependency category (which drives its shape + colour). */
+    public static final String SERVICE_TYPE_OVERRIDES_PROPERTY = "kronikol.diagram.serviceTypeOverrides";
 
     public ReportOptions {
         diagram = diagram == null ? DiagramOptions.defaults() : diagram;
@@ -106,6 +117,22 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     public boolean internalFlowTracking() {
         return diagram.internalFlowTracking();
+    }
+
+    public int truncateNotesAfterLines() {
+        return diagram.truncateNotesAfterLines();
+    }
+
+    public boolean excludeAllHeaders() {
+        return diagram.excludeAllHeaders();
+    }
+
+    public Map<String, String> dependencyColors() {
+        return diagram.dependencyColors();
+    }
+
+    public Map<String, String> serviceTypeOverrides() {
+        return diagram.serviceTypeOverrides();
     }
 
     // --- withers ---
@@ -157,6 +184,22 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return withDiagram(diagram.withInternalFlowTracking(value));
     }
 
+    public ReportOptions withTruncateNotesAfterLines(int value) {
+        return withDiagram(diagram.withTruncateNotesAfterLines(value));
+    }
+
+    public ReportOptions withExcludeAllHeaders(boolean value) {
+        return withDiagram(diagram.withExcludeAllHeaders(value));
+    }
+
+    public ReportOptions withDependencyColors(Map<String, String> value) {
+        return withDiagram(diagram.withDependencyColors(value));
+    }
+
+    public ReportOptions withServiceTypeOverrides(Map<String, String> value) {
+        return withDiagram(diagram.withServiceTypeOverrides(value));
+    }
+
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
         return new ReportOptions(diagram, formats, generateSchema);
     }
@@ -185,7 +228,11 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
             parseEnumSet(System.getProperty(FOCUS_DE_EMPHASIS_PROPERTY), FocusDeEmphasis.class,
                 d.focusDeEmphasis()),
             parseGraphQlBodyFormat(System.getProperty(GRAPHQL_BODY_FORMAT_PROPERTY), d.graphQlBodyFormat()),
-            boolProperty(INTERNAL_FLOW_TRACKING_PROPERTY, d.internalFlowTracking()));
+            boolProperty(INTERNAL_FLOW_TRACKING_PROPERTY, d.internalFlowTracking()),
+            intProperty(TRUNCATE_NOTES_PROPERTY, d.truncateNotesAfterLines()),
+            boolProperty(EXCLUDE_ALL_HEADERS_PROPERTY, d.excludeAllHeaders()),
+            parseMap(System.getProperty(DEPENDENCY_COLORS_PROPERTY), d.dependencyColors()),
+            parseMap(System.getProperty(SERVICE_TYPE_OVERRIDES_PROPERTY), d.serviceTypeOverrides()));
         return new ReportOptions(diagram,
             parseDataFormats(System.getProperty(DATA_FORMATS_PROPERTY)),
             boolProperty(GENERATE_SCHEMA_PROPERTY, false));
@@ -199,6 +246,38 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     private static boolean boolProperty(String name, boolean fallback) {
         String value = System.getProperty(name);
         return value == null || value.isBlank() ? fallback : Boolean.parseBoolean(value);
+    }
+
+    private static int intProperty(String name, int fallback) {
+        String value = System.getProperty(name);
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(value.strip());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
+    /** Parses {@code key=value,key=value} into an ordered map (the fallback if blank/empty). */
+    private static Map<String, String> parseMap(String value, Map<String, String> fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        Map<String, String> map = new java.util.LinkedHashMap<>();
+        for (String token : value.split(",")) {
+            int eq = token.indexOf('=');
+            if (eq <= 0) {
+                continue; // skip malformed entries (no key)
+            }
+            String key = token.substring(0, eq).strip();
+            String val = token.substring(eq + 1).strip();
+            if (!key.isEmpty()) {
+                map.put(key, val);
+            }
+        }
+        return map.isEmpty() ? fallback : map;
     }
 
     private static GraphQlBodyFormat parseGraphQlBodyFormat(String value, GraphQlBodyFormat fallback) {

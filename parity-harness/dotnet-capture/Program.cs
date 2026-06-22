@@ -1605,11 +1605,16 @@ Capture("graphql-complex", GraphQlComplex(), arrowColors: false); // fragments, 
 CaptureGraphQlLabels(); // GraphQlOperationDetector.TryExtractLabel branch coverage (text fixture)
 // Internal-flow tracking wraps each request label in a clickable [[#iflow-<requestResponseId> …]] link.
 Capture("internal-flow", SimpleHttp(), arrowColors: false, internalFlowTracking: true);
+// excludeAllHeaders drops every header from notes (vs the default Cache-Control/Pragma-only exclusion).
+Capture("exclude-all-headers", HttpWithHeaders(), arrowColors: false, excludeAllHeaders: true);
+// truncateNotesAfterLines caps each note at N lines, the rest replaced by a trailing "..." line.
+Capture("truncate-notes", TruncateCorpus(), arrowColors: false, truncateNotesAfterLines: 3);
 
 void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool participantColors = false,
     string? plantUmlTheme = null, bool separateSetup = false, bool highlightSetup = true,
     string? setupHighlightColor = null, GraphQlBodyFormat graphQlBodyFormat = GraphQlBodyFormat.FormattedWithMetadata,
-    bool internalFlowTracking = false)
+    bool internalFlowTracking = false, int truncateNotesAfterLines = 0, bool excludeAllHeaders = false,
+    Dictionary<string, string>? dependencyColors = null, Dictionary<string, string>? serviceTypeOverrides = null)
 {
     var results = PlantUmlCreator.GetPlantUmlImageTagsPerTestId(
         logs,
@@ -1619,6 +1624,10 @@ void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool 
         separateSetup: separateSetup,
         highlightSetup: highlightSetup,
         setupHighlightColor: setupHighlightColor,
+        truncateNotesAfterLines: truncateNotesAfterLines,
+        excludeAllHeaders: excludeAllHeaders,
+        dependencyColors: dependencyColors,
+        serviceTypeOverrides: serviceTypeOverrides,
         graphQlBodyFormat: graphQlBodyFormat,
         internalFlowTracking: internalFlowTracking,
         clientSideSplitting: true);
@@ -1785,6 +1794,24 @@ static List<RequestResponseLog> GraphQlMutation()
         new RequestResponseLog("GraphQL mutation", "t1", HttpMethod.Post,
             "{\"data\":{\"createOrder\":{\"id\":\"o-1\",\"status\":\"PLACED\"}}}",
             new Uri("http://api/graphql"), NoHeaders(), "ApiService", "Test",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
+
+static List<RequestResponseLog> TruncateCorpus()
+{
+    var (trace, rr) = Ids(1);
+    // A multi-field JSON body that pretty-prints to >3 lines, so truncateNotesAfterLines:3 visibly cuts it.
+    return
+    [
+        new RequestResponseLog("Places an order", "t1", HttpMethod.Post,
+            "{\"orderId\":\"A-100\",\"item\":\"egg\",\"qty\":2}",
+            new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Places an order", "t1", HttpMethod.Post,
+            "{\"ok\":true,\"id\":\"A-100\",\"status\":\"placed\"}",
+            new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test",
             RequestResponseType.Response, trace, rr, false,
             StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
     ];
