@@ -58,7 +58,7 @@ public final class MergeCommand {
             }
             ReportFragment merged = MergeableReportMerger.merge(fragments);
             if (title != null) {
-                merged = new ReportFragment(title, merged.startTime(), merged.endTime(), merged.features());
+                merged = merged.withTitle(title); // preserve all merged content, just override the title
             }
             String html = MergeableReportRenderer.renderHtml(merged);
             Files.writeString(output, html, StandardCharsets.UTF_8);

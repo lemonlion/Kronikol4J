@@ -11,7 +11,6 @@ import io.kronikol.core.tracking.StatusCode;
 import io.kronikol.report.ReportOptions;
 import io.kronikol.report.data.ReportDataFormat;
 import io.kronikol.report.merge.FragmentJson;
-import io.kronikol.report.merge.ReportFragment.ScenarioFragment;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.Scenario;
 import java.io.ByteArrayInputStream;
@@ -90,7 +89,7 @@ class ReportFinalizerTest {
         assertThat(dir.resolve("fragment-test.json.tmp")).doesNotExist(); // temp cleaned up
         var fragment = FragmentJson.fromJson(Files.readString(file));
         assertThat(fragment.features()).anySatisfy(f ->
-            assertThat(f.scenarios()).extracting(ScenarioFragment::name).contains("Checkout succeeds"));
+            assertThat(f.scenarios()).extracting(Scenario::name).contains("Checkout succeeds"));
     }
 
     @Test

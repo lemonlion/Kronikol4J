@@ -132,6 +132,22 @@ public final class HtmlReportGenerator {
             io.kronikol.report.model.ParameterizedOptions.DEFAULTS, popup));
     }
 
+    /**
+     * The full render surface used by the merge path: a run-level component diagram, the CI-metadata
+     * banner and the test-run-data summary ({@code includeTestRunData}), the whole-test-flow views and
+     * the interactive popup — all fed from a merged {@code ReportFragment}. Mirrors the .NET
+     * {@code MergeableReportRenderer} call into {@code GenerateHtmlReport}.
+     */
+    public static String renderHtml(List<Feature> features, Map<String, String> diagramByTestId,
+                                    String componentDiagram, String title, boolean includeTestRunData,
+                                    Instant startTime, Instant endTime, HtmlCustomization custom,
+                                    WholeTestFlowInput wholeTestFlow, InternalFlowPopupInput popup) {
+        return postProcess(DotNetHtmlReportRenderer.render(
+            features, diagramByTestId, componentDiagram, title, ReportData.defaultKronikolVersion(),
+            includeTestRunData, startTime, endTime, custom, wholeTestFlow,
+            io.kronikol.report.model.ParameterizedOptions.DEFAULTS, popup));
+    }
+
     /** As {@link #generateFromDiagrams(List, Map, String, Path, String)}, with whole-test-flow views. */
     public static GeneratedReport generateFromDiagrams(List<Feature> features,
                                                        Map<String, String> diagramByTestId,
