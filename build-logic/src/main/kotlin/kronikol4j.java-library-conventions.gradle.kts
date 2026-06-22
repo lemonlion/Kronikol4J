@@ -1,20 +1,17 @@
 // Shared conventions for every Kronikol4J library module.
 // Java 17 baseline (compiled via --release so a single JDK 25 toolchain suffices).
-// Also makes every module publishable to Maven Central (signing gated on keys — §11/§15).
+// Also publishes every module to Maven Central via the Sonatype Central Portal (the vanniktech plugin
+// handles the sources/javadoc jars, GPG signing, upload, and release — all gated on the CI secrets).
+
+import com.vanniktech.maven.publish.SonatypeHost
 
 plugins {
     `java-library`
-    `maven-publish`
-    signing
+    id("com.vanniktech.maven.publish")
 }
 
 repositories {
     mavenCentral()
-}
-
-java {
-    withSourcesJar()
-    withJavadocJar()
 }
 
 tasks.withType<JavaCompile>().configureEach {
@@ -59,43 +56,36 @@ tasks.named<Jar>("jar") {
     }
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            pom {
-                name.set(project.name)
-                description.set(provider { project.description ?: "Kronikol4J module" })
-                url.set("https://github.com/lemonlion/Kronikol4J")
-                licenses {
-                    license {
-                        // TODO: reconcile with the .NET Kronikol license during release setup.
-                        name.set("MIT License")
-                        url.set("https://opensource.org/licenses/MIT")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("lemonlion")
-                        name.set("Kronikol")
-                    }
-                }
-                scm {
-                    url.set("https://github.com/lemonlion/Kronikol4J")
-                    connection.set("scm:git:https://github.com/lemonlion/Kronikol4J.git")
-                }
+mavenPublishing {
+    // Upload to the Sonatype Central Portal and auto-release once validation passes. Credentials come
+    // from `mavenCentralUsername`/`mavenCentralPassword`; the GPG key from `signingInMemoryKey`/
+    // `signingInMemoryKeyPassword` (all supplied as ORG_GRADLE_PROJECT_* env vars in CI). A plain
+    // `build`/`test` runs no publish or sign task, so local builds need no key.
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
+    signAllPublications()
+
+    coordinates(project.group.toString(), project.name, project.version.toString())
+
+    pom {
+        name.set(project.name)
+        description.set(provider { project.description ?: "Kronikol4J module" })
+        url.set("https://github.com/lemonlion/Kronikol4J")
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/licenses/MIT")
             }
         }
-    }
-}
-
-signing {
-    // Sign only when a key is supplied (CI release); local builds publish unsigned.
-    val signingKey = providers.gradleProperty("signingKey").orNull
-    val signingPassword = providers.gradleProperty("signingPassword").orNull
-    isRequired = signingKey != null
-    if (signingKey != null) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign(publishing.publications["maven"])
+        developers {
+            developer {
+                id.set("lemonlion")
+                name.set("Kronikol")
+            }
+        }
+        scm {
+            url.set("https://github.com/lemonlion/Kronikol4J")
+            connection.set("scm:git:https://github.com/lemonlion/Kronikol4J.git")
+            developerConnection.set("scm:git:ssh://git@github.com/lemonlion/Kronikol4J.git")
+        }
     }
 }

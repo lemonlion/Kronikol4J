@@ -10,6 +10,10 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # Publish to Maven Central only when the Central Portal credentials secret is configured —
+      # otherwise the GitHub Release is still created (so tagging never hard-fails on missing secrets).
+      HAS_CENTRAL: ${{ secrets.CENTRAL_USERNAME != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,8 +26,17 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build artifacts
+      - name: Build & test
         run: ./gradlew build --no-daemon
+
+      - name: Publish to Maven Central (Sonatype Central Portal)
+        if: env.HAS_CENTRAL == 'true'
+        run: ./gradlew publishToMavenCentral --no-daemon
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
