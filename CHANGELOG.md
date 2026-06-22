@@ -2,6 +2,25 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.20] — unreleased
+
+**Report edge-branch re-sweep** — an audit of `ReportGenerator`'s input-conditional branches against the
+golden corpora (which branch does each input trigger, and does a golden supply it?). Found one real
+divergence and proved several correct-but-untested branches.
+
+### Fixed
+- **Empty-feature summary class** — a feature with zero scenarios (alongside a populated one; an
+  <em>all</em>-empty set bails out instead) rendered its summary as `class="h2"`, but .NET emits
+  `class="h2 skipped"`: .NET's `Scenarios.All(s => Result == Skipped)` is vacuously true for an empty
+  collection (as is Java's `allMatch` on an empty stream), but the Java had a spurious
+  `!scenarios.isEmpty()` guard that suppressed the class. Removed it. Golden: `report-emptyfeature`.
+
+### Proven (added goldens; the code already matched .NET)
+- `report-edgefields` — a scenario with no duration (no badge/`data-duration-ms`, matching
+  `Duration.HasValue == false`) and steps with no status / no duration (`Status`/`Duration.HasValue`).
+- `report-paramedge` — `FormatDisplayValue`'s literal-`"null"` (`<pre>null</pre>`) and whitespace-only
+  (`<pre>{ws}</pre>`) branches.
+
 ## [0.1.19] — unreleased
 
 **HTML-escaping fidelity** — a report-level corpus-coverage audit (no golden ever fed a name/value with
