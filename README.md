@@ -1,15 +1,24 @@
 # Kronikol4J
 
-A Java-native reimplementation of [Kronikol](../Kronikol) — automatically captures real dependency
-interactions during tests (HTTP, SQL/NoSQL, cache, messaging, cloud SDKs) and generates interactive
-HTML reports with PlantUML diagrams. Deterministic diagrams from actual execution, not AI.
+A Java-native port of **[Kronikol](https://github.com/lemonlion/Kronikol)** (the .NET original) —
+automatically captures real dependency interactions during tests (HTTP, SQL/NoSQL, cache, messaging,
+cloud SDKs) and generates interactive HTML reports with PlantUML diagrams. Deterministic diagrams from
+actual execution, not AI.
 
-> **Status: 24 modules, ~101 tests, all green** on JDK 17–25. The full pipeline (track → diagram →
-> HTML report), the fork-aggregation merge engine + CLI + Gradle plugin, three test frameworks, eleven
-> tracking integrations (incl. AWS/Azure/GCP), assertion tracking (Tiers 0–1), OpenTelemetry, the
-> Spring Boot starter, Maven Central publishing, and CI are implemented and tested. See
+> **This repository is a fork/port of [lemonlion/Kronikol](https://github.com/lemonlion/Kronikol).** It
+> re-implements the .NET reporting pipeline in Java; the report + diagram output is **byte-for-byte
+> identical** to the .NET original (proven by golden-file parity tests captured from real .NET), minus
+> only server-side PlantUML image rendering — diagrams render in-browser via PlantUML-WASM instead. See
+> the [**Wiki**](https://github.com/lemonlion/Kronikol4J/wiki) for usage, architecture, and the parity
+> boundaries.
+
+> **Status: all green** on JDK 17–25. The full pipeline (track → diagram → HTML report), the
+> fork-aggregation merge engine + CLI + Gradle plugin, three test frameworks, eleven tracking
+> integrations (incl. AWS/Azure/GCP), assertion tracking (Tiers 0–1), OpenTelemetry, the Spring Boot
+> starter, Maven Central publishing, and CI are implemented and tested. The entire `PlantUmlCreator`
+> diagram surface and every `ReportGenerator` rendering branch are golden-proven against real .NET. See
 > [CHANGELOG.md](CHANGELOG.md) for the full list and [docs/PORT_PLAN.md](docs/PORT_PLAN.md) for the
-> plan, architecture, and five deep-dive analyses (its §0 is the authoritative status & resume guide).
+> plan, architecture, and deep-dive analyses (its §0 is the authoritative status & resume guide).
 
 ## Building
 
