@@ -377,6 +377,22 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void blankNameBrowserHtmlReport_emptyScenarioAndStepNames_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // Degenerate but deterministic: an empty scenario DisplayName (anchor "scenario-", empty
+        // summary/copy-button) + a step with empty text.
+        ScenarioStep step = new ScenarioStep("Given", "", ExecutionStatus.PASSED, 10L, List.of(), List.of());
+        Scenario scenario = Scenario.builder("", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(100).steps(List.of(step)).build();
+        Feature feature = new Feature("Shop", List.of(scenario));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-blankname.html", actual);
+    }
+
+    @Test
     void parameterizedBrowserHtmlReport_outlineGroupScalarColumns_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();

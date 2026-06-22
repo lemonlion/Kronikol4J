@@ -84,3 +84,4 @@ parity-harness/dotnet-capture/fixtures/report-emptyfeature.html
 parity-harness/dotnet-capture/fixtures/report-filterstoggles.html
 parity-harness/dotnet-capture/fixtures/report-failureclusters.html
 parity-harness/dotnet-capture/fixtures/report-dupnames.html
+parity-harness/dotnet-capture/fixtures/report-blankname.html
