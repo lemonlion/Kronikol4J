@@ -2,6 +2,32 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.23] — unreleased
+
+**Final completeness pass** — a file- and method-level cross-check of the .NET `Reports` namespace against
+the Java surfaced one last unported feature.
+
+### Added — proven byte-parity for
+- **`BackgroundStepsDetector`** (Gherkin Background extraction) — a deterministic, string-based algorithm
+  that detects a step prefix shared across scenarios within a `Rule` group and extracts it into each
+  scenario's `backgroundSteps`, trimming it from `steps` (defined in .NET `Reports/` but invoked by the
+  runtime adapters, outside the report core). The .NET mutates in place; the immutable Java `Scenario`
+  record rebuilds the affected scenarios. All guards ported (a `Rule` group needs ≥2 step-bearing members;
+  a scenario opening with `And`/`When` skips; a zero-length common prefix skips; a remaining step
+  re-opening with `Given`/`When` skips). Proven by the `report-background` golden (extraction → rendered
+  Background section, byte-for-byte) + a `BackgroundStepsDetectorTest` covering the no-extract guards.
+- **Coverage**: blank scenario/step names (`report-blankname`) render byte-for-byte.
+
+### Notes — documented `.NET`-options-orchestration boundaries
+- `GetTestRunReportTitle` (default `"Test Run Report"` resolution) and `ShouldEmbedComponentDiagram` both
+  read `ReportConfigurationOptions` fields (`TestRunReportTitle`/`ComponentDiagramOptions.Title`/
+  `FixedNameForReceivingService`) that have no Java equivalent. The Java render path is faithful for any
+  given title + component diagram; the options→value resolution is the .NET runtime config layer (the same
+  boundary class as the CI IO writers). With this, the **report surface is complete** — every
+  `PlantUmlCreator.Create` parameter and every `ReportGenerator` input-conditional branch is golden-proven,
+  minus only server-side PlantUML image rendering and the documented options-orchestration / runtime-state
+  boundaries.
+
 ## [0.1.22] — unreleased
 
 **Report re-sweep, batch 3** — continuing the audit of `ReportGenerator`'s input-conditional branches.
