@@ -1,24 +1,35 @@
 package io.kronikol.report;
 
+import io.kronikol.diagram.plantuml.DiagramOptions;
+import io.kronikol.diagram.plantuml.FocusDeEmphasis;
+import io.kronikol.diagram.plantuml.FocusEmphasis;
 import io.kronikol.report.data.ReportDataFormat;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 /**
- * Report-generation options: the two diagram colour modes (mirroring .NET's
- * {@code sequenceDiagramArrowColors} / {@code sequenceDiagramParticipantColors}) and the set of
- * machine-readable data formats to emit alongside the HTML report ({@code TestRunReport.json}/
- * {@code .xml}/{@code .yaml}).
+ * Report-generation options: the full diagram-styling surface (held as a {@link DiagramOptions}) plus the
+ * report-level toggles — the machine-readable {@link ReportDataFormat data formats} to emit and the
+ * {@code TestRunReport.schema.*} switch.
+ *
+ * <p>The diagram options ({@code arrowColors}/{@code participantColors}/{@code plantUmlTheme}/
+ * {@code excludedHeaders}/{@code separateSetup}/{@code highlightSetup}/{@code setupHighlightColor}/
+ * {@code focusEmphasis}/{@code focusDeEmphasis}) are reachable both as first-class {@code with…} methods
+ * and via {@link #diagram()}/{@link #withDiagram(DiagramOptions)}. (Caller-supplied note content
+ * processors are not part of {@code ReportOptions} — pass them programmatically to
+ * {@code PlantUmlCreator.create(logs, DiagramOptions, NoteProcessors)}.)
  *
  * <p>Immutable. Build from {@link #defaults()} with the {@code with…} methods, or read the runtime
- * toggles from system properties with {@link #fromSystemProperties()} (how the test-framework
- * listeners pick them up without an API change).
+ * toggles from system properties with {@link #fromSystemProperties()} (how the test-framework listeners
+ * pick them up without an API change).
  */
-public record ReportOptions(boolean arrowColors, boolean participantColors,
-                            Set<ReportDataFormat> dataFormats, boolean generateSchema,
-                            String plantUmlTheme) {
+public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats,
+                            boolean generateSchema) {
 
     /** System property (boolean) enabling per-dependency-type arrow colours. */
     public static final String ARROW_COLORS_PROPERTY = "kronikol.diagram.arrowColors";
@@ -30,69 +41,130 @@ public record ReportOptions(boolean arrowColors, boolean participantColors,
     public static final String GENERATE_SCHEMA_PROPERTY = "kronikol.report.generateSchema";
     /** System property ({@code !theme} name) prepended to each sequence diagram. */
     public static final String PLANTUML_THEME_PROPERTY = "kronikol.diagram.plantUmlTheme";
+    /** System property (boolean) wrapping setup-phase traces in a {@code partition … Setup} block. */
+    public static final String SEPARATE_SETUP_PROPERTY = "kronikol.diagram.separateSetup";
+    /** System property (boolean) colouring the setup partition (default true). */
+    public static final String HIGHLIGHT_SETUP_PROPERTY = "kronikol.diagram.highlightSetup";
+    /** System property (colour, e.g. {@code #F6F6F6}) for the setup partition. */
+    public static final String SETUP_HIGHLIGHT_COLOR_PROPERTY = "kronikol.diagram.setupHighlightColor";
+    /** System property (comma-separated header keys) excluded from diagram notes. */
+    public static final String EXCLUDED_HEADERS_PROPERTY = "kronikol.diagram.excludedHeaders";
+    /** System property (comma-separated {@code BOLD}/{@code COLORED}) for focused-field emphasis. */
+    public static final String FOCUS_EMPHASIS_PROPERTY = "kronikol.diagram.focusEmphasis";
+    /** System property (comma-separated {@code LIGHT_GRAY}/{@code SMALLER_TEXT}/{@code HIDDEN}). */
+    public static final String FOCUS_DE_EMPHASIS_PROPERTY = "kronikol.diagram.focusDeEmphasis";
 
     public ReportOptions {
+        diagram = diagram == null ? DiagramOptions.defaults() : diagram;
         dataFormats = dataFormats == null
             ? Set.of() : Collections.unmodifiableSet(new LinkedHashSet<>(dataFormats));
     }
 
     /** Diagram colours only (no data files) — the back-compatible shape. */
     public ReportOptions(boolean arrowColors, boolean participantColors) {
-        this(arrowColors, participantColors, Set.of(), false, null);
+        this(DiagramOptions.colours(arrowColors, participantColors), Set.of(), false);
     }
 
     /** Colours + data formats, no schema — the back-compatible shape. */
     public ReportOptions(boolean arrowColors, boolean participantColors, Set<ReportDataFormat> dataFormats) {
-        this(arrowColors, participantColors, dataFormats, false, null);
+        this(DiagramOptions.colours(arrowColors, participantColors), dataFormats, false);
     }
 
-    /** Colours + data formats + schema, no theme — the back-compatible shape. */
+    /** Colours + data formats + schema — the back-compatible shape. */
     public ReportOptions(boolean arrowColors, boolean participantColors, Set<ReportDataFormat> dataFormats,
                          boolean generateSchema) {
-        this(arrowColors, participantColors, dataFormats, generateSchema, null);
+        this(DiagramOptions.colours(arrowColors, participantColors), dataFormats, generateSchema);
     }
 
     /** The .NET defaults: arrows coloured per dependency type, participants uncoloured, no data files. */
     public static ReportOptions defaults() {
-        return new ReportOptions(true, false, Set.of(), false, null);
+        return new ReportOptions(DiagramOptions.defaults(), Set.of(), false);
+    }
+
+    // --- back-compat / convenience accessors delegating to the diagram options ---
+    public boolean arrowColors() {
+        return diagram.arrowColors();
+    }
+
+    public boolean participantColors() {
+        return diagram.participantColors();
+    }
+
+    public String plantUmlTheme() {
+        return diagram.plantUmlTheme();
+    }
+
+    // --- withers ---
+    public ReportOptions withDiagram(DiagramOptions value) {
+        return new ReportOptions(value, dataFormats, generateSchema);
     }
 
     public ReportOptions withArrowColors(boolean value) {
-        return new ReportOptions(value, participantColors, dataFormats, generateSchema, plantUmlTheme);
+        return withDiagram(diagram.withArrowColors(value));
     }
 
     public ReportOptions withParticipantColors(boolean value) {
-        return new ReportOptions(arrowColors, value, dataFormats, generateSchema, plantUmlTheme);
+        return withDiagram(diagram.withParticipantColors(value));
+    }
+
+    public ReportOptions withPlantUmlTheme(String theme) {
+        return withDiagram(diagram.withPlantUmlTheme(theme));
+    }
+
+    public ReportOptions withExcludedHeaders(List<String> headers) {
+        return withDiagram(diagram.withExcludedHeaders(headers));
+    }
+
+    public ReportOptions withSeparateSetup(boolean value) {
+        return withDiagram(diagram.withSeparateSetup(value));
+    }
+
+    public ReportOptions withHighlightSetup(boolean value) {
+        return withDiagram(diagram.withHighlightSetup(value));
+    }
+
+    public ReportOptions withSetupHighlightColor(String color) {
+        return withDiagram(diagram.withSetupHighlightColor(color));
+    }
+
+    public ReportOptions withFocusEmphasis(Set<FocusEmphasis> value) {
+        return withDiagram(diagram.withFocusEmphasis(value));
+    }
+
+    public ReportOptions withFocusDeEmphasis(Set<FocusDeEmphasis> value) {
+        return withDiagram(diagram.withFocusDeEmphasis(value));
     }
 
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
-        return new ReportOptions(arrowColors, participantColors, formats, generateSchema, plantUmlTheme);
+        return new ReportOptions(diagram, formats, generateSchema);
     }
 
     /** Enables the {@code TestRunReport.schema.json}/{@code .xsd} schema alongside each data format. */
     public ReportOptions withGenerateSchema(boolean value) {
-        return new ReportOptions(arrowColors, participantColors, dataFormats, value, plantUmlTheme);
-    }
-
-    /** Sets the {@code !theme <name>} directive prepended to each sequence diagram (null = none). */
-    public ReportOptions withPlantUmlTheme(String theme) {
-        return new ReportOptions(arrowColors, participantColors, dataFormats, generateSchema, theme);
+        return new ReportOptions(diagram, dataFormats, value);
     }
 
     /**
-     * Reads the colour toggles ({@link #ARROW_COLORS_PROPERTY} / {@link #PARTICIPANT_COLORS_PROPERTY},
-     * each falling back to the .NET {@link #defaults()}) and the {@link #DATA_FORMATS_PROPERTY} data
-     * formats from system properties — so a run enables them with e.g.
+     * Reads every diagram + report toggle from system properties (each falling back to {@link #defaults()}),
+     * so a listener-driven run configures them with e.g. {@code -Dkronikol.diagram.separateSetup=true} or
      * {@code -Dkronikol.report.dataFormats=xml,yaml} and no code change.
      */
     public static ReportOptions fromSystemProperties() {
-        ReportOptions defaults = defaults();
-        return new ReportOptions(
-            boolProperty(ARROW_COLORS_PROPERTY, defaults.arrowColors()),
-            boolProperty(PARTICIPANT_COLORS_PROPERTY, defaults.participantColors()),
+        DiagramOptions d = DiagramOptions.defaults();
+        DiagramOptions diagram = new DiagramOptions(
+            boolProperty(ARROW_COLORS_PROPERTY, d.arrowColors()),
+            boolProperty(PARTICIPANT_COLORS_PROPERTY, d.participantColors()),
+            stringProperty(PLANTUML_THEME_PROPERTY, d.plantUmlTheme()),
+            parseList(System.getProperty(EXCLUDED_HEADERS_PROPERTY), d.excludedHeaders()),
+            boolProperty(SEPARATE_SETUP_PROPERTY, d.separateSetup()),
+            boolProperty(HIGHLIGHT_SETUP_PROPERTY, d.highlightSetup()),
+            stringProperty(SETUP_HIGHLIGHT_COLOR_PROPERTY, d.setupHighlightColor()),
+            parseEnumSet(System.getProperty(FOCUS_EMPHASIS_PROPERTY), FocusEmphasis.class, d.focusEmphasis()),
+            parseEnumSet(System.getProperty(FOCUS_DE_EMPHASIS_PROPERTY), FocusDeEmphasis.class,
+                d.focusDeEmphasis()));
+        return new ReportOptions(diagram,
             parseDataFormats(System.getProperty(DATA_FORMATS_PROPERTY)),
-            boolProperty(GENERATE_SCHEMA_PROPERTY, defaults.generateSchema()),
-            stringProperty(PLANTUML_THEME_PROPERTY, defaults.plantUmlTheme()));
+            boolProperty(GENERATE_SCHEMA_PROPERTY, false));
     }
 
     private static String stringProperty(String name, String fallback) {
@@ -114,5 +186,38 @@ public record ReportOptions(boolean arrowColors, boolean participantColors,
             ReportDataFormat.parse(token).ifPresent(formats::add);
         }
         return formats;
+    }
+
+    private static List<String> parseList(String value, List<String> fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        List<String> list = new ArrayList<>();
+        for (String token : value.split(",")) {
+            String t = token.strip();
+            if (!t.isEmpty()) {
+                list.add(t);
+            }
+        }
+        return list;
+    }
+
+    private static <E extends Enum<E>> Set<E> parseEnumSet(String value, Class<E> type, Set<E> fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        EnumSet<E> set = EnumSet.noneOf(type);
+        for (String token : value.split(",")) {
+            String t = token.strip().toUpperCase(Locale.ROOT);
+            if (t.isEmpty()) {
+                continue;
+            }
+            try {
+                set.add(Enum.valueOf(type, t));
+            } catch (IllegalArgumentException ignored) {
+                // unknown token — skip (matches the lenient data-format parsing)
+            }
+        }
+        return set;
     }
 }

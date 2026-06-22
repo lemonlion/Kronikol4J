@@ -53,8 +53,7 @@ public final class HtmlReportGenerator {
                                            String title,
                                            ReportOptions options) throws IOException {
         Map<String, String> diagramByTestId = new HashMap<>();
-        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.arrowColors(),
-                options.participantColors(), options.plantUmlTheme())) {
+        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.diagram())) {
             if (!p.diagrams().isEmpty()) {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }

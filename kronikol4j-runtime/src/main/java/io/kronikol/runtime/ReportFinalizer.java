@@ -71,8 +71,7 @@ public final class ReportFinalizer {
             return;
         }
         Map<String, List<String>> diagrams = new LinkedHashMap<>();
-        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.arrowColors(),
-                options.participantColors(), options.plantUmlTheme())) {
+        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.diagram())) {
             if (!p.diagrams().isEmpty()) {
                 diagrams.put(p.testId(), p.diagrams());
             }
