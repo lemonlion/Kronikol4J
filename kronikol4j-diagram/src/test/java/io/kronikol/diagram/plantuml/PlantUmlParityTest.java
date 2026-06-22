@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.kronikol.core.constants.DependencyCategories;
 import io.kronikol.diagram.component.ComponentDiagramGenerator;
+import io.kronikol.core.tracking.Header;
 import io.kronikol.core.tracking.Method;
 import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseMetaType;
@@ -43,6 +44,12 @@ class PlantUmlParityTest {
         // the .NET plantUmlTheme option → a "!theme <name>" directive right after @startuml.
         assertParity("theme",
             PlantUmlCreator.create(httpExchange(), false, false, "cyborg").get(0).diagrams().get(0));
+    }
+
+    @Test
+    void headersGrayRenderingAndDefaultExclusion() throws IOException {
+        // Headers render as ordinal-sorted gray [Key=Value]; Cache-Control/Pragma excluded by default.
+        assertParity("headers", PlantUmlCreator.create(httpWithHeaders(), false).get(0).diagrams().get(0));
     }
 
     @Test
@@ -130,6 +137,25 @@ class PlantUmlParityTest {
                 DependencyCategories.HTTP, RequestResponseType.REQUEST, "{\"item\":\"egg\"}", null),
             log("Checkout succeeds", Method.Http.POST, "http://orders/checkout", "OrderService",
                 DependencyCategories.HTTP, RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
+    }
+
+    private static List<RequestResponseLog> httpWithHeaders() {
+        return List.of(
+            logWithHeaders(RequestResponseType.REQUEST, "{\"item\":\"egg\"}", null, List.of(
+                new Header("Content-Type", "application/json"), new Header("Accept", "application/json"),
+                new Header("Cache-Control", "no-cache"))),
+            logWithHeaders(RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200), List.of(
+                new Header("Content-Type", "application/json"), new Header("X-Trace", "abc-123"))));
+    }
+
+    private static RequestResponseLog logWithHeaders(RequestResponseType type, String content,
+                                                     StatusCode status, List<Header> headers) {
+        return RequestResponseLog.builder()
+            .testName("Checkout succeeds").testId("t1").method(Method.Http.POST)
+            .uri(URI.create("http://orders/checkout")).serviceName("OrderService").callerName("Test")
+            .type(type).traceId(UUID.randomUUID()).requestResponseId(UUID.randomUUID())
+            .dependencyCategory(DependencyCategories.HTTP).statusCode(status).content(content)
+            .headers(headers).build();
     }
 
     private static List<RequestResponseLog> sqlExchange(String testName) {

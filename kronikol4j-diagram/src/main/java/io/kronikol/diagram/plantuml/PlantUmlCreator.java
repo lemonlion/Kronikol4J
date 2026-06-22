@@ -56,7 +56,7 @@ public final class PlantUmlCreator {
      */
     public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, boolean arrowColors,
                                                boolean participantColors) {
-        return create(logs, arrowColors, participantColors, null);
+        return create(logs, DiagramOptions.colours(arrowColors, participantColors));
     }
 
     /**
@@ -65,6 +65,13 @@ public final class PlantUmlCreator {
      */
     public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, boolean arrowColors,
                                                boolean participantColors, String plantUmlTheme) {
+        return create(logs,
+            DiagramOptions.colours(arrowColors, participantColors).withPlantUmlTheme(plantUmlTheme));
+    }
+
+    /** Builds one diagram per test honouring the full {@link DiagramOptions} — the .NET
+     *  {@code PlantUmlCreator.Create} surface (colours, theme, excluded headers, setup, focus). */
+    public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, DiagramOptions options) {
         Map<String, List<RequestResponseLog>> byTest = new LinkedHashMap<>();
         for (RequestResponseLog log : logs) {
             if (log.trackingIgnore()) {
@@ -76,19 +83,19 @@ public final class PlantUmlCreator {
         List<PlantUmlForTest> result = new ArrayList<>();
         byTest.forEach((testId, testLogs) ->
             result.add(new PlantUmlForTest(testId, testLogs.get(0).testName(),
-                List.of(buildDiagram(testLogs, arrowColors, participantColors, plantUmlTheme)), testLogs)));
+                List.of(buildDiagram(testLogs, options)), testLogs)));
         return result;
     }
 
-    private static String buildDiagram(List<RequestResponseLog> logs, boolean arrowColors,
-                                       boolean participantColors, String plantUmlTheme) {
+    private static String buildDiagram(List<RequestResponseLog> logs, DiagramOptions options) {
+        boolean arrowColors = options.arrowColors();
         boolean hasEvents = logs.stream()
             .anyMatch(l -> l.plantUml() == null && l.metaType() == RequestResponseMetaType.EVENT);
 
         StringBuilder sb = new StringBuilder(512);
         sb.append("@startuml").append(NL);
-        if (plantUmlTheme != null && !plantUmlTheme.isBlank()) {
-            sb.append("!theme ").append(plantUmlTheme).append(NL); // .NET themeDirective, before !pragma
+        if (options.plantUmlTheme() != null && !options.plantUmlTheme().isBlank()) {
+            sb.append("!theme ").append(options.plantUmlTheme()).append(NL); // .NET themeDirective, before !pragma
         }
         sb.append("!pragma teoz true").append(NL);
         sb.append(hasEvents ? EVENT_STYLE : NL); // event style section (or empty -> blank line)
@@ -97,7 +104,7 @@ public final class PlantUmlCreator {
         sb.append("autonumber 1").append(NL);
         sb.append(NL);
 
-        appendParticipants(sb, logs, participantColors);
+        appendParticipants(sb, logs, options.participantColors());
         sb.append(NL);
 
         for (RequestResponseLog log : logs) {
@@ -121,7 +128,8 @@ public final class PlantUmlCreator {
                 side = "right";
             }
             String opener = (log.metaType() == RequestResponseMetaType.EVENT ? "note<<eventNote>> " : "note ") + side;
-            appendNote(sb, opener, NoteFormatter.format(log.content(), log.headers()));
+            appendNote(sb, opener, NoteFormatter.format(log.content(), log.headers(),
+                options.excludedHeaders()));
         }
 
         sb.append("@enduml");

@@ -1548,6 +1548,7 @@ void CaptureComponent(string name, List<RequestResponseLog> logs)
 Capture("simple-http", SimpleHttp(), arrowColors: false);
 Capture("simple-http-colored", SimpleHttp(), arrowColors: true);
 Capture("theme", SimpleHttp(), arrowColors: false, plantUmlTheme: "cyborg"); // !theme directive after @startuml
+Capture("headers", HttpWithHeaders(), arrowColors: false); // gray [Key=Value] notes, sorted, Cache-Control excluded
 Capture("multi-trace", MultiTrace(), arrowColors: false);
 Capture("sql", Sql(), arrowColors: false);
 Capture("event", Event(), arrowColors: false);
@@ -1587,6 +1588,24 @@ void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool 
 // --- corpora ---
 
 static (string, string?)[] NoHeaders() => Array.Empty<(string, string?)>();
+
+static List<RequestResponseLog> HttpWithHeaders()
+{
+    var (trace, rr) = Ids(1);
+    // Headers exercise the gray [Key=Value] rendering, ordinal sort, and the default Cache-Control exclusion.
+    (string, string?)[] reqHeaders = [("Content-Type", "application/json"), ("Accept", "application/json"), ("Cache-Control", "no-cache")];
+    (string, string?)[] respHeaders = [("Content-Type", "application/json"), ("X-Trace", "abc-123")];
+    return
+    [
+        new RequestResponseLog("Checkout succeeds", "t1", HttpMethod.Post, "{\"item\":\"egg\"}",
+            new Uri("http://orders/checkout"), reqHeaders, "OrderService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Checkout succeeds", "t1", HttpMethod.Post, "{\"ok\":true}",
+            new Uri("http://orders/checkout"), respHeaders, "OrderService", "Test",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
 
 static List<RequestResponseLog> SimpleHttp()
 {
