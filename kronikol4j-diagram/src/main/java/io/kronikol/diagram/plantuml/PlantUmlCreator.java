@@ -56,6 +56,15 @@ public final class PlantUmlCreator {
      */
     public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, boolean arrowColors,
                                                boolean participantColors) {
+        return create(logs, arrowColors, participantColors, null);
+    }
+
+    /**
+     * As {@link #create(List, boolean, boolean)}, prepending a {@code !theme <name>} directive (the .NET
+     * {@code plantUmlTheme} option) right after {@code @startuml}. {@code null}/blank emits no theme.
+     */
+    public static List<PlantUmlForTest> create(List<RequestResponseLog> logs, boolean arrowColors,
+                                               boolean participantColors, String plantUmlTheme) {
         Map<String, List<RequestResponseLog>> byTest = new LinkedHashMap<>();
         for (RequestResponseLog log : logs) {
             if (log.trackingIgnore()) {
@@ -67,17 +76,20 @@ public final class PlantUmlCreator {
         List<PlantUmlForTest> result = new ArrayList<>();
         byTest.forEach((testId, testLogs) ->
             result.add(new PlantUmlForTest(testId, testLogs.get(0).testName(),
-                List.of(buildDiagram(testLogs, arrowColors, participantColors)), testLogs)));
+                List.of(buildDiagram(testLogs, arrowColors, participantColors, plantUmlTheme)), testLogs)));
         return result;
     }
 
     private static String buildDiagram(List<RequestResponseLog> logs, boolean arrowColors,
-                                       boolean participantColors) {
+                                       boolean participantColors, String plantUmlTheme) {
         boolean hasEvents = logs.stream()
             .anyMatch(l -> l.plantUml() == null && l.metaType() == RequestResponseMetaType.EVENT);
 
         StringBuilder sb = new StringBuilder(512);
         sb.append("@startuml").append(NL);
+        if (plantUmlTheme != null && !plantUmlTheme.isBlank()) {
+            sb.append("!theme ").append(plantUmlTheme).append(NL); // .NET themeDirective, before !pragma
+        }
         sb.append("!pragma teoz true").append(NL);
         sb.append(hasEvents ? EVENT_STYLE : NL); // event style section (or empty -> blank line)
         sb.append(NL);                            // assertion style section (empty -> blank line)

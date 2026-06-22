@@ -39,6 +39,13 @@ class PlantUmlParityTest {
     }
 
     @Test
+    void plantUmlTheme() throws IOException {
+        // the .NET plantUmlTheme option → a "!theme <name>" directive right after @startuml.
+        assertParity("theme",
+            PlantUmlCreator.create(httpExchange(), false, false, "cyborg").get(0).diagrams().get(0));
+    }
+
+    @Test
     void multiTrace() throws IOException {
         List<RequestResponseLog> corpus = new java.util.ArrayList<>(httpExchange());
         corpus.addAll(sqlExchange("Checkout succeeds"));

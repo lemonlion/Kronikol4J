@@ -1547,6 +1547,7 @@ void CaptureComponent(string name, List<RequestResponseLog> logs)
 
 Capture("simple-http", SimpleHttp(), arrowColors: false);
 Capture("simple-http-colored", SimpleHttp(), arrowColors: true);
+Capture("theme", SimpleHttp(), arrowColors: false, plantUmlTheme: "cyborg"); // !theme directive after @startuml
 Capture("multi-trace", MultiTrace(), arrowColors: false);
 Capture("sql", Sql(), arrowColors: false);
 Capture("event", Event(), arrowColors: false);
@@ -1562,12 +1563,14 @@ Capture("fan-out", FanOut(), arrowColors: true);           // 3 services, one tr
 Capture("participant-colors", SimpleHttp(), arrowColors: false, participantColors: true);
 Capture("participant-colors-fanout", FanOut(), arrowColors: true, participantColors: true);
 
-void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool participantColors = false)
+void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool participantColors = false,
+    string? plantUmlTheme = null)
 {
     var results = PlantUmlCreator.GetPlantUmlImageTagsPerTestId(
         logs,
         sequenceDiagramArrowColors: arrowColors,
         sequenceDiagramParticipantColors: participantColors,
+        plantUmlTheme: plantUmlTheme,
         clientSideSplitting: true);
 
     foreach (var test in results)

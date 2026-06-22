@@ -35,7 +35,8 @@ public final class ReportFragments {
     public static ReportFragment fromRun(String title, ReportOptions options) {
         List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
         Map<String, String> diagramByTestId = new HashMap<>();
-        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.arrowColors(), options.participantColors())) {
+        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.arrowColors(),
+                options.participantColors(), options.plantUmlTheme())) {
             if (!p.diagrams().isEmpty()) {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }

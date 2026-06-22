@@ -1,0 +1,24 @@
+@startuml
+!theme cyborg
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "OrderService" as orderService
+
+test -> orderService: POST: /checkout
+note left
+{
+  "item": "egg"
+}
+end note
+orderService --> test: OK
+note right
+{
+  "ok": true
+}
+end note
+@enduml
