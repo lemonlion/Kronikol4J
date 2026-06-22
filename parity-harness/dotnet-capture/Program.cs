@@ -1609,6 +1609,15 @@ Capture("internal-flow", SimpleHttp(), arrowColors: false, internalFlowTracking:
 Capture("exclude-all-headers", HttpWithHeaders(), arrowColors: false, excludeAllHeaders: true);
 // truncateNotesAfterLines caps each note at N lines, the rest replaced by a trailing "..." line.
 Capture("truncate-notes", TruncateCorpus(), arrowColors: false, truncateNotesAfterLines: 3);
+// dependencyColors overrides a category's colour (arrow + participant); serviceTypeOverrides remaps a
+// service's category (changing its shape + colour). caller-category proves the pure-caller shape + the
+// arrow-colour fallback to the caller; pure-caller-order proves the non-service caller is declared first.
+Capture("dependency-colors", SimpleHttp(), arrowColors: true, participantColors: true,
+    dependencyColors: new() { ["HTTP"] = "#123456" });
+Capture("service-type-overrides", SimpleHttp(), arrowColors: true, participantColors: true,
+    serviceTypeOverrides: new() { ["OrderService"] = "Redis" });
+Capture("caller-category", CallerCategoryCorpus(), arrowColors: true, participantColors: true);
+Capture("pure-caller-order", PureCallerOrderCorpus(), arrowColors: false);
 
 void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool participantColors = false,
     string? plantUmlTheme = null, bool separateSetup = false, bool highlightSetup = true,
@@ -1795,6 +1804,51 @@ static List<RequestResponseLog> GraphQlMutation()
             "{\"data\":{\"createOrder\":{\"id\":\"o-1\",\"status\":\"PLACED\"}}}",
             new Uri("http://api/graphql"), NoHeaders(), "ApiService", "Test",
             RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
+
+static List<RequestResponseLog> CallerCategoryCorpus()
+{
+    var (trace, rr) = Ids(1);
+    // The caller "EventBus" carries a CallerDependencyCategory (ServiceBus) and is the pure caller →
+    // shaped as a queue (not an actor). The service "Handler" has no category, so its arrow colour falls
+    // back to the caller's category (ServiceBus → MessageQueue → #9B59B6).
+    return
+    [
+        new RequestResponseLog("Handles an event", "t1", HttpMethod.Post, "{\"id\":1}",
+            new Uri("http://handler/process"), NoHeaders(), "Handler", "EventBus",
+            RequestResponseType.Request, trace, rr, false, CallerDependencyCategory: "ServiceBus"),
+        new RequestResponseLog("Handles an event", "t1", HttpMethod.Post, "{\"ok\":true}",
+            new Uri("http://handler/process"), NoHeaders(), "Handler", "EventBus",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, CallerDependencyCategory: "ServiceBus"),
+    ];
+}
+
+static List<RequestResponseLog> PureCallerOrderCorpus()
+{
+    var (t1, r1) = Ids(1);
+    var (t2, r2) = Ids(2);
+    // First trace ServiceA → ServiceB (ServiceA is a caller here but a service in the second trace);
+    // second trace Test → ServiceA. Test never appears as a service → it is the pure caller, declared
+    // FIRST (the .NET ordering the simpler first-seen algorithm got wrong: it emitted ServiceA, ServiceB,
+    // Test).
+    return
+    [
+        new RequestResponseLog("Chained call", "t1", HttpMethod.Post, "{\"x\":1}",
+            new Uri("http://b/op"), NoHeaders(), "ServiceB", "ServiceA",
+            RequestResponseType.Request, t1, r1, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Chained call", "t1", HttpMethod.Post, "{\"ok\":true}",
+            new Uri("http://b/op"), NoHeaders(), "ServiceB", "ServiceA",
+            RequestResponseType.Response, t1, r1, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Chained call", "t1", HttpMethod.Post, "{\"y\":2}",
+            new Uri("http://a/op"), NoHeaders(), "ServiceA", "Test",
+            RequestResponseType.Request, t2, r2, false, DependencyCategory: "HTTP"),
+        new RequestResponseLog("Chained call", "t1", HttpMethod.Post, "{\"ok\":true}",
+            new Uri("http://a/op"), NoHeaders(), "ServiceA", "Test",
+            RequestResponseType.Response, t2, r2, false,
             StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
     ];
 }

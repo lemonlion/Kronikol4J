@@ -135,8 +135,12 @@ public final class PlantUmlCreator {
         sb.append("autonumber 1").append(NL);
         sb.append(NL);
 
-        appendParticipants(sb, logs, options.participantColors());
+        appendParticipants(sb, logs, options);
         sb.append(NL);
+
+        // .NET _serviceCategoryCache: serviceName/callerName → category (override-aware, first non-null
+        // across ALL traces) — drives the arrow colours, including the caller-category fallback.
+        Map<String, String> serviceCategoryCache = buildServiceCategoryCache(logs, options.serviceTypeOverrides());
 
         for (RequestResponseLog log : logs) {
             if (log.actionStart()) { // phase-boundary marker — closes Setup, never rendered (.NET parity)
@@ -164,7 +168,7 @@ public final class PlantUmlCreator {
             }
             String caller = alias(log.callerName());
             String service = alias(log.serviceName());
-            String color = DependencyPalette.colorFor(log.dependencyCategory());
+            String arrowColor = arrowColorSyntax(serviceCategoryCache, log, arrowColors, options.dependencyColors());
             boolean isRequest = log.type() == RequestResponseType.REQUEST;
             // .NET pre/mid/post Func hooks: pre on raw content (also feeds the GraphQL request label),
             // mid inside the formatter (before focus), post on the final note body.
@@ -172,12 +176,12 @@ public final class PlantUmlCreator {
                 isRequest ? processors.requestPre() : processors.responsePre(), log.content());
             String side;
             if (isRequest) {
-                String arrow = arrowColors ? "-[" + color + "]>" : "->";
+                String arrow = "-" + arrowColor + ">"; // .NET: "-{arrowColor}>" (arrowColor incl. brackets)
                 sb.append(caller).append(' ').append(arrow).append(' ').append(service)
                     .append(": ").append(requestLabel(log, content, options.internalFlowTracking())).append(NL);
                 side = log.noteOnRight() ? "right" : "left"; // .NET trace.NoteOnRight (request note side)
             } else {
-                String arrow = arrowColors ? "-[" + color + "]->" : "-->";
+                String arrow = "-" + arrowColor + "->"; // .NET: "-{arrowColor}->"
                 sb.append(service).append(' ').append(arrow).append(' ').append(caller)
                     .append(": ").append(responseLabel(log)).append(NL);
                 side = "right";
@@ -198,34 +202,168 @@ public final class PlantUmlCreator {
         return sb.toString();
     }
 
+    /** Declares the participants — a faithful port of .NET {@code CreateEntitiesPlantUml}: the pure caller
+     *  (a {@code CallerName} that never appears as a {@code ServiceName}) is declared first; callers and
+     *  services are shaped by their (override-aware, first-non-null) category — a category-less caller
+     *  becomes {@code entity} once an actor exists, else {@code actor}; participant colours honour the
+     *  {@code dependencyColors} override map. */
     private static void appendParticipants(StringBuilder sb, List<RequestResponseLog> logs,
-                                           boolean participantColors) {
-        Set<String> order = new LinkedHashSet<>();          // first-seen participant order
-        Set<String> services = new HashSet<>();             // names that appear as a service
-        Map<String, String> categoryByService = new HashMap<>(); // first non-null category per service
+                                           DiagramOptions options) {
+        boolean participantColors = options.participantColors();
+        Map<String, String> overrides = options.serviceTypeOverrides();
+        Map<String, String> dependencyColors = options.dependencyColors();
+
+        List<RequestResponseLog> relevant = new ArrayList<>();
         for (RequestResponseLog log : logs) {
-            if (log.plantUml() != null || log.actionStart()) {
+            if (log.overrideStart() || log.overrideEnd() || log.actionStart() || log.plantUml() != null) {
                 continue; // override fragments + action-start markers declare no participants
             }
-            order.add(log.callerName());
-            order.add(log.serviceName());
-            services.add(log.serviceName());
-            if (log.dependencyCategory() != null) {
-                categoryByService.putIfAbsent(log.serviceName(), log.dependencyCategory());
+            relevant.add(log);
+        }
+
+        Set<String> allServiceNames = new HashSet<>(); // case-sensitive (.NET default-comparer HashSet)
+        for (RequestResponseLog t : relevant) {
+            allServiceNames.add(t.serviceName());
+        }
+        String pureCaller = null;
+        for (RequestResponseLog t : relevant) {
+            if (!allServiceNames.contains(t.callerName())) {
+                pureCaller = t.callerName();
+                break;
             }
         }
-        for (String name : order) {
-            // A service is shaped by its (first non-null) category; a caller-only name is an actor.
-            String category = services.contains(name) ? categoryByService.get(name) : null;
-            String keyword = services.contains(name) ? DependencyPalette.shapeFor(category) : "actor";
-            sb.append(keyword).append(" \"").append(name).append("\" as ").append(alias(name));
-            // Participant-colour mode colours only categorised participants (never the actor / a
-            // null-category service), matching .NET's `participantColors && category is not null`.
-            if (participantColors && category != null) {
-                sb.append(' ').append(DependencyPalette.colorFor(category));
+
+        // callerName → category (override, else first non-null CallerDependencyCategory; entry always made).
+        Map<String, String> callerCategories = caseInsensitiveMap();
+        for (RequestResponseLog t : relevant) {
+            if (callerCategories.containsKey(t.callerName())) {
+                continue;
             }
-            sb.append(NL);
+            callerCategories.put(t.callerName(), overrides.containsKey(t.callerName())
+                ? overrides.get(t.callerName()) : firstNonNullCategory(relevant, t.callerName(), true));
         }
+
+        Set<String> currentPlayers = new HashSet<>(); // aliases already declared
+        boolean actorDefined = false;
+        if (pureCaller != null) {
+            String pureCallerAlias = alias(pureCaller);
+            currentPlayers.add(pureCallerAlias);
+            String pureCallerCategory = callerCategories.get(pureCaller);
+            if (pureCallerCategory != null) {
+                sb.append(DependencyPalette.shapeFor(pureCallerCategory)).append(" \"").append(pureCaller)
+                    .append("\" as ").append(pureCallerAlias);
+                if (participantColors) {
+                    sb.append(' ').append(DependencyPalette.colorFor(pureCallerCategory, dependencyColors));
+                }
+                sb.append(NL);
+            } else {
+                sb.append("actor \"").append(pureCaller).append("\" as ").append(pureCallerAlias).append(NL);
+            }
+            actorDefined = true;
+        }
+
+        // serviceName → category (override, else first non-null DependencyCategory; entry always made).
+        Map<String, String> serviceCategories = caseInsensitiveMap();
+        for (RequestResponseLog t : relevant) {
+            if (serviceCategories.containsKey(t.serviceName())) {
+                continue;
+            }
+            serviceCategories.put(t.serviceName(), overrides.containsKey(t.serviceName())
+                ? overrides.get(t.serviceName()) : firstNonNullCategory(relevant, t.serviceName(), false));
+        }
+
+        for (RequestResponseLog t : relevant) {
+            String callerShortName = alias(t.callerName());
+            if (currentPlayers.add(callerShortName)) {
+                String callerCategory = callerCategories.get(t.callerName());
+                if (callerCategory != null) {
+                    sb.append(DependencyPalette.shapeFor(callerCategory)).append(" \"").append(t.callerName())
+                        .append("\" as ").append(callerShortName);
+                    if (participantColors) {
+                        sb.append(' ').append(DependencyPalette.colorFor(callerCategory, dependencyColors));
+                    }
+                    sb.append(NL);
+                } else { // category-less caller: entity once an actor exists, else actor (.NET actorDefined)
+                    sb.append(actorDefined ? "entity" : "actor").append(" \"").append(t.callerName())
+                        .append("\" as ").append(callerShortName).append(NL);
+                }
+            }
+
+            String serviceShortName = alias(t.serviceName());
+            if (currentPlayers.add(serviceShortName)) {
+                String category = serviceCategories.get(t.serviceName());
+                sb.append(DependencyPalette.shapeFor(category)).append(" \"").append(t.serviceName())
+                    .append("\" as ").append(serviceShortName);
+                if (participantColors && category != null) {
+                    sb.append(' ').append(DependencyPalette.colorFor(category, dependencyColors));
+                }
+                sb.append(NL);
+            }
+        }
+    }
+
+    /** .NET {@code BuildServiceCategoryCache}: {@code serviceName}/{@code callerName} → category over
+     *  <em>all</em> traces. A service is always cached (its first non-null {@code DependencyCategory}, or
+     *  the override, possibly {@code null}); a caller is cached only when it has an override or a non-null
+     *  {@code CallerDependencyCategory}. Drives the arrow colours. */
+    private static Map<String, String> buildServiceCategoryCache(List<RequestResponseLog> logs,
+                                                                 Map<String, String> overrides) {
+        Map<String, String> cache = caseInsensitiveMap();
+        for (RequestResponseLog t : logs) {
+            if (!cache.containsKey(t.serviceName())) {
+                cache.put(t.serviceName(), overrides.containsKey(t.serviceName())
+                    ? overrides.get(t.serviceName()) : firstNonNullCategory(logs, t.serviceName(), false));
+            }
+            if (!cache.containsKey(t.callerName())) {
+                if (overrides.containsKey(t.callerName())) {
+                    cache.put(t.callerName(), overrides.get(t.callerName()));
+                } else {
+                    String callerCat = firstNonNullCategory(logs, t.callerName(), true);
+                    if (callerCat != null) {
+                        cache.put(t.callerName(), callerCat);
+                    }
+                }
+            }
+        }
+        return cache;
+    }
+
+    /** The arrow colour syntax (e.g. {@code [#E74C3C]}) for a trace, or {@code ""} when colouring is off —
+     *  .NET {@code GetArrowColor}: the service's cached category (else its own), falling back to the
+     *  caller's when the service has none, then {@code GetColor(category, dependencyColors)}. */
+    private static String arrowColorSyntax(Map<String, String> cache, RequestResponseLog log,
+                                           boolean arrowColors, Map<String, String> dependencyColors) {
+        if (!arrowColors) {
+            return "";
+        }
+        String category = cache.containsKey(log.serviceName())
+            ? cache.get(log.serviceName()) : log.dependencyCategory();
+        if ((category == null || category.isEmpty()) && log.callerName() != null) {
+            category = cache.containsKey(log.callerName())
+                ? cache.get(log.callerName()) : log.callerDependencyCategory();
+        }
+        return "[" + DependencyPalette.colorFor(category, dependencyColors) + "]";
+    }
+
+    /** The first non-null {@code DependencyCategory} ({@code isCaller=false}) or {@code CallerDependencyCategory}
+     *  ({@code isCaller=true}) among traces whose service/caller name equals {@code name} (case-sensitive,
+     *  matching .NET {@code ==}); {@code null} if none. */
+    private static String firstNonNullCategory(List<RequestResponseLog> traces, String name, boolean isCaller) {
+        for (RequestResponseLog t : traces) {
+            if (isCaller && name.equals(t.callerName()) && t.callerDependencyCategory() != null) {
+                return t.callerDependencyCategory();
+            }
+            if (!isCaller && name.equals(t.serviceName()) && t.dependencyCategory() != null) {
+                return t.dependencyCategory();
+            }
+        }
+        return null;
+    }
+
+    /** A category lookup map matching the .NET caches' {@code StringComparer.OrdinalIgnoreCase} (null
+     *  values allowed; keys are non-null participant names). */
+    private static Map<String, String> caseInsensitiveMap() {
+        return new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     }
 
     /** .NET {@code TruncateNoteContent}: cap the note at {@code maxLines} lines, the rest replaced by a

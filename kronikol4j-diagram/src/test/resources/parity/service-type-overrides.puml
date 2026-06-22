@@ -1,0 +1,23 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+collections "OrderService" as orderService #F39C12
+
+test -[#F39C12]> orderService: POST: /checkout
+note left
+{
+  "item": "egg"
+}
+end note
+orderService -[#F39C12]-> test: OK
+note right
+{
+  "ok": true
+}
+end note
+@enduml

@@ -1,0 +1,36 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "ServiceA" as serviceA
+entity "ServiceB" as serviceB
+
+serviceA -> serviceB: POST: /op
+note left
+{
+  "x": 1
+}
+end note
+serviceB --> serviceA: OK
+note right
+{
+  "ok": true
+}
+end note
+test -> serviceA: POST: /op
+note left
+{
+  "y": 2
+}
+end note
+serviceA --> test: OK
+note right
+{
+  "ok": true
+}
+end note
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+queue "EventBus" as eventBus #9B59B6
+entity "Handler" as handler
+
+eventBus -[#9B59B6]> handler: POST: /process
+note left
+{
+  "id": 1
+}
+end note
+handler -[#9B59B6]-> eventBus: OK
+note right
+{
+  "ok": true
+}
+end note
+@enduml

@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -244,6 +245,41 @@ class PlantUmlParityTest {
         DiagramOptions opts = DiagramOptions.defaults().withArrowColors(false).withTruncateNotesAfterLines(3);
         assertParity("truncate-notes",
             PlantUmlCreator.create(truncateCorpus(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void dependencyColorsOverride() throws IOException {
+        // dependencyColors remaps a category's colour for both the arrow and the participant declaration.
+        DiagramOptions opts = DiagramOptions.defaults().withArrowColors(true).withParticipantColors(true)
+            .withDependencyColors(Map.of("HTTP", "#123456"));
+        assertParity("dependency-colors", PlantUmlCreator.create(httpExchange(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void serviceTypeOverrides() throws IOException {
+        // serviceTypeOverrides remaps a service's category → its shape + colour change (HTTP → Redis →
+        // collections / #F39C12).
+        DiagramOptions opts = DiagramOptions.defaults().withArrowColors(true).withParticipantColors(true)
+            .withServiceTypeOverrides(Map.of("OrderService", "Redis"));
+        assertParity("service-type-overrides",
+            PlantUmlCreator.create(httpExchange(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void callerCategoryShapeAndArrowFallback() throws IOException {
+        // A pure caller with a CallerDependencyCategory is shaped (queue, not actor); a category-less
+        // service's arrow colour falls back to the caller's category.
+        DiagramOptions opts = DiagramOptions.defaults().withArrowColors(true).withParticipantColors(true);
+        assertParity("caller-category",
+            PlantUmlCreator.create(callerCategoryCorpus(), opts).get(0).diagrams().get(0));
+    }
+
+    @Test
+    void pureCallerDeclaredFirst() throws IOException {
+        // The pure caller (a CallerName never appearing as a ServiceName) is declared first, even when it
+        // is not the first-seen caller — the ordering the simpler first-seen algorithm got wrong.
+        assertParity("pure-caller-order",
+            PlantUmlCreator.create(pureCallerOrderCorpus(), false).get(0).diagrams().get(0));
     }
 
     @Test
@@ -477,6 +513,37 @@ class PlantUmlParityTest {
             log("Places an order", Method.Http.POST, "http://orders/checkout", "OrderService",
                 DependencyCategories.HTTP, RequestResponseType.RESPONSE,
                 "{\"ok\":true,\"id\":\"A-100\",\"status\":\"placed\"}", StatusCode.of(200)));
+    }
+
+    private static List<RequestResponseLog> callerCategoryCorpus() {
+        return List.of(
+            callerLog("Handles an event", "http://handler/process", "Handler", "EventBus", null, "ServiceBus",
+                RequestResponseType.REQUEST, "{\"id\":1}", null),
+            callerLog("Handles an event", "http://handler/process", "Handler", "EventBus", null, "ServiceBus",
+                RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
+    }
+
+    private static List<RequestResponseLog> pureCallerOrderCorpus() {
+        return List.of(
+            callerLog("Chained call", "http://b/op", "ServiceB", "ServiceA", DependencyCategories.HTTP, null,
+                RequestResponseType.REQUEST, "{\"x\":1}", null),
+            callerLog("Chained call", "http://b/op", "ServiceB", "ServiceA", DependencyCategories.HTTP, null,
+                RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)),
+            callerLog("Chained call", "http://a/op", "ServiceA", "Test", DependencyCategories.HTTP, null,
+                RequestResponseType.REQUEST, "{\"y\":2}", null),
+            callerLog("Chained call", "http://a/op", "ServiceA", "Test", DependencyCategories.HTTP, null,
+                RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
+    }
+
+    private static RequestResponseLog callerLog(String testName, String uri, String service, String caller,
+                                                String category, String callerCategory,
+                                                RequestResponseType type, String content, StatusCode status) {
+        return RequestResponseLog.builder()
+            .testName(testName).testId("t1").method(Method.Http.POST).uri(URI.create(uri))
+            .serviceName(service).callerName(caller).type(type)
+            .traceId(UUID.randomUUID()).requestResponseId(UUID.randomUUID())
+            .dependencyCategory(category).callerDependencyCategory(callerCategory).statusCode(status)
+            .content(content).build();
     }
 
     private static RequestResponseLog log(String testName, Method method, String uri, String service,

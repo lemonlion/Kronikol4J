@@ -87,4 +87,17 @@ public final class DependencyPalette {
     public static String colorFor(String category) {
         return resolve(category).color();
     }
+
+    /** As {@link #colorFor(String)} but honouring a user {@code category → colour} override map (the .NET
+     *  {@code GetColor(category, userOverrides)}). The override is keyed by the raw category string
+     *  (case-sensitive, matching the user-supplied dictionary's default comparer). */
+    public static String colorFor(String category, Map<String, String> overrides) {
+        if (category != null && overrides != null) {
+            String override = overrides.get(category);
+            if (override != null) {
+                return override;
+            }
+        }
+        return resolve(category).color();
+    }
 }
