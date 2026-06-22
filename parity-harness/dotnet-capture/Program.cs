@@ -1550,6 +1550,7 @@ Capture("simple-http-colored", SimpleHttp(), arrowColors: true);
 Capture("theme", SimpleHttp(), arrowColors: false, plantUmlTheme: "cyborg"); // !theme directive after @startuml
 Capture("headers", HttpWithHeaders(), arrowColors: false); // gray [Key=Value] notes, sorted, Cache-Control excluded
 Capture("setup", SetupCorpus(), arrowColors: false, separateSetup: true); // partition #F6F6F6 Setup … end
+Capture("focus", FocusCorpus(), arrowColors: false); // focusFields → <b> focused, <color:lightgray> the rest
 Capture("multi-trace", MultiTrace(), arrowColors: false);
 Capture("sql", Sql(), arrowColors: false);
 Capture("event", Event(), arrowColors: false);
@@ -1593,6 +1594,23 @@ void Capture(string name, List<RequestResponseLog> logs, bool arrowColors, bool 
 // --- corpora ---
 
 static (string, string?)[] NoHeaders() => Array.Empty<(string, string?)>();
+
+static List<RequestResponseLog> FocusCorpus()
+{
+    var (trace, rr) = Ids(1);
+    var content = "{\"orderId\":\"A-100\",\"customer\":{\"name\":\"Acme\",\"tier\":\"gold\"},\"total\":50}";
+    return
+    [
+        new RequestResponseLog("Places an order", "t1", HttpMethod.Post, content,
+            new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test",
+            RequestResponseType.Request, trace, rr, false, DependencyCategory: "HTTP")
+            { FocusFields = ["orderId"] },
+        new RequestResponseLog("Places an order", "t1", HttpMethod.Post, "{\"ok\":true}",
+            new Uri("http://orders/checkout"), NoHeaders(), "OrderService", "Test",
+            RequestResponseType.Response, trace, rr, false,
+            StatusCode: HttpStatusCode.OK, DependencyCategory: "HTTP"),
+    ];
+}
 
 static List<RequestResponseLog> SetupCorpus()
 {

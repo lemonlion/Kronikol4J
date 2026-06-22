@@ -170,7 +170,8 @@ public final class PlantUmlCreator {
             }
             String opener = (log.metaType() == RequestResponseMetaType.EVENT ? "note<<eventNote>> " : "note ") + side;
             appendNote(sb, opener, NoteFormatter.format(log.content(), log.headers(),
-                options.excludedHeaders()));
+                options.excludedHeaders(), log.focusFields(), options.focusEmphasis(),
+                options.focusDeEmphasis()));
         }
 
         sb.append("@enduml");

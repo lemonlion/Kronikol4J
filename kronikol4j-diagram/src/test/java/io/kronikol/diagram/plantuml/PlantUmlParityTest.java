@@ -53,6 +53,12 @@ class PlantUmlParityTest {
     }
 
     @Test
+    void focusFieldsEmphasis() throws IOException {
+        // focusFields → focused lines <b>bold</b>, the rest <color:lightgray> (the .NET Bold/LightGray default).
+        assertParity("focus", PlantUmlCreator.create(focusCorpus(), false).get(0).diagrams().get(0));
+    }
+
+    @Test
     void separateSetupPartition() throws IOException {
         // separateSetup wraps the setup-phase traces in "partition #F6F6F6 Setup … end"; the action-start
         // marker is skipped (not a participant), action-phase traces follow outside the partition.
@@ -144,6 +150,19 @@ class PlantUmlParityTest {
             log("Checkout succeeds", Method.Http.POST, "http://orders/checkout", "OrderService",
                 DependencyCategories.HTTP, RequestResponseType.REQUEST, "{\"item\":\"egg\"}", null),
             log("Checkout succeeds", Method.Http.POST, "http://orders/checkout", "OrderService",
+                DependencyCategories.HTTP, RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
+    }
+
+    private static List<RequestResponseLog> focusCorpus() {
+        String content = "{\"orderId\":\"A-100\",\"customer\":{\"name\":\"Acme\",\"tier\":\"gold\"},\"total\":50}";
+        RequestResponseLog req = RequestResponseLog.builder()
+            .testName("Places an order").testId("t1").method(Method.Http.POST)
+            .uri(URI.create("http://orders/checkout")).serviceName("OrderService").callerName("Test")
+            .type(RequestResponseType.REQUEST).traceId(UUID.randomUUID()).requestResponseId(UUID.randomUUID())
+            .dependencyCategory(DependencyCategories.HTTP).content(content).build();
+        req.focusFields(List.of("orderId"));
+        return List.of(req,
+            log("Places an order", Method.Http.POST, "http://orders/checkout", "OrderService",
                 DependencyCategories.HTTP, RequestResponseType.RESPONSE, "{\"ok\":true}", StatusCode.of(200)));
     }
 

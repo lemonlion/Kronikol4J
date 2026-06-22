@@ -5,6 +5,7 @@ import io.kronikol.diagram.json.Json;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -26,9 +27,16 @@ public final class NoteFormatter {
         return text.replace("\\", "\\\\");
     }
 
-    /** Builds the note body (may be empty), excluding the given header keys (.NET defaults to
-     *  {@code Cache-Control}/{@code Pragma}). */
+    /** As {@link #format(String, List, List, List, Set, Set)} with no focus fields. */
     public static String format(String content, List<Header> headers, List<String> excludedHeaders) {
+        return format(content, headers, excludedHeaders, null, Set.of(), Set.of());
+    }
+
+    /** Builds the note body (may be empty): excluded headers dropped + gray-rendered, then the content
+     *  (pretty-printed, with focus emphasis/de-emphasis applied when {@code focusFields} are present). */
+    public static String format(String content, List<Header> headers, List<String> excludedHeaders,
+                                List<String> focusFields, Set<FocusEmphasis> focusEmphasis,
+                                Set<FocusDeEmphasis> focusDeEmphasis) {
         String headersOnTop = "";
         if (headers != null && !headers.isEmpty()) {
             headersOnTop = headers.stream()
@@ -42,6 +50,10 @@ public final class NoteFormatter {
         if (content != null && !content.isBlank()) {
             String pretty = Json.tryPrettyPrint(content);
             formattedContent = pretty != null ? pretty : content;
+        }
+        if (focusFields != null && !focusFields.isEmpty()) {
+            formattedContent = JsonFocusFormatter.formatWithFocus(formattedContent, focusFields,
+                focusEmphasis, focusDeEmphasis);
         }
 
         // .NET: ((headersOnTop + "\n\n").TrimStart() + formattedContent.Trim()).TrimEnd()

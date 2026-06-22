@@ -1,0 +1,28 @@
+@startuml
+!pragma teoz true
+
+
+skinparam wrapWidth 800
+autonumber 1
+
+actor "Test" as test
+entity "OrderService" as orderService
+
+test -> orderService: POST: /checkout
+note left
+{
+  <b>"orderId": "A-100",</b>
+  <color:lightgray>"customer": {</color>
+    <color:lightgray>"name": "Acme",</color>
+    <color:lightgray>"tier": "gold"</color>
+  <color:lightgray>},</color>
+  <color:lightgray>"total": 50</color>
+}
+end note
+orderService --> test: OK
+note right
+{
+  "ok": true
+}
+end note
+@enduml
