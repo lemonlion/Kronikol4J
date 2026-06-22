@@ -256,6 +256,68 @@ class GoldenHtmlParityTest {
     }
 
     @Test
+    void edgeFieldsBrowserHtmlReport_nullDurationAndStatus_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // The optional-field branches the timed goldens never hit: a scenario with no duration (durationMs
+        // 0 == "no duration" → no badge/attr, matching .NET Duration.HasValue == false) and a structural
+        // step with no status + no duration alongside a normal timed step.
+        ScenarioStep structural =
+            new ScenarioStep("Given", "a structural step", null, null, List.of(), List.of());
+        ScenarioStep timed =
+            new ScenarioStep("When", "a timed step", ExecutionStatus.PASSED, 40L, List.of(), List.of());
+        Scenario skipped = Scenario.builder("Skipped no duration", "s1", ExecutionStatus.SKIPPED)
+            .steps(List.of(structural, timed))
+            .build();
+        Feature feature = new Feature("Edges", List.of(skipped));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-edgefields.html", actual);
+    }
+
+    @Test
+    void paramEdgeValuesBrowserHtmlReport_nullAndWhitespace_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // FormatDisplayValue branches: a literal "null" → <pre>null</pre>, a whitespace-only value →
+        // <pre>{ws}</pre>, vs a normal value (escaped inline).
+        LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();
+        ev1.put("nullish", "null");
+        ev1.put("blank", "   ");
+        ev1.put("normal", "42");
+        LinkedHashMap<String, String> ev2 = new LinkedHashMap<>();
+        ev2.put("nullish", "x");
+        ev2.put("blank", "y");
+        ev2.put("normal", "99");
+        Scenario s1 = Scenario.builder("Edge A", "s1", ExecutionStatus.PASSED)
+            .durationMs(50).outlineId("Edges").exampleValues(ev1).build();
+        Scenario s2 = Scenario.builder("Edge B", "s2", ExecutionStatus.PASSED)
+            .durationMs(60).outlineId("Edges").exampleValues(ev2).build();
+        Feature feature = new Feature("Math", List.of(s1, s2));
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(feature), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-paramedge.html", actual);
+    }
+
+    @Test
+    void emptyFeatureBrowserHtmlReport_zeroScenariosAlongsidePopulated_isByteForByteIdenticalToDotNetGolden()
+            throws IOException {
+        // A feature with zero scenarios alongside a populated one — the report renders (only an ALL-empty
+        // feature set bails out).
+        Scenario scenario = Scenario.builder("Logs in", "s1", ExecutionStatus.PASSED)
+            .isHappyPath(true).durationMs(120).build();
+        Feature populated = new Feature("Login", List.of(scenario));
+        Feature empty = new Feature("Empty feature", List.of());
+
+        String actual = DotNetHtmlReportRenderer.render(
+            List.of(populated, empty), Map.of(), null, "Kronikol Run", PINNED_VERSION);
+
+        assertParity("report-emptyfeature.html", actual);
+    }
+
+    @Test
     void parameterizedBrowserHtmlReport_outlineGroupScalarColumns_isByteForByteIdenticalToDotNetGolden()
             throws IOException {
         LinkedHashMap<String, String> ev1 = new LinkedHashMap<>();

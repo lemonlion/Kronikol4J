@@ -58,6 +58,14 @@ CaptureHtmlParameterized();
 CaptureHtmlEscaping();
 CaptureHtmlEscapingParams();
 
+// Optional-field edge branches the timed goldens never hit: a scenario with NO Duration (no badge/attr)
+// and steps with NO Status / NO Duration (Duration.HasValue / Status.HasValue == false).
+CaptureHtmlEdgeFields();
+// FormatDisplayValue edge branches: a literal "null" value and a whitespace-only value in a param table.
+CaptureHtmlParamEdgeValues();
+// A feature with zero scenarios alongside a populated one (the report renders, it does not bail).
+CaptureHtmlEmptyFeature();
+
 // includeTestRunData=true: the Features Summary table (conditional Steps/Duration columns), the
 // Test Execution Summary, the pie chart, and the header-row wrapping.
 CaptureHtmlSummary();
@@ -462,6 +470,79 @@ void CaptureHtmlEscaping()
     var content = File.ReadAllText(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-escaping.html"), content);
     Console.WriteLine($"=== report-escaping.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlEmptyFeature()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // One populated feature + one with zero scenarios (the report does NOT bail — only an ALL-empty set
+    // does, line 57). Exercises how an empty feature section is rendered alongside a populated one.
+    var scenario = new Scenario
+    {
+        Id = "s1", DisplayName = "Logs in", IsHappyPath = true,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(120)
+    };
+    var populated = new Feature { DisplayName = "Login", Scenarios = [scenario] };
+    var empty = new Feature { DisplayName = "Empty feature", Scenarios = [] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [populated, empty], start, end, null, "report-emptyfeature.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-emptyfeature.html"), content);
+    Console.WriteLine($"=== report-emptyfeature.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlParamEdgeValues()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // FormatDisplayValue edge branches: a literal "null" → <pre>null</pre>, a whitespace-only value →
+    // <pre>{ws}</pre>, alongside a normal value (escaped inline).
+    var s1 = new Scenario
+    {
+        Id = "s1", DisplayName = "Edge A", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(50),
+        OutlineId = "Edges", ExampleValues = new() { ["nullish"] = "null", ["blank"] = "   ", ["normal"] = "42" }
+    };
+    var s2 = new Scenario
+    {
+        Id = "s2", DisplayName = "Edge B", IsHappyPath = false,
+        Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60),
+        OutlineId = "Edges", ExampleValues = new() { ["nullish"] = "x", ["blank"] = "y", ["normal"] = "99" }
+    };
+    var feature = new Feature { DisplayName = "Math", Scenarios = [s1, s2] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-paramedge.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-paramedge.html"), content);
+    Console.WriteLine($"=== report-paramedge.html ({content.Length} chars) ===");
+}
+
+void CaptureHtmlEdgeFields()
+{
+    var start = new DateTime(2024, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+    var end = new DateTime(2024, 1, 15, 10, 0, 5, DateTimeKind.Utc);
+    // A skipped scenario with NO Duration (Duration.HasValue == false → no badge/attr), plus a structural
+    // step with NO Status and NO Duration alongside a normal timed step.
+    var skipped = new Scenario
+    {
+        Id = "s1", DisplayName = "Skipped no duration", IsHappyPath = false,
+        Result = ExecutionResult.Skipped,
+        Steps =
+        [
+            new ScenarioStep { Keyword = "Given", Text = "a structural step" },
+            new ScenarioStep { Keyword = "When", Text = "a timed step", Status = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(40) }
+        ]
+    };
+    var feature = new Feature { DisplayName = "Edges", Scenarios = [skipped] };
+    var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
+    var path = ReportGenerator.GenerateHtmlReport(
+        diagrams, [feature], start, end, null, "report-edgefields.html", "Kronikol Run", includeTestRunData: false);
+    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "report-edgefields.html"), content);
+    Console.WriteLine($"=== report-edgefields.html ({content.Length} chars) ===");
 }
 
 void CaptureHtmlEscapingParams()

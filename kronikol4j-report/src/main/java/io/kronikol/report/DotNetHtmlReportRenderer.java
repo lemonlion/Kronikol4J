@@ -429,7 +429,10 @@ public final class DotNetHtmlReportRenderer {
         for (Feature feature : features) {
             boolean featureHasFailures = feature.scenarios().stream()
                 .anyMatch(s -> s.status() == ExecutionStatus.FAILED);
-            boolean featureAllSkipped = !featureHasFailures && !feature.scenarios().isEmpty()
+            // .NET: !hasFailures && Scenarios.All(s => Result == Skipped). For a zero-scenario feature
+            // All(...) is vacuously TRUE (as is Java's allMatch on an empty stream) → the " skipped" class;
+            // do NOT add an isEmpty() guard, or an empty feature's summary diverges from .NET.
+            boolean featureAllSkipped = !featureHasFailures
                 && feature.scenarios().stream().allMatch(s -> s.status() == ExecutionStatus.SKIPPED);
             String summaryClass = featureHasFailures ? " failed" : featureAllSkipped ? " skipped" : "";
             String endpoint = feature.endpoint() == null ? ""

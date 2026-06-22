@@ -73,8 +73,11 @@ parity-harness/dotnet-capture/fixtures/report-parammaxcols.html
 parity-harness/dotnet-capture/fixtures/report-paramnogroup.html
 parity-harness/dotnet-capture/fixtures/report-escaping.html
 parity-harness/dotnet-capture/fixtures/report-escaping-params.html
+parity-harness/dotnet-capture/fixtures/report-edgefields.html
 parity-harness/dotnet-capture/fixtures/stylesheets.css
 parity-harness/dotnet-capture/fixtures/assets/
 parity-harness/dotnet-capture/fixtures/ci-summary-multipart.md
 parity-harness/dotnet-capture/fixtures/graphql-labels.txt
 parity-harness/dotnet-capture/fixtures/html-escape-samples.txt
+parity-harness/dotnet-capture/fixtures/report-paramedge.html
+parity-harness/dotnet-capture/fixtures/report-emptyfeature.html
