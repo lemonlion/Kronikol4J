@@ -16,7 +16,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 - **`SnsOperationClassifier`** (`kronikol4j-aws`, + `SnsOperation`, `SnsOperationInfo`) — Java port of the
   .NET SNS classifier: operation from the `X-Amz-Target` header / `Action` fallbacks (12 operations), plus
   topic name + full ARN extraction from the `TopicArn`/`TargetArn` body field. Pure logic. Proven by
-  `SnsOperationClassifierTest`. The S3/DynamoDB classifiers and the AWS SDK v2 `ExecutionInterceptor` follow.
+  `SnsOperationClassifierTest`.
+- **`S3OperationClassifier`** (`kronikol4j-aws`, + `S3Operation`, `S3OperationInfo`) — Java port of the .NET
+  S3 classifier (the most complex): path-style vs virtual-hosted-style bucket/key extraction, with
+  query-parameter-driven operation matching — object CRUD, copy (`x-amz-copy-source` header), multipart
+  (`uploads`/`uploadId`/`partNumber`), tagging, and bucket-level operations
+  (`list-type`/`versions`/`location`/`delete`/create/delete) — 19 operations. Pure logic. Proven by
+  `S3OperationClassifierTest`. The DynamoDB classifier and the AWS SDK v2 `ExecutionInterceptor` follow.
 
 ### Added — Tier-1 Elasticsearch (classifier)
 - **`ElasticsearchOperationClassifier`** (`kronikol4j-elasticsearch`, + `ElasticsearchOperation`,
