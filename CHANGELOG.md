@@ -18,8 +18,15 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   port of the .NET BigQuery classifier: HTTP method + the `/bigquery/v2/projects/{project}/…` path (with the
   optional `/upload/` prefix) routed by resource segment (queries / datasets / tables / models / routines /
   jobs) → 8 operations (Query/Insert/Read/List/Create/Delete/Update/Cancel), extracting project, dataset,
-  resource type + name. Pure logic. Proven by `BigQueryOperationClassifierTest`. The Cloud Storage classifier
-  and GCP SDK adapters follow.
+  resource type + name. Pure logic. Proven by `BigQueryOperationClassifierTest`.
+- **`CloudStorageOperationClassifier`** (`kronikol4j-gcp`, + `CloudStorageOperation`, `CloudStorageOperationInfo`)
+  — Java port of the .NET Cloud Storage classifier: HTTP method + the `/storage/v1/b/{bucket}/o/{object}` path
+  (and `/upload/` variant) + the `alt=media` query flag + `/copyTo/`/`/compose` sub-paths → 13 operations
+  (object upload/download/delete/list/get-/update-metadata, copy, compose, bucket create/delete/get/list),
+  with percent-decoding of object names (reading the URI's raw path so an encoded `%2F` stays one segment, as
+  .NET's `AbsolutePath` + `UnescapeDataString` do). Pure logic. Proven by `CloudStorageOperationClassifierTest`.
+  This completes all three GCP service classifiers (Pub/Sub, BigQuery, Cloud Storage); the GCP SDK adapters
+  follow.
 
 ### Added — Tier-1 Azure (Cosmos classifier)
 - **`CosmosOperationClassifier`** (`kronikol4j-azure`, + `CosmosOperation`, `CosmosOperationInfo`) — Java port

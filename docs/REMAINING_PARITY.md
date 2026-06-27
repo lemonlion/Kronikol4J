@@ -437,8 +437,15 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   classifier — HTTP method + the `/bigquery/v2/projects/{project}/…` path (with the optional `/upload/` prefix)
   routed by resource segment (queries / datasets / tables / models / routines / jobs) → 8 operations
   (Query/Insert/Read/List/Create/Delete/Update/Cancel), extracting project/dataset/resource. Pure logic.
-  Proven by `BigQueryOperationClassifierTest` (6 cases). **Remaining:** the Cloud Storage classifier, the GCP
-  SDK adapters that feed them + emit the log pair, and a golden proof.
+  Proven by `BigQueryOperationClassifierTest` (6 cases). **Cloud Storage classifier done:**
+  `CloudStorageOperationClassifier` (+ `CloudStorageOperation`, `CloudStorageOperationInfo`) — HTTP method +
+  the `/storage/v1/b/{bucket}/o/{object}` path (+ `/upload/` variant) + `alt=media` query + `/copyTo/`/
+  `/compose` sub-paths → 13 operations (object upload/download/delete/list/get-/update-metadata, copy, compose,
+  bucket create/delete/get/list), with `Uri.UnescapeDataString`-equivalent percent-decoding of object names
+  (using the URI's raw path so encoded `%2F` stays one segment). Proven by
+  `CloudStorageOperationClassifierTest` (6 cases). **All three GCP service classifiers (Pub/Sub, BigQuery,
+  Cloud Storage) are now done. Remaining:** the GCP SDK adapters that feed them + emit the log pair, and a
+  golden proof.
 
 ---
 
