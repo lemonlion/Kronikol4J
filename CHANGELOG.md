@@ -57,6 +57,18 @@ Tier-1 tracker depends on).
   parity with .NET: `cosmos(serviceName, partitionKey, documentId)` (3-arg), `eventHubs`, `pubSub`, `sqs`,
   `sns`, `storageQueue`, with byte-identical prefixes so write-time auto-population and processing-time
   resolution agree across runtimes. Proven by `CorrelationKeysTest` (all 11 helpers).
+- **`ProcessingCorrelation` async/Callable wrappers** (`kronikol4j-core`) — added `wrapAsync` (per-item
+  `Function<T, CompletionStage<Void>>`), `wrapBatchAsync`, `wrapCallable(key, Callable)` and
+  `wrapRunnable(key, Runnable)` to complement the existing sync `Consumer` forms. The Callable/Runnable forms
+  establish the scope on the executing thread (correct for `executor.submit(...)`); the async form covers the
+  synchronous handler launch (a Java `ThreadLocal` can't flow into cross-thread `CompletableFuture`
+  continuations the way .NET `AsyncLocal` does — cross-thread attribution uses the data-keyed
+  `TestCorrelationStore`). Proven by `ProcessingCorrelationTest`.
+
+### Fixed
+- **Batch correlation scope selection** (`ProcessingCorrelation.wrapBatch`) — previously used the first
+  *non-null* key and stopped, leaving the whole batch unattributed when that key didn't resolve. Now it
+  selects the first key that actually resolves to a test, matching .NET `WrapBatch`.
 
 ## [0.1.24] — first published release
 

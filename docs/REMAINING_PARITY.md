@@ -211,8 +211,17 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   **Done:** all 6 added to `io.kronikol.core.context.CorrelationKeys` with byte-identical prefixes
   (`cosmos:`/`eventhubs:`/`pubsub:`/`sqs:`/`sns:`/`storagequeue:`). Proven by `CorrelationKeysTest`
   (covers all 11 helpers).
-- [ ] **`ProcessingCorrelation` async wrappers** — `CompletableFuture`/`Callable` handler wrapping (Java has
+- [x] **`ProcessingCorrelation` async wrappers** — `CompletableFuture`/`Callable` handler wrapping (Java has
   only sync `Consumer` forms). (.NET `ProcessingCorrelation.cs:21`.)
+  **Done:** added `wrapAsync` (per-item `Function<T, CompletionStage<Void>>`), `wrapBatchAsync`,
+  `wrapCallable(key, Callable)` and `wrapRunnable(key, Runnable)`. The Callable/Runnable forms establish the
+  ThreadLocal scope on the executing thread (the correct shape for executor submissions); the async form
+  establishes it for the synchronous handler launch (a Java ThreadLocal cannot flow into cross-thread
+  `CompletableFuture` continuations like .NET `AsyncLocal` — cross-thread attribution uses the data-keyed
+  `TestCorrelationStore`, documented). **Bug fixed along the way:** the batch scope-selection picked the
+  first *non-null* key and stopped, leaving the batch unattributed when that key didn't resolve; now it picks
+  the first key that actually *resolves*, matching .NET `WrapBatch` (fixes the existing sync `wrapBatch` too).
+  Proven by `ProcessingCorrelationTest`.
 - [ ] **`TestCorrelationStore` gaps** — `onResolveMiss` callback, `remove(key)`, `seed(...)`, public TTL.
 - [ ] **Deferred flush** — `DeferredLogFlushHandler` + `PendingRequestResponseLogs`: queue logs emitted
   before identity is known, flush once it resolves. (.NET `Tracking/DeferredLogFlushHandler.cs`.)
