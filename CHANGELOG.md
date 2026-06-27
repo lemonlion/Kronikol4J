@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **`DiagramFocus`** (`kronikol4j-core`) — ambient "emphasize these JSON fields in the next note" mechanism
+  (the .NET `DiagramFocus` analog): `request(String...)`/`response(String...)` stash field names on a
+  `ThreadLocal`, consumed once (`consumePendingRequest/ResponseFocus`) by the next tracked log's
+  `focusFields` (which the byte-complete focus rendering already honours). Wired into
+  `KronikolOkHttpInterceptor` (both halves consumed up-front, like .NET) and added the
+  `RequestResponseLog.Builder.focusFields` setter. The typed `x => x.Field` expression overloads are a
+  C#-only boundary. Proven by `DiagramFocusTest` + `KronikolOkHttpInterceptorTest`.
 - **`TestTrackingServerBridge`** (`kronikol4j-servlet`) — public server-side API to read the current test
   identity from request headers (the .NET `TestTrackingServerBridge.GetCurrentTestInfo` analog, previously
   only internal to the filter): `getCurrentTestInfo(HttpServletRequest)` + a source-agnostic

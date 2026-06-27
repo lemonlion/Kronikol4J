@@ -216,6 +216,7 @@ public final class RequestResponseLog {
         public Builder dependencyCategory(String v) { this.dependencyCategory = v; return this; }
         public Builder callerDependencyCategory(String v) { this.callerDependencyCategory = v; return this; }
         public Builder phase(TestPhase v) { this.phase = v; return this; }
+        public Builder focusFields(List<String> v) { this.focusFields = v; return this; }
         public Builder timestamp(OffsetDateTime v) { this.timestamp = v; return this; }
         public Builder setupVariant(PhaseVariant v) { this.setupVariant = v; return this; }
         public Builder actionVariant(PhaseVariant v) { this.actionVariant = v; return this; }

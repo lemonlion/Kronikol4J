@@ -92,6 +92,11 @@ public final class KronikolOkHttpInterceptor implements Interceptor {
 
         Request tracked = rb.build();
 
+        // Consume any ambient DiagramFocus up-front (both halves), matching .NET — so focus set during the
+        // call doesn't leak into the response note.
+        List<String> requestFocus = io.kronikol.core.tracking.DiagramFocus.consumePendingRequestFocus();
+        List<String> responseFocus = io.kronikol.core.tracking.DiagramFocus.consumePendingResponseFocus();
+
         boolean withBody = options.verbosity().includesPayload();
         String requestBody = withBody ? readRequestBody(tracked) : null;
         List<Header> requestHeaders = toHeaders(tracked);
@@ -109,7 +114,8 @@ public final class KronikolOkHttpInterceptor implements Interceptor {
             .testInfo(who).method(method).uri(uri).headers(requestHeaders)
             .serviceName(serviceName).callerName(options.callerName())
             .type(RequestResponseType.REQUEST).traceId(trace).requestResponseId(requestResponseId)
-            .dependencyCategory(options.dependencyCategory()).content(requestBody).phase(phase).build()
+            .dependencyCategory(options.dependencyCategory()).content(requestBody).phase(phase)
+            .focusFields(requestFocus).build()
             .activityTraceId(activityTraceId).activitySpanId(activitySpanId));
 
         RequestResponseLogger.log(RequestResponseLog.builder()
@@ -117,7 +123,7 @@ public final class KronikolOkHttpInterceptor implements Interceptor {
             .serviceName(serviceName).callerName(options.callerName())
             .type(RequestResponseType.RESPONSE).traceId(trace).requestResponseId(requestResponseId)
             .statusCode(statusCode).dependencyCategory(options.dependencyCategory()).content(responseBody)
-            .phase(phase).build()
+            .phase(phase).focusFields(responseFocus).build()
             .activityTraceId(activityTraceId).activitySpanId(activitySpanId));
 
         return response;

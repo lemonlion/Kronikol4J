@@ -766,7 +766,19 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `WholeTestFlowVisualization` as a user option.
 - [ ] **`TrackingDiagramOverride`** — inject arbitrary PlantUML fragments + programmatic phase boundaries
   (`insertPlantUml`/`startOverride`/`endOverride`/`startAction`/`startSetup`).
-- [ ] **`DiagramFocus`** — ambient "emphasize these JSON fields in the next note" mechanism.
+- [x] **`DiagramFocus`** — ambient "emphasize these JSON fields in the next note" mechanism.
+  **Done:** `io.kronikol.core.tracking.DiagramFocus` ports the .NET `DiagramFocus` — `request(String...)` /
+  `response(String...)` stash field names on a `ThreadLocal`; `consumePendingRequestFocus()` /
+  `consumePendingResponseFocus()` return-and-clear (consume-once); `clearAll()` for teardown. The
+  `RequestResponseLog.focusFields` slot (already consumed by the byte-complete `FocusEmphasis`/
+  `FocusDeEmphasis` rendering) is now populated end-to-end: the `KronikolOkHttpInterceptor` consumes both
+  focus sets up-front (matching .NET, so focus set during the call doesn't leak into the response note) and
+  applies them to the request/response logs; added the missing `RequestResponseLog.Builder.focusFields`
+  setter. The typed `Request<T>(x => x.Field)` expression overloads are a documented C#-only boundary (no Java
+  expression trees) — use the string-field-name forms. Proven by `DiagramFocusTest` (consume-once, request/
+  response independence, clearAll, null-when-unset, empty-on-no-args, feeds `log.focusFields`) +
+  `KronikolOkHttpInterceptorTest` (ambient focus flows onto the captured pair, consumed once across calls).
+  **Note:** the other adapters consume `DiagramFocus` the same way as they wire it in.
 - [ ] **Assertion fidelity** — `Track.attachment(file, name)`; `Track.that` returning a value (`<T>`);
   `@SuppressAssertionTracking`; `Track.diagnosticMode` toggle + `diagnosticLog`/`clearDiagnosticLog`;
   `Track.testIdResolver` static hook; closure-value resolution + `AssertionExpressionFormatter` (readable

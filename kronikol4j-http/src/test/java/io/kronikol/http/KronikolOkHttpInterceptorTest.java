@@ -65,6 +65,30 @@ class KronikolOkHttpInterceptorTest {
     }
 
     @Test
+    void consumesAmbientDiagramFocusOntoTheLogPair() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"ok\":true}"));
+        io.kronikol.core.tracking.DiagramFocus.request("a");
+        io.kronikol.core.tracking.DiagramFocus.response("ok");
+        try {
+            try (Response response = post(clientWith(baseOptions().build()), "{\"a\":1}")) {
+                assertThat(response.code()).isEqualTo(200);
+            }
+            List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+            assertThat(logs.get(0).focusFields()).containsExactly("a");   // request note focus
+            assertThat(logs.get(1).focusFields()).containsExactly("ok");  // response note focus
+            // consumed once — a second tracked call carries no focus
+            server.enqueue(new MockResponse().setResponseCode(200).setBody("{}"));
+            RequestResponseLogger.clear();
+            try (Response r2 = post(clientWith(baseOptions().build()), "{\"a\":2}")) {
+                assertThat(r2.code()).isEqualTo(200);
+            }
+            assertThat(RequestResponseLogger.getAllLogs().get(0).focusFields()).isNull();
+        } finally {
+            io.kronikol.core.tracking.DiagramFocus.clearAll();
+        }
+    }
+
+    @Test
     void capturesRequestResponsePairWithInjectedHeaders() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(201).setBody("{\"ok\":true}"));
 
