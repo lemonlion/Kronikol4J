@@ -7,6 +7,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 TrackingProxy enhancements
+- **`TrackingProxy`** (`kronikol4j-proxy`) — added `TrackingLogMode` (Immediate / **Deferred**): Deferred mode
+  captures each call into `PendingRequestResponseLogs` (flushed once the test identity is known, e.g. after an
+  HTTP request), so the proxy can be invoked before identity is established. Also: a configurable `uriScheme`
+  (was hardcoded `proxy://local`), the `IdGenerator` determinism seam for trace/request-response ids, and a
+  pluggable `payloadSerializer` (default `String.valueOf`; plug a `TrackingSafeSerializer`-backed function for
+  JSON note content). `ProxyOptions` gained `withUriScheme`/`withLogMode`/`withIds`/`withSerializer`/
+  `withTestInfoFetcher`. Proven by `TrackingProxyEnhancementsTest`; the existing e2e test stays green. The
+  OTel `ActivitySource` span lifecycle for InternalFlow production lands with the InternalFlow capture item.
+
 ### Added — Tier-1 GCP (Pub/Sub classifier)
 - **`PubSubOperationClassifier`** (`kronikol4j-gcp`, + `PubSubOperation`, `PubSubOperationInfo`) — Java port of
   the .NET Google Cloud Pub/Sub classifier: SDK method name (e.g. `PublishAsync`) → one of 8 operations

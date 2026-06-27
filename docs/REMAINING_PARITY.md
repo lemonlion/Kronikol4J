@@ -356,10 +356,19 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `TrackingKafkaConsumerTest` (MockConsumer, no broker: header-attributed consume, untracked-without-headers,
   records still returned, no scope leakage). **Remaining:** Subscribe/Commit/Flush/Unsubscribe/Assign op
   tracking, `isCurrentRequestFromMyHost()`, `ITrackingComponent` self-registration, and a golden proof.
-- [ ] **`TrackingProxy` enhancements** (`kronikol4j-proxy`) — `TrackingLogMode` (Immediate **+ Deferred**,
+- [~] **`TrackingProxy` enhancements** (`kronikol4j-proxy`) — `TrackingLogMode` (Immediate **+ Deferred**,
   integrating `PendingRequestResponseLogs`); `ActivitySource`/OTel span lifecycle for InternalFlow span
   production (`InternalFlowSpanStore.complete(...)`); configurable `uriScheme` (hardcoded `proxy://local/`)
   and `activitySourceName`; `TrackingSafeSerializer` options. *(.NET `TrackingProxy.cs:25,53-116`.)*
+  **Done:** added `TrackingLogMode` (Immediate/Deferred) — Deferred captures each call into
+  `PendingRequestResponseLogs` (flushed once identity resolves), no identity needed at call time; configurable
+  `uriScheme` (was hardcoded `proxy://local`); the `IdGenerator` determinism seam for trace/request-response
+  ids; and a pluggable `payloadSerializer` (default `String.valueOf`, plug a `TrackingSafeSerializer`-backed
+  function for JSON). `ProxyOptions` gained the matching `withUriScheme`/`withLogMode`/`withIds`/`withSerializer`/
+  `withTestInfoFetcher` builders. Proven by `TrackingProxyEnhancementsTest` (existing e2e test stays green via
+  the default serializer). **Remaining:** the `ActivitySource`/OTel span lifecycle for InternalFlow span
+  production (`InternalFlowSpanStore.complete`) + `activitySourceName` — OTel-coupled, lands with the
+  InternalFlow capture item.
 - [~] **gRPC** (`kronikol4j-grpc`) — extend beyond unary to **server-streaming, client-streaming, duplex**;
   Protobuf→JSON; `traceparent` injection; gRPC-status→HTTP-status mapping; verbosity. *(.NET
   `GrpcTrackingInterceptor.cs` overrides 5 call types; Java handles 1.)*

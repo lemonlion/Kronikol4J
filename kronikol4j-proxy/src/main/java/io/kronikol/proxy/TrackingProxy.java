@@ -6,6 +6,8 @@ import io.kronikol.core.context.TestPhaseContext;
 import io.kronikol.core.registry.TrackingComponent;
 import io.kronikol.core.registry.TrackingComponentRegistry;
 import io.kronikol.core.tracking.Method;
+import io.kronikol.core.tracking.PendingLogEntry;
+import io.kronikol.core.tracking.PendingRequestResponseLogs;
 import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseLogger;
 import io.kronikol.core.tracking.RequestResponseType;
@@ -53,16 +55,33 @@ public final class TrackingProxy {
                 return invokeTarget(method, args);
             }
 
+            String methodName = method.getName();
+            URI uri = URI.create(options.uriScheme() + "/" + iface.getSimpleName() + "/" + methodName);
+
+            // Deferred: capture the interaction into the pending queue (no identity needed yet); a flush
+            // handler emits it once the test identity is known.
+            if (options.logMode() == TrackingLogMode.DEFERRED) {
+                invocations.incrementAndGet();
+                String requestContent = serializeArgs(args);
+                try {
+                    Object result = invokeTarget(method, args);
+                    enqueue(methodName, uri, requestContent, serialize(result), StatusCode.of(200));
+                    return result;
+                } catch (Throwable t) {
+                    enqueue(methodName, uri, requestContent, String.valueOf(t), StatusCode.of("Error"));
+                    throw t;
+                }
+            }
+
+            // Immediate.
             TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
             if (who == null) {
                 return invokeTarget(method, args); // not in a test -> no tracking
             }
 
             invocations.incrementAndGet();
-            UUID trace = UUID.randomUUID();
-            UUID rr = UUID.randomUUID();
-            String methodName = method.getName();
-            URI uri = URI.create("proxy://local/" + iface.getSimpleName() + "/" + methodName);
+            UUID trace = options.ids().newId();
+            UUID rr = options.ids().newId();
 
             log(who, methodName, uri, RequestResponseType.REQUEST, serializeArgs(args), null, trace, rr);
             try {
@@ -75,6 +94,15 @@ public final class TrackingProxy {
                     String.valueOf(t), StatusCode.of("Error"), trace, rr);
                 throw t;
             }
+        }
+
+        private void enqueue(String methodName, URI uri, String requestContent, String responseContent,
+                             StatusCode status) {
+            PendingRequestResponseLogs.enqueue(PendingLogEntry.builder()
+                .serviceName(options.serviceName()).callerName(options.callerName())
+                .method(Method.of(methodName)).requestContent(requestContent).responseContent(responseContent)
+                .uri(uri).statusCode(status).dependencyCategory(options.dependencyCategory())
+                .build());
         }
 
         private void log(TestInfo who, String methodName, URI uri, RequestResponseType type,
@@ -103,25 +131,25 @@ public final class TrackingProxy {
             }
         }
 
-        private static String serializeArgs(Object[] args) {
+        private String serializeArgs(Object[] args) {
             if (args == null || args.length == 0) {
                 return null;
             }
             if (args.length == 1) {
-                return String.valueOf(args[0]);
+                return options.payloadSerializer().apply(args[0]);
             }
             StringBuilder sb = new StringBuilder("[");
             for (int i = 0; i < args.length; i++) {
                 if (i > 0) {
                     sb.append(", ");
                 }
-                sb.append(String.valueOf(args[i]));
+                sb.append(options.payloadSerializer().apply(args[i]));
             }
             return sb.append(']').toString();
         }
 
-        private static String serialize(Object result) {
-            return result == null ? null : String.valueOf(result);
+        private String serialize(Object result) {
+            return result == null ? null : options.payloadSerializer().apply(result);
         }
 
         @Override
