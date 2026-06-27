@@ -748,11 +748,24 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
 
 ## Tier 4 — Whole features absent
 
-- [ ] **Step tracking** — `StepCollector` (start/complete/bypass, nested sub-steps, keyword sequencing,
+- [~] **Step tracking** — `StepCollector` (start/complete/bypass, nested sub-steps, keyword sequencing,
   `whenTriggersAction` phase transition, step delimiters, assertion sub-steps, attachments) +
   `StepTrackingOptions` + the `@GivenStep/@WhenStep/@ThenStep/@ButStep/@Step` annotations + build-time
   weaving (Gradle/Maven plugin + bytecode/AST pass; PORT_PLAN §3.4 Tier-2). *(.NET `Tracking/StepCollector.cs`
   + `Kronikol.StepTracking` MSBuild targets.)*
+  **Runtime done:** `io.kronikol.report.step.StepCollector` ports the full .NET runtime — `startStep`/
+  `completeStep`/`bypassStep` (+ ambient-id overloads), nested sub-steps, keyword sequencing (repeated keyword
+  → `And`, `ButWhen` → `But`), the `whenTriggersAction` Given/But→Setup & When/Then→Action phase transition,
+  top-level step-delimiter notes (via `TrackingDiagramOverride`), `addAssertionSubStep`, `addAttachment`/
+  `getScenarioAttachments` (step- vs scenario-level), `hasActiveStep`, `getSteps` (→ `ScenarioStep[]` with
+  status/duration/sub-steps/attachments/params; bypass-reason + error-message surfaced as comments since the
+  Java `ScenarioStep` has no dedicated fields), `clearSteps`. Plus `StepTrackingOptions` (the 5 toggles) and
+  the `@GivenStep/@WhenStep/@ThenStep/@ButStep/@Step` runtime-retained annotations. Lives in
+  `kronikol4j-report` (it produces the report `ScenarioStep` model) using core seams for identity/phase/
+  delimiters. Proven by `StepCollectorTest` (12 cases) + wiki page. **Remaining (`[~]`):** the build-time step
+  weaver (Gradle/Maven bytecode/AST pass that injects the start/complete calls from the annotations — the
+  Tier-5 build-tooling item); `ITabularParameterData` tabular-parameter capture in `buildParameters`
+  (currently inline-only — lands with that Tier-4 item); and async (`CompletableFuture`) step wrappers.
 - [ ] **TabularAttributes** — `@Inputs`/`@Outputs`/`@HeadOut`/`@HeadIn` annotations + `TabularResolver` +
   `TabularDeserializer` + typed `TabularInputs<T>`/`TabularOutputs<T>` + `TabularVerificationException`.
   (Java has only the render-side data model `TabularParameterValue`.) *(.NET `TabularAttributes/`.)*

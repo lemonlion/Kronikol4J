@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **Step tracking runtime** (`kronikol4j-report`, `io.kronikol.report.step`) — `StepCollector` ports the .NET
+  runtime: `startStep`/`completeStep`/`bypassStep` (+ ambient-id overloads), nested sub-steps, keyword
+  sequencing (repeated → `And`, `ButWhen` → `But`), the `whenTriggersAction` Setup/Action phase transition,
+  top-level step-delimiter notes, `addAssertionSubStep`, step/scenario `addAttachment`, `getSteps` →
+  `ScenarioStep[]`, `clearSteps`. Plus `StepTrackingOptions` (5 toggles) and the
+  `@GivenStep/@WhenStep/@ThenStep/@ButStep/@Step` runtime annotations. Proven by `StepCollectorTest` (12
+  cases); wiki page added. (Build-time step weaver + tabular-param capture + async wrappers are the follow-up.)
 - **Assertion fidelity** (`kronikol4j-core`) — added the Java-feasible parts of the .NET `Track` surface:
   value-returning `Track.that(Supplier<T>)`/`that(String, Supplier<T>)`; the `diagnosticMode` toggle +
   `diagnosticLog()`/`clearDiagnosticLog()`/`recordDiagnostic()`, now rendered as the diagnostic report's
