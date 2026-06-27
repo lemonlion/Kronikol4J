@@ -58,5 +58,5 @@ Three architectural seams (plan §1): **ingestion** (`RequestResponseLogger.log`
 (identity/phase/correlation), and **output** (logs → PlantUML → HTML). Full parity is the end goal,
 delivered core-first; the core is engineered so extensions plug in without touching it.
 
-Key decisions (plan §0): Java 17 floor · Gradle · functional parity · browser-only rendering ·
-`io.kronikol` / `kronikol4j-*`.
+Key decisions (plan §0): Java 17 floor · Gradle · functional parity · browser-only rendering · Maven
+group `io.github.lemonlion`, root package `io.kronikol`, `kronikol4j-*` modules.

@@ -7,7 +7,7 @@
 ### Locked decisions
 | Decision | Choice |
 |---|---|
-| **Name** | **Kronikol4J**. Maven group `io.kronikol`, artifacts `kronikol4j-*`, root package `io.kronikol`. |
+| **Name** | **Kronikol4J**. Maven group `io.github.lemonlion`, artifacts `kronikol4j-*`, root package `io.kronikol`. |
 | **Java baseline** | **Java 17 floor**, core must not *require* newer. Ship an **optional Java-21 context-propagation module** (`ScopedValue` + structured concurrency) for teams on 21. |
 | **Build tool** | **Gradle** multi-module with a `build-logic` convention plugin (shared version/deps/publishing). |
 | **Parity scope** | **Functional parity** — track everything the .NET version tracks, organized into idiomatic Java modules (module count differs from .NET; see §2). |
@@ -22,7 +22,7 @@
 
 **What Kronikol is.** A .NET testing/documentation framework that automatically captures real dependency interactions during tests (HTTP, SQL/NoSQL, cache, messaging, cloud SDKs) and generates **interactive HTML reports with PlantUML diagrams** (sequence, component, activity, flame) — deterministic diagrams from actual execution, not AI. Source at `c:\Code\Kronikol` (v3.0.40 at time of writing; multi-targets net8.0/9.0/10.0). Wiki at `../Kronikol.wiki` (89 pages). Demo project: "BreakfastProvider".
 
-**What this document is.** The authoritative plan for **Kronikol4J**, a from-scratch *idiomatic Java* reimplementation targeting **full functional parity**, delivered **core-first**. This file is the source of truth for *intent and design*; the .NET code is the *behavioral specification* (treat it as executable spec, not a line-by-line porting blueprint). Maven group `io.kronikol`, artifacts `kronikol4j-*`, root package `io.kronikol`.
+**What this document is.** The authoritative plan for **Kronikol4J**, a from-scratch *idiomatic Java* reimplementation targeting **full functional parity**, delivered **core-first**. This file is the source of truth for *intent and design*; the .NET code is the *behavioral specification* (treat it as executable spec, not a line-by-line porting blueprint). Maven group `io.github.lemonlion`, artifacts `kronikol4j-*`, root package `io.kronikol`.
 
 **Status (at time of writing).**
 - Design phase **complete**; **no Kronikol4J code written yet** (no Java repo created, nothing built).
@@ -457,7 +457,7 @@ Each is a thin module against the now-stable seam:
 ## 11. Publishing & distribution
 
 NuGet auto-packaging → **Maven Central**, which is more involved:
-- **Coordinates:** group `io.kronikol`, artifacts `kronikol4j-*`, root package `io.kronikol`.
+- **Coordinates:** group `io.github.lemonlion` (Central Portal auto-verified via GitHub), artifacts `kronikol4j-*`, root package `io.kronikol`.
 - **Requirements:** GPG-signed artifacts, `javadoc` + `sources` jars per module, complete POM metadata (name/description/url/licenses/developers/scm), Sonatype/Central Portal account + namespace verification.
 - **Decision:** Centralize all of this in the `build-logic` convention plugin so every module is publishable identically — set up the publishing pipeline in **Phase 0** (even publishing a `kronikol4j-core` snapshot early), so distribution isn't a late surprise.
 - License + branding continuity: carry the existing LICENSE and icon into artifact metadata.
