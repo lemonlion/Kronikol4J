@@ -20,6 +20,11 @@ actual execution, not AI.
 > [CHANGELOG.md](CHANGELOG.md) for the full list and [docs/PORT_PLAN.md](docs/PORT_PLAN.md) for the
 > plan, architecture, and deep-dive analyses (its §0 is the authoritative status & resume guide).
 
+> **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
+> (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
+> tracker options, and several whole features/modules — are the remaining work toward *every-feature*
+> parity. See [docs/REMAINING_PARITY.md](docs/REMAINING_PARITY.md) for the complete, prioritized gap list.
+
 ## Building
 
 A JDK (17+) is required. Gradle is provided via the wrapper.
