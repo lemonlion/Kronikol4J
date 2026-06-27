@@ -28,8 +28,14 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   operations), table-name extraction with `RequestItems`-key extraction for batch operations (a small
   dependency-free top-level-key scan, since core has no JSON parser, with the `TableName` regex fallback), and
   PartiQL `Statement` text for the ExecuteStatement family. Proven by `DynamoDbOperationClassifierTest`. This
-  completes all four AWS service classifiers (SQS, SNS, S3, DynamoDB); the AWS SDK v2 `ExecutionInterceptor`
-  follows.
+  completes all four AWS service classifiers (SQS, SNS, S3, DynamoDB).
+- **`AwsServiceRouter` + `AwsService`** (`kronikol4j-aws`) — detects the AWS service from the request host
+  (`sqs.`/`sns.`/`dynamodb.`/`s3`) and dispatches to the matching classifier, returning a unified
+  `AwsClassification(service, label, resource)`. `AwsService` carries each service's URI scheme + dependency
+  category. The glue an AWS SDK v2 `ExecutionInterceptor` uses to route a raw request to the right classifier.
+  Proven by `AwsServiceRouterTest`. The SDK `ExecutionInterceptor` follows.
+- **`DependencyCategories.DYNAMO_DB`** (`kronikol4j-core`) — added the missing `"DynamoDB"` category constant
+  (the .NET `DependencyCategories.DynamoDB` had no Java counterpart).
 
 ### Added — Tier-1 Elasticsearch (classifier)
 - **`ElasticsearchOperationClassifier`** (`kronikol4j-elasticsearch`, + `ElasticsearchOperation`,

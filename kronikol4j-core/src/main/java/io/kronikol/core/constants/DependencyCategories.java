@@ -17,6 +17,7 @@ public final class DependencyCategories {
     public static final String SQL = "SQL";
     public static final String COSMOS_DB = "CosmosDB";
     public static final String MONGO_DB = "MongoDB";
+    public static final String DYNAMO_DB = "DynamoDB";
     public static final String POSTGRESQL = "PostgreSQL";
     public static final String MYSQL = "MySQL";
     public static final String BIG_QUERY = "BigQuery";
