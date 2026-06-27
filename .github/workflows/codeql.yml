@@ -34,8 +34,11 @@ jobs:
           languages: java-kotlin
           build-mode: manual
 
+      # CodeQL's manual build mode traces real javac invocations. The Gradle build cache (restored by
+      # setup-gradle) otherwise serves compiled classes FROM-CACHE/UP-TO-DATE, so no javac runs and CodeQL
+      # reports "no source code seen". `clean` + `--no-build-cache` + `--rerun-tasks` forces a real compile.
       - name: Build (compile main + test sources)
-        run: ./gradlew compileJava compileTestJava --no-daemon
+        run: ./gradlew clean compileJava compileTestJava --no-daemon --no-build-cache --rerun-tasks
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
