@@ -573,9 +573,24 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   fallback) with the existing golden + Playwright suites still green. **Note:** the cross-fork *merge* path
   applies customization through the `kronikol merge` CLI's own render call (its `HtmlCustomization` overload
   already exists); this item wires the standalone path.
-- [ ] **CI publish options** — `writeCiSummary`, `maxCiSummaryDiagrams`, `publishCiArtifacts`,
+- [x] **CI publish options** — `writeCiSummary`, `maxCiSummaryDiagrams`, `publishCiArtifacts`,
   `ciArtifactName`, `ciArtifactRetentionDays`. (Generator `CiSummaryGenerator` is ported; the options +
   artifact publishing are not.)
+  **Done:** ported the CI publishing machinery into `io.kronikol.report.ci` — `CiEnvironment` (NONE/
+  GITHUB_ACTIONS/AZURE_DEV_OPS) with a `detect(...)` reading `GITHUB_ACTIONS`/`TF_BUILD` (the .NET
+  `CiEnvironmentDetector`), `CiSummaryWriter` (GitHub → append to `$GITHUB_STEP_SUMMARY`; Azure → temp file +
+  `##vso[task.uploadsummary]`), and `CiArtifactPublisher` (GitHub → `reports-path`/`reports-retention-days`
+  to `$GITHUB_OUTPUT`; Azure → `##vso[artifact.upload …]` per existing file) — all with injectable env/file/
+  stdout seams, matching the .NET internal-overload test design. The five options are bundled as
+  `CiPublishOptions` (defaults `false`/`10`/`false`/`"TestReports"`/`1`, with blank-name and negative-max
+  normalisation) and added as a fifth `ReportOptions` component (preserved across withers, `withCi`, read from
+  five `kronikol.ci.*` system properties via `ciFromSystemProperties()`). Wired into `ReportFinalizer.
+  finalizeRun`: when `writeCiSummary`, it builds the markdown via the ported `CiSummaryGenerator` from the
+  run's features+diagrams, writes `CiSummary.md`, and pushes to the detected CI platform; when
+  `publishCiArtifacts`, it publishes the `.html`/`.yaml`/`.yml`/`.md`/`.json`/`.xml` report files. Proven by
+  `CiPublishTest` (detection, both writer platforms + no-op paths, both publisher platforms + missing-output/
+  missing-file paths, options defaults/normalisation, `ReportOptions` carry + system-property round-trip) and
+  `ReportFinalizerTest` (end-to-end `CiSummary.md` emission + default-off + system-property path).
 - [ ] **Gradle plugin rich options** — surface `ReportOptions` (colors, formats, schema, …) through the
   `kronikol {}` extension instead of only `-D` system properties.
 

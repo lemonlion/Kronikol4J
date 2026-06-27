@@ -8,6 +8,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-2 options
+- **CI publish options + machinery** (`kronikol4j-report`, `io.kronikol.report.ci`) — ported `CiEnvironment`
+  (+ `detect()` reading `GITHUB_ACTIONS`/`TF_BUILD`), `CiSummaryWriter` (GitHub `$GITHUB_STEP_SUMMARY` / Azure
+  `##vso[task.uploadsummary]`), and `CiArtifactPublisher` (GitHub `$GITHUB_OUTPUT` `reports-path`/retention /
+  Azure `##vso[artifact.upload …]`), all with injectable seams. Bundled the five options as `CiPublishOptions`
+  (`writeCiSummary`, `maxCiSummaryDiagrams`, `publishCiArtifacts`, `ciArtifactName`, `ciArtifactRetentionDays`)
+  as a fifth `ReportOptions` component, read from `kronikol.ci.*` system properties. Wired into
+  `ReportFinalizer.finalizeRun`: emits `CiSummary.md` + pushes to the detected CI platform when enabled, and
+  publishes the report files as artifacts. Proven by `CiPublishTest` + `ReportFinalizerTest`.
 - **HTML customization wiring** (`kronikol4j-report`) — `HtmlCustomization` (custom CSS / stylesheet / favicon
   / logo / step numbers / blank-on-failure) is now a fourth `ReportOptions` component (default
   `HtmlCustomization.NONE`, preserved across every wither, with `withHtmlCustomization`), threaded through new

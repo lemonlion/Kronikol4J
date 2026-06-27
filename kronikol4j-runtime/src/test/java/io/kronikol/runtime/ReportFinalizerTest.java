@@ -181,6 +181,46 @@ class ReportFinalizerTest {
         assertThat(dir.resolve("noschema/TestRunReport.schema.json")).doesNotExist();
     }
 
+    @Test
+    void finalizeWritesCiSummaryWhenEnabled(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults()
+            .withCi(new io.kronikol.report.ci.CiPublishOptions(true, 10, false, "TestReports", 1)));
+
+        // The CI summary markdown is written to disk regardless of the detected CI platform.
+        assertThat(Files.readString(dir.resolve("CiSummary.md")))
+            .startsWith("# Diagrammed Test Run Summary")
+            .contains("| Passed | 1 |")
+            .contains("```plantuml"); // the run's diagram embedded
+    }
+
+    @Test
+    void finalizeDoesNotWriteCiSummaryByDefault(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run");
+
+        assertThat(dir.resolve("CiSummary.md")).doesNotExist();
+    }
+
+    @Test
+    void finalizeRunToDefaultReadsCiSystemProperties(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+        System.setProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY, dir.toString());
+        System.setProperty(ReportOptions.WRITE_CI_SUMMARY_PROPERTY, "true");
+        try {
+            ReportFinalizer.finalizeRunToDefault("Run");
+            assertThat(dir.resolve("CiSummary.md")).exists();
+        } finally {
+            System.clearProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY);
+            System.clearProperty(ReportOptions.WRITE_CI_SUMMARY_PROPERTY);
+        }
+    }
+
     private static void trackCheckout() {
         UUID trace = UUID.randomUUID();
         UUID rr = UUID.randomUUID();

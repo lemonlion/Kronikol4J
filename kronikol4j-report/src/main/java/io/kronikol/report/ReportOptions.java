@@ -4,6 +4,7 @@ import io.kronikol.diagram.plantuml.DiagramOptions;
 import io.kronikol.diagram.plantuml.FocusDeEmphasis;
 import io.kronikol.diagram.plantuml.FocusEmphasis;
 import io.kronikol.diagram.plantuml.GraphQlBodyFormat;
+import io.kronikol.report.ci.CiPublishOptions;
 import io.kronikol.report.data.ReportDataFormat;
 import io.kronikol.report.model.HtmlCustomization;
 import java.util.ArrayList;
@@ -32,7 +33,7 @@ import java.util.Set;
  * pick them up without an API change).
  */
 public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats,
-                            boolean generateSchema, HtmlCustomization customization) {
+                            boolean generateSchema, HtmlCustomization customization, CiPublishOptions ci) {
 
     /** System property (boolean) enabling per-dependency-type arrow colours. */
     public static final String ARROW_COLORS_PROPERTY = "kronikol.diagram.arrowColors";
@@ -83,17 +84,34 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     public static final String SHOW_STEP_NUMBERS_PROPERTY = "kronikol.report.showStepNumbers";
     /** System property (boolean) emitting a blank report when any scenario failed. */
     public static final String BLANK_ON_FAILED_PROPERTY = "kronikol.report.generateBlankOnFailedTests";
+    /** System property (boolean) writing the markdown run summary to the detected CI platform. */
+    public static final String WRITE_CI_SUMMARY_PROPERTY = "kronikol.ci.writeCiSummary";
+    /** System property (int) capping diagrams in the CI summary (default 10). */
+    public static final String MAX_CI_SUMMARY_DIAGRAMS_PROPERTY = "kronikol.ci.maxCiSummaryDiagrams";
+    /** System property (boolean) publishing report files as CI artifacts. */
+    public static final String PUBLISH_CI_ARTIFACTS_PROPERTY = "kronikol.ci.publishCiArtifacts";
+    /** System property (string) naming the CI artifact (default {@code "TestReports"}). */
+    public static final String CI_ARTIFACT_NAME_PROPERTY = "kronikol.ci.ciArtifactName";
+    /** System property (int) CI artifact retention in days (default 1). */
+    public static final String CI_ARTIFACT_RETENTION_DAYS_PROPERTY = "kronikol.ci.ciArtifactRetentionDays";
 
     public ReportOptions {
         diagram = diagram == null ? DiagramOptions.defaults() : diagram;
         dataFormats = dataFormats == null
             ? Set.of() : Collections.unmodifiableSet(new LinkedHashSet<>(dataFormats));
         customization = customization == null ? HtmlCustomization.NONE : customization;
+        ci = ci == null ? CiPublishOptions.NONE : ci;
     }
 
-    /** Three-arg shape (no HTML customization) — the back-compatible canonical-ish constructor. */
+    /** Three-arg shape (no HTML customization, no CI publishing) — the back-compatible constructor. */
     public ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats, boolean generateSchema) {
         this(diagram, dataFormats, generateSchema, HtmlCustomization.NONE);
+    }
+
+    /** Four-arg shape (no CI publishing) — the back-compatible constructor. */
+    public ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats, boolean generateSchema,
+                         HtmlCustomization customization) {
+        this(diagram, dataFormats, generateSchema, customization, CiPublishOptions.NONE);
     }
 
     /** Diagram colours only (no data files) — the back-compatible shape. */
@@ -156,7 +174,7 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     // --- withers ---
     public ReportOptions withDiagram(DiagramOptions value) {
-        return new ReportOptions(value, dataFormats, generateSchema, customization);
+        return new ReportOptions(value, dataFormats, generateSchema, customization, ci);
     }
 
     public ReportOptions withArrowColors(boolean value) {
@@ -220,18 +238,24 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     }
 
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
-        return new ReportOptions(diagram, formats, generateSchema, customization);
+        return new ReportOptions(diagram, formats, generateSchema, customization, ci);
     }
 
     /** Enables the {@code TestRunReport.schema.json}/{@code .xsd} schema alongside each data format. */
     public ReportOptions withGenerateSchema(boolean value) {
-        return new ReportOptions(diagram, dataFormats, value, customization);
+        return new ReportOptions(diagram, dataFormats, value, customization, ci);
     }
 
     /** The HTML customization (CSS/favicon/logo/step-numbers) applied to the generated report. */
     public ReportOptions withHtmlCustomization(HtmlCustomization value) {
         return new ReportOptions(diagram, dataFormats, generateSchema,
-            value == null ? HtmlCustomization.NONE : value);
+            value == null ? HtmlCustomization.NONE : value, ci);
+    }
+
+    /** The CI summary/artifact-publishing options applied at end-of-run. */
+    public ReportOptions withCi(CiPublishOptions value) {
+        return new ReportOptions(diagram, dataFormats, generateSchema, customization,
+            value == null ? CiPublishOptions.NONE : value);
     }
 
     /**
@@ -261,7 +285,18 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return new ReportOptions(diagram,
             parseDataFormats(System.getProperty(DATA_FORMATS_PROPERTY)),
             boolProperty(GENERATE_SCHEMA_PROPERTY, false),
-            customizationFromSystemProperties());
+            customizationFromSystemProperties(),
+            ciFromSystemProperties());
+    }
+
+    /** Builds the {@link CiPublishOptions} from system properties (all defaulting to the .NET defaults). */
+    public static CiPublishOptions ciFromSystemProperties() {
+        return new CiPublishOptions(
+            boolProperty(WRITE_CI_SUMMARY_PROPERTY, false),
+            intProperty(MAX_CI_SUMMARY_DIAGRAMS_PROPERTY, 10),
+            boolProperty(PUBLISH_CI_ARTIFACTS_PROPERTY, false),
+            stringProperty(CI_ARTIFACT_NAME_PROPERTY, CiPublishOptions.NONE.ciArtifactName()),
+            intProperty(CI_ARTIFACT_RETENTION_DAYS_PROPERTY, CiPublishOptions.NONE.ciArtifactRetentionDays()));
     }
 
     /**

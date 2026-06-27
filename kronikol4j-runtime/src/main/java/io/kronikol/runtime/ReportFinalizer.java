@@ -7,6 +7,12 @@ import io.kronikol.diagram.plantuml.PlantUmlCreator;
 import io.kronikol.report.HtmlReportGenerator;
 import io.kronikol.report.HtmlReportGenerator.GeneratedReport;
 import io.kronikol.report.ReportOptions;
+import io.kronikol.report.ci.CiArtifactPublisher;
+import io.kronikol.report.ci.CiDiagram;
+import io.kronikol.report.ci.CiEnvironment;
+import io.kronikol.report.ci.CiPublishOptions;
+import io.kronikol.report.ci.CiSummaryGenerator;
+import io.kronikol.report.ci.CiSummaryWriter;
 import io.kronikol.report.data.ReportData;
 import io.kronikol.report.data.ReportDataFormat;
 import io.kronikol.report.merge.FragmentJson;
@@ -61,7 +67,64 @@ public final class ReportFinalizer {
         List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
         GeneratedReport report = HtmlReportGenerator.generate(features, logs, outputDir, title, options);
         writeReportData(outputDir, features, logs, options);
+        writeCiOutputs(outputDir, features, logs, options);
         return report;
+    }
+
+    /**
+     * Writes the CI summary (to {@code CiSummary.md} + the detected CI platform's summary channel) and
+     * publishes the report files as CI artifacts, when enabled via {@link ReportOptions#ci()}. Mirrors the
+     * .NET {@code ReportGenerator} CI-summary / artifact-publish blocks.
+     */
+    private static void writeCiOutputs(Path outputDir, List<Feature> features,
+                                       List<RequestResponseLog> logs, ReportOptions options) throws IOException {
+        CiPublishOptions ci = options.ci();
+        if (ci.writeCiSummary()) {
+            List<CiDiagram> diagrams = buildCiDiagrams(logs, options);
+            String markdown = CiSummaryGenerator.generateMarkdown(features, diagrams, diagrams,
+                RunResults.startedAt(), Instant.now(), ci.maxCiSummaryDiagrams(),
+                CiSummaryGenerator.DEFAULT_PLANTUML_SERVER);
+            Files.createDirectories(outputDir);
+            Files.writeString(outputDir.resolve("CiSummary.md"), markdown, StandardCharsets.UTF_8);
+            CiSummaryWriter.write(markdown, CiEnvironment.detect());
+        }
+        if (ci.publishCiArtifacts()) {
+            List<String> reportFiles = collectReportFiles(outputDir);
+            if (!reportFiles.isEmpty()) {
+                CiArtifactPublisher.publish(reportFiles, CiEnvironment.detect(), ci.ciArtifactName(),
+                    ci.ciArtifactRetentionDays());
+            }
+        }
+    }
+
+    /** Builds the flat {@link CiDiagram} list (one entry per diagram part) from the run's tracked logs. */
+    private static List<CiDiagram> buildCiDiagrams(List<RequestResponseLog> logs, ReportOptions options) {
+        List<CiDiagram> out = new ArrayList<>();
+        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.diagram())) {
+            for (String diagram : p.diagrams()) {
+                out.add(new CiDiagram(p.testId(), diagram));
+            }
+        }
+        return out;
+    }
+
+    /** The generated report files eligible for CI artifact publishing (matches the .NET extension filter). */
+    private static List<String> collectReportFiles(Path outputDir) throws IOException {
+        if (!Files.isDirectory(outputDir)) {
+            return List.of();
+        }
+        List<String> files = new ArrayList<>();
+        try (java.util.stream.Stream<Path> entries = Files.list(outputDir)) {
+            entries.filter(Files::isRegularFile).forEach(p -> {
+                String name = p.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+                if (name.endsWith(".html") || name.endsWith(".yaml") || name.endsWith(".yml")
+                    || name.endsWith(".md") || name.endsWith(".json") || name.endsWith(".xml")) {
+                    files.add(p.toString());
+                }
+            });
+        }
+        java.util.Collections.sort(files); // deterministic order
+        return files;
     }
 
     /** Emits {@code TestRunReport.<ext>} for each requested {@link ReportDataFormat} (none by default). */
