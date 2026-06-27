@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-3 integration modules
+- **MongoDB Atlas Data API classifier** (`kronikol4j-mongodb`) — `AtlasDataApiOperationClassifier`
+  (+ operation / info) ports the .NET classifier: the `/action/{actionName}` endpoint path → 11 operations,
+  request-body extraction of `dataSource`/`database`/`collection` + the `filter` document (string-aware
+  balanced-span scan), and directional-arrow labels (reads `←`, writes `→`, updates `↔`). Pure logic, in the
+  MongoDB module. Proven by `AtlasDataApiOperationClassifierTest`. (The HTTP-handler analog + golden are the
+  follow-up.)
 - **`kronikol4j-eventbus`** (new module) — the Java MassTransit analog (PORT_PLAN open question resolved): a
   generic in-process message-bus tracker bindable to Spring `ApplicationEvent`s / Axon. Ports the .NET
   `MassTransit*` core runtime-agnostically — `EventBusOperationClassifier` (Send/Publish/Consume + Fault

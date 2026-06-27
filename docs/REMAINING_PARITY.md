@@ -720,7 +720,18 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   serialized body, consume participant-swap, fault status, per-operation toggles + identity gate) + wiki row.
   **Remaining (`[~]`):** a Spring `@EventListener` / `ApplicationListener` auto-binding (and an Axon message
   interceptor) that feed the recorder from real published events, and a golden-rendered proof.
-- [ ] **Atlas Data API** — HTTP-handler analog.
+- [~] **Atlas Data API** — HTTP-handler analog.
+  **Done:** added the Atlas Data API classifier to `kronikol4j-mongodb` (the MongoDB family — Atlas Data API
+  is a REST front for MongoDB) — `AtlasDataApiOperation` (11 ops + PascalCase `displayName()`),
+  `AtlasDataApiOperationInfo` (dataSource/database/collection/filter), and
+  `AtlasDataApiOperationClassifier`, a full port of the .NET classifier: the `/action/{actionName}` endpoint
+  path regex → operation, request-body extraction of `dataSource`/`database`/`collection` (regex) and the
+  `filter` document (a string-aware balanced-span scan — the dependency-free analog of .NET's `JsonDocument`),
+  and `getDiagramLabel` with directional arrows (reads `←`, writes `→`, updates `↔`). Pure logic (no HTTP/
+  Atlas SDK dependency). Proven by `AtlasDataApiOperationClassifierTest` (action mapping + Other, body-field +
+  balanced-filter extraction, directional-arrow labels, Summarised/no-collection fallbacks). **Remaining
+  (`[~]`):** the `AtlasDataApiTrackingMessageHandler` HTTP `DelegatingHandler` analog (an interceptor on the
+  Data-API HTTP client) that feeds the classifier + emits the log pair, and a golden-rendered proof.
 - [ ] **Dapper analog** — N/A directly (raw JDBC covers it); just expose verbosity + classifier on JDBC.
 
 ---
