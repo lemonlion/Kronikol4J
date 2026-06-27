@@ -8,6 +8,9 @@ description = "Kronikol4J messaging tracker — records publish/consume as fire-
 
 dependencies {
     api(project(":kronikol4j-core"))
+    // The Kafka client the producer/consumer wrappers decorate (the user brings Kafka).
+    compileOnly("org.apache.kafka:kafka-clients:3.7.1")
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
+    testImplementation("org.apache.kafka:kafka-clients:3.7.1")
 }

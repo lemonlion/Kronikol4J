@@ -14,8 +14,15 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   timing), `trackSendEvent` (event-styled fire-and-forget pair), `trackSendMessage` (atomic send pair with a
   `"Sent"` ack), and `trackConsumeEvent` (broker→consumer delivery + ack, note on the right). Emits
   `MetaType.Event` logs with verbosity, phase suppression, unknown-phase variants and a configurable payload
-  serializer (default: the compact `TrackingSafeSerializer`). Proven by `MessageTrackerTest`. The Kafka
-  producer/consumer header-stamping wrappers (the cross-service correlation enabler) follow.
+  serializer (default: the compact `TrackingSafeSerializer`). Proven by `MessageTrackerTest`.
+- **Kafka producer + header propagation** (`kronikol4j-messaging`) — `KafkaTestHeaders.stamp/read`
+  writes/reads the `kronikol-test-name`/`-id` headers on a Kafka `Headers` (values match
+  `TrackingHeaders.MESSAGE_TEST_NAME/ID` so a Java producer and a .NET consumer interoperate). This is the
+  cross-service event-driven correlation enabler that was previously impossible in Java.
+  `TrackingKafkaProducer.wrap(...)` dynamic-proxies a `Producer` (kafka-clients `compileOnly`): each `send`
+  stamps the record headers from the current test identity and records the send via
+  `MessageTracker.trackSendMessage`. Proven by `TrackingKafkaProducerTest` (MockProducer, no broker). The
+  consumer wrapper follows.
 
 ### Added — Tier-1 MongoDB (classifier)
 - **`MongoDbOperationClassifier`** (`kronikol4j-mongodb`, + `MongoDbOperation`, `MongoDbOperationInfo`) —
