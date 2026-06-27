@@ -7,6 +7,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 GCP (Pub/Sub classifier)
+- **`PubSubOperationClassifier`** (`kronikol4j-gcp`, + `PubSubOperation`, `PubSubOperationInfo`) — Java port of
+  the .NET Google Cloud Pub/Sub classifier: SDK method name (e.g. `PublishAsync`) → one of 8 operations
+  (Publish, PublishBatch when count > 1, Pull, Acknowledge, ModifyAckDeadline, Receive, Start/StopSubscriber),
+  with topic/subscription + message-count extraction and short-name directional-arrow labels
+  (`Publish (×4) → orders`, `Pull ← orders-sub`, `Ack`). Pure logic (no Pub/Sub SDK dependency). Proven by
+  `PubSubOperationClassifierTest`. The BigQuery/Cloud Storage classifiers and GCP SDK adapters follow.
+
 ### Added — Tier-1 Azure (Cosmos classifier)
 - **`CosmosOperationClassifier`** (`kronikol4j-azure`, + `CosmosOperation`, `CosmosOperationInfo`) — Java port
   of the .NET Cosmos DB classifier: maps the HTTP method + the `/dbs/…/colls/…/docs/…` resource path + the

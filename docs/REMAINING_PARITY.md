@@ -426,8 +426,15 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   **All three Azure service classifiers (Cosmos, Blob, Service Bus) are now done. Remaining:** the Azure SDK
   pipeline policies that feed them + emit the log pair, `autoCorrelateWrites`/change-feed key extractor, and a
   golden proof.
-- [ ] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
+- [~] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
   classifiers + verbosity. *(.NET ships handlers + interceptors per service.)*
+  **Pub/Sub classifier done:** `PubSubOperationClassifier` (+ `PubSubOperation`, `PubSubOperationInfo`) ports
+  the .NET classifier — SDK method name → one of 8 operations (Publish/PublishBatch when count>1/Pull/
+  Acknowledge/ModifyAckDeadline/Receive/Start-/StopSubscriber), with topic/subscription + message-count
+  extraction and short-name directional-arrow labels (`Publish (×4) → orders`, `Pull ← orders-sub`, `Ack`).
+  Pure logic (no Pub/Sub SDK dep). Proven by `PubSubOperationClassifierTest` (4 cases). **Remaining:** the
+  BigQuery + Cloud Storage classifiers, the GCP SDK adapters that feed them + emit the log pair, and a golden
+  proof.
 
 ---
 
