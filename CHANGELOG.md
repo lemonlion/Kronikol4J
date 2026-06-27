@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-2 options
+- **`MessageTrackerOptions`** (`kronikol4j-messaging`) — completed the parity surface by adding the three
+  remaining fields: `currentStepTypeFetcher` (`Supplier<String>`), `useHttpContextCorrelation` (`boolean`),
+  and `serializerOptions` (`TrackingSerializerOptions`, the named analog of .NET's `JsonSerializerOptions` —
+  derives the `payloadSerializer`; a custom function supersedes it). Proven by `MessageTrackerOptionsTest`.
+  `currentStepTypeFetcher`/`useHttpContextCorrelation` consumption lands with the Tier-4 TrackingDiagramOverride
+  / server bridge.
 - **`SqlTrackingOptions`** (`kronikol4j-jdbc`) — verified/completed the `SqlTrackingOptionsBase` parity
   surface: every .NET field is present (`serviceName`, `callerName`, `verbosity`, `setup`/`actionVerbosity`,
   `testInfoFetcher`, `excludedOperations`, `logParameters`, `logSqlText`, `trackDuringSetup`/`Action`,

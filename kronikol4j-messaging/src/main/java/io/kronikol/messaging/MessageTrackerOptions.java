@@ -30,6 +30,9 @@ public final class MessageTrackerOptions {
     private final String dependencyCategory;
     private final String callerDependencyCategory;
     private final Supplier<TestInfo> testInfoFetcher;
+    private final Supplier<String> currentStepTypeFetcher;
+    private final boolean useHttpContextCorrelation;
+    private final TrackingSerializerOptions serializerOptions;
     private final Function<Object, String> payloadSerializer;
     private final IdGenerator ids;
 
@@ -44,6 +47,9 @@ public final class MessageTrackerOptions {
         this.dependencyCategory = b.dependencyCategory;
         this.callerDependencyCategory = b.callerDependencyCategory;
         this.testInfoFetcher = b.testInfoFetcher;
+        this.currentStepTypeFetcher = b.currentStepTypeFetcher;
+        this.useHttpContextCorrelation = b.useHttpContextCorrelation;
+        this.serializerOptions = b.serializerOptions;
         this.payloadSerializer = b.payloadSerializer;
         this.ids = b.ids;
     }
@@ -58,6 +64,16 @@ public final class MessageTrackerOptions {
     public String dependencyCategory() { return dependencyCategory; }
     public String callerDependencyCategory() { return callerDependencyCategory; }
     public Supplier<TestInfo> testInfoFetcher() { return testInfoFetcher; }
+
+    /** Returns the current BDD step type (e.g. "Given"/"When"/"Then"), or {@code null}. Set by adapters. */
+    public Supplier<String> currentStepTypeFetcher() { return currentStepTypeFetcher; }
+
+    /** When {@code true}, resolve test info from server-request headers before {@link #testInfoFetcher}. */
+    public boolean useHttpContextCorrelation() { return useHttpContextCorrelation; }
+
+    /** The serializer options backing {@link #payloadSerializer}, or {@code null} if a custom function is set. */
+    public TrackingSerializerOptions serializerOptions() { return serializerOptions; }
+
     public Function<Object, String> payloadSerializer() { return payloadSerializer; }
     public IdGenerator ids() { return ids; }
 
@@ -80,6 +96,9 @@ public final class MessageTrackerOptions {
         private String dependencyCategory = DependencyCategories.MESSAGE_QUEUE;
         private String callerDependencyCategory;
         private Supplier<TestInfo> testInfoFetcher;
+        private Supplier<String> currentStepTypeFetcher;
+        private boolean useHttpContextCorrelation;
+        private TrackingSerializerOptions serializerOptions;
         private Function<Object, String> payloadSerializer = DEFAULT_SERIALIZER;
         private IdGenerator ids = IdGenerator.random();
 
@@ -96,8 +115,22 @@ public final class MessageTrackerOptions {
         public Builder dependencyCategory(String v) { this.dependencyCategory = v; return this; }
         public Builder callerDependencyCategory(String v) { this.callerDependencyCategory = v; return this; }
         public Builder testInfoFetcher(Supplier<TestInfo> v) { this.testInfoFetcher = v; return this; }
+        public Builder currentStepTypeFetcher(Supplier<String> v) { this.currentStepTypeFetcher = v; return this; }
+        public Builder useHttpContextCorrelation(boolean v) { this.useHttpContextCorrelation = v; return this; }
+        /**
+         * Sets the payload serializer from {@link TrackingSerializerOptions} (the named analog of .NET's
+         * {@code SerializerOptions}). {@code null} restores the default compact serializer.
+         */
+        public Builder serializerOptions(TrackingSerializerOptions v) {
+            this.serializerOptions = v;
+            this.payloadSerializer = v == null
+                ? DEFAULT_SERIALIZER
+                : payload -> TrackingSafeSerializer.serialize(payload, v);
+            return this;
+        }
         public Builder payloadSerializer(Function<Object, String> v) {
             this.payloadSerializer = v == null ? DEFAULT_SERIALIZER : v;
+            this.serializerOptions = null; // a custom function supersedes named options
             return this;
         }
         public Builder ids(IdGenerator v) { this.ids = v == null ? IdGenerator.random() : v; return this; }

@@ -506,9 +506,22 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   immutable-snapshot check on `excludedOperations`). **Consumption note:** `maxResponseRows`/
   `maxValueDisplayLength` are consumed by `FULL_ROWS` cell-level rendering — the JDBC Tier-1 item's already-
   documented follow-up; the rest are consumed today by `SqlInteractionRecorder`/`TrackingDataSource`.
-- [ ] **`MessageTrackerOptions`** (2/14) — add `verbosity`, `setup/actionVerbosity`, `trackDuringSetup/
+- [x] **`MessageTrackerOptions`** (2/14) — add `verbosity`, `setup/actionVerbosity`, `trackDuringSetup/
   Action`, `dependencyCategory`, `callerDependencyCategory`, `useHttpContextCorrelation`,
   `currentStepTypeFetcher`, `serializerOptions`.
+  **Done:** the Java `io.kronikol.messaging.MessageTrackerOptions` (built during the Kafka Tier-1 work) already
+  carried `serviceName`, `callerName`, `verbosity`, `setup`/`actionVerbosity`, `trackDuringSetup`/`Action`,
+  `dependencyCategory`, `callerDependencyCategory`, `testInfoFetcher` (= `currentTestInfoFetcher`),
+  `payloadSerializer`. This item added the three remaining fields: `currentStepTypeFetcher`
+  (`Supplier<String>`), `useHttpContextCorrelation` (`boolean`, default false), and `serializerOptions`
+  (`TrackingSerializerOptions` — the named analog of .NET's `JsonSerializerOptions`; the
+  `serializerOptions(...)` builder derives the `payloadSerializer` from them, and a custom `payloadSerializer`
+  supersedes the named options). `CallingServiceName` (obsolete) has no Java analog. Proven by
+  `MessageTrackerOptionsTest` (defaults, the three new fields, serializer-options→JSON wiring, and
+  custom-function-supersedes-named-options). **Behavioural wiring deferred to its owning subsystem:**
+  `currentStepTypeFetcher`'s action-start injection needs Tier-4 `TrackingDiagramOverride`;
+  `useHttpContextCorrelation` needs the Tier-4 server bridge's header source. `serializerOptions` is consumed
+  immediately (drives the payload serializer).
 - [ ] **Report control flags** — `testRunReportTitle` (currently hardcoded `"Kronikol4J Test Run"`),
   `htmlTestRunReportFileName`, `reportsFolderPath`, `fixedNameForReceivingService`, `expectedTestCount`
   guard, `generateComponentDiagram` toggle, `diagnosticMode` toggle, `requestResponsePostProcessor`/
