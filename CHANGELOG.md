@@ -2,6 +2,13 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.24] — first published release
+
+The first version published to **Maven Central** (`io.github.lemonlion:kronikol4j-*`). No library changes
+since 0.1.23 — this release wires up distribution: Central Portal publishing via the vanniktech plugin, the
+`io.github.lemonlion` namespace (auto-verified through GitHub), GPG signing, and the
+`release`/`codeql`/`ci-summary-preview` workflows. The published version is derived from the git tag.
+
 ## [0.1.23] — unreleased
 
 **Final completeness pass** — a file- and method-level cross-check of the .NET `Reports` namespace against
