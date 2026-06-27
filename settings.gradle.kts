@@ -43,4 +43,5 @@ include(
     "kronikol4j-spanner",
     "kronikol4j-bigtable",
     "kronikol4j-eventhubs",
+    "kronikol4j-eventbus",
 )

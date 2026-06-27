@@ -8,6 +8,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-3 integration modules
+- **`kronikol4j-eventbus`** (new module) — the Java MassTransit analog (PORT_PLAN open question resolved): a
+  generic in-process message-bus tracker bindable to Spring `ApplicationEvent`s / Axon. Ports the .NET
+  `MassTransit*` core runtime-agnostically — `EventBusOperationClassifier` (Send/Publish/Consume + Fault
+  labels/URIs + queue-name extraction; parameter-based factories replacing the MassTransit `*Context<T>`) and
+  `EventBusInteractionRecorder` (`logSend`/`logPublish`/`logConsume`(+`*Fault`), event-styled `MetaType.EVENT`
+  pairs on the `MessageQueue` category, Consume swapping participants for the incoming direction, `"Fault"`
+  responses), plus `EventBusTrackerOptions`. Pure logic + core only. Proven by `EventBusTrackingTest`; wiki
+  row added. (Spring `@EventListener` / Axon auto-binding + golden are the follow-up.)
 - **AWS EventBridge classifier** (`kronikol4j-aws`) — `EventBridgeOperationClassifier` (+ operation / info)
   ports the .NET classifier: `X-Amz-Target` (`AWSEvents.<Op>`, case-insensitive) → 28 operations, `PutEvents`
   body extraction (bus/detailType/source + a string-aware brace scan counting the `Entries` array), rule body

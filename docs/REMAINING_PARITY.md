@@ -703,8 +703,23 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   PutEvents + rule body extraction, labels across verbosity, Raw bus/count). **Remaining (`[~]`):** the AWS
   SDK v2 `ExecutionInterceptor` that feeds the classifier + emits the log pair, and a golden-rendered proof —
   the same SDK-auto-capture follow-up tracked across the AWS adapters.
-- [ ] **MassTransit analog** — bus observer hooks (Java equivalent: Spring `ApplicationEvent`s / Axon — see
+- [~] **MassTransit analog** — bus observer hooks (Java equivalent: Spring `ApplicationEvent`s / Axon — see
   PORT_PLAN Appendix B open question).
+  **Open question resolved:** the Java equivalent is a generic in-process message-bus tracker (new
+  `kronikol4j-eventbus` module), bindable to Spring `ApplicationEvent`s (the closest ubiquitous in-process bus)
+  or Axon. **Done:** ported the .NET `MassTransit*` core runtime-agnostically — `EventBusOperation` (Send/
+  Publish/Consume + their Fault variants + Other, PascalCase `displayName()`), `EventBusOperationInfo`,
+  `EventBusOperationClassifier` (the `getDiagramLabel` / `buildUri` / `extractQueueName` logic + parameter-based
+  `classifySend`/`classifyPublish`/`classifyConsume` factories replacing the MassTransit `*Context<T>`),
+  `EventBusTrackerOptions` (service/caller, verbosity + setup/action, `trackSend`/`trackPublish`/`trackConsume`,
+  `logFaults`, `logMessageBody`, phase, ids, payload serializer), and `EventBusInteractionRecorder` — the full
+  `logSend`/`logPublish`/`logConsume`(+ `*Fault`) surface emitting event-styled (`MetaType.EVENT`) pairs on the
+  `MessageQueue` category, with Send/Publish outgoing, Consume swapping participants for the incoming
+  direction, and faults emitting a `"Fault"` response. Pure logic + core only (no messaging-framework
+  dependency). Proven by `EventBusTrackingTest` (labels/URIs across verbosity, event-styled publish pair with
+  serialized body, consume participant-swap, fault status, per-operation toggles + identity gate) + wiki row.
+  **Remaining (`[~]`):** a Spring `@EventListener` / `ApplicationListener` auto-binding (and an Axon message
+  interceptor) that feed the recorder from real published events, and a golden-rendered proof.
 - [ ] **Atlas Data API** — HTTP-handler analog.
 - [ ] **Dapper analog** — N/A directly (raw JDBC covers it); just expose verbosity + classifier on JDBC.
 
