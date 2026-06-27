@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-2 options
+- **`HttpTrackingConfig`** (`kronikol4j-http`) — completed the `TestTrackingMessageHandlerOptions` parity
+  surface by adding the three remaining fields: `headersToForward` (`List<String>`, defensively copied),
+  `currentStepTypeFetcher` (`Supplier<String>`), and `internalFlowActivitySources` (`List<String>`). The
+  other nine .NET option fields were already present; `HttpContextAccessor` has no Java analog (server-side
+  identity is read through the servlet filter). Proven by `HttpTrackingConfigTest`. Behavioural consumption of
+  the new fields lands with the Tier-4 server bridge / TrackingDiagramOverride / InternalFlow-capture items.
 - **`ScenarioTitleResolver`** + **`StringCasing`** (`kronikol4j-core`, `io.kronikol.core.naming`) — Java port
   of the .NET title-resolution helpers, placed in core (the zero-dep home matching .NET's `Kronikol`
   namespace) so every test-framework adapter can call them. `ScenarioTitleResolver` exposes all four public

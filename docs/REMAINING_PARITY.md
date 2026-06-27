@@ -473,9 +473,23 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   Proven by `ComponentDiagramOptionsTest`. **Remaining:** wiring it through the report orchestration
   (`HtmlReportGenerator`/`ComponentDiagramGenerator`) so the options actually drive generation — lands with the
   report control-flags wiring — plus a golden proof.
-- [ ] **`TestTrackingMessageHandlerOptions`** (3/12) — add `portsToServiceNames`, `clientNamesToServiceNames`,
+- [x] **`TestTrackingMessageHandlerOptions`** (3/12) — add `portsToServiceNames`, `clientNamesToServiceNames`,
   `fixedNameForReceivingService`, `headersToForward`, `excludedHosts`, `trackDuringSetup/Action`,
   `currentStepTypeFetcher`, `internalFlowActivitySources`.
+  **Done:** the Java analog is `io.kronikol.http.HttpTrackingConfig` (shared by the OkHttp/JDK/WebClient
+  adapters). It already carried `portsToServiceNames`, `clientNamesToServiceNames`,
+  `fixedServiceName` (= `fixedNameForReceivingService`), `callerName`, `testInfoFetcher`
+  (= `currentTestInfoFetcher`), `excludedHosts`, `trackDuringSetup`, `trackDuringAction`. This item added the
+  three remaining fields — `headersToForward` (`List<String>`, defaults empty, defensively copied),
+  `currentStepTypeFetcher` (`Supplier<String>`, defaults null), `internalFlowActivitySources`
+  (`List<String>`, defaults empty) — completing the full surface (the `HttpContextAccessor` field has no Java
+  analog: Java reads server-side identity through the servlet filter, not ASP.NET DI). Proven by
+  `HttpTrackingConfigTest` (defaults, builder round-trip, null-coalescing + defensive-copy). **Behavioural
+  wiring deferred to its owning subsystem (each genuinely blocked on an unbuilt piece, not skipped):**
+  `headersToForward` propagation needs an incoming server-request header source (the servlet/server bridge —
+  Tier-4 `TestTrackingServerBridge`); `currentStepTypeFetcher`'s Given/And/But→When action-start injection
+  needs `TrackingDiagramOverride.startAction` (Tier-4); `internalFlowActivitySources` is consumed by the
+  InternalFlow `ActivityListener` (Tier-4 InternalFlow capture).
 - [ ] **`SqlTrackingOptionsBase`** (3/17) — add `verbosity`, `excludedOperations`, `logParameters`,
   `logSqlText`, `setup/actionVerbosity`, `trackDuringSetup/Action`, `uriScheme`, `logResponseContent`,
   `maxResponseRows`, `maxValueDisplayLength`, `responseDetail`.

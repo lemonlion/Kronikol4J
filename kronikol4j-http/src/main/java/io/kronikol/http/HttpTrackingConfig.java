@@ -31,6 +31,9 @@ public final class HttpTrackingConfig {
     private final boolean injectTraceparent;
     private final TrackingVerbosity verbosity;
     private final IdGenerator ids;
+    private final List<String> headersToForward;
+    private final Supplier<String> currentStepTypeFetcher;
+    private final List<String> internalFlowActivitySources;
 
     private HttpTrackingConfig(Builder b) {
         this.fixedServiceName = b.fixedServiceName;
@@ -46,6 +49,9 @@ public final class HttpTrackingConfig {
         this.injectTraceparent = b.injectTraceparent;
         this.verbosity = b.verbosity;
         this.ids = b.ids;
+        this.headersToForward = b.headersToForward;
+        this.currentStepTypeFetcher = b.currentStepTypeFetcher;
+        this.internalFlowActivitySources = b.internalFlowActivitySources;
     }
 
     public String fixedServiceName() { return fixedServiceName; }
@@ -61,6 +67,15 @@ public final class HttpTrackingConfig {
     public boolean injectTraceparent() { return injectTraceparent; }
     public TrackingVerbosity verbosity() { return verbosity; }
     public IdGenerator ids() { return ids; }
+
+    /** HTTP header names to forward from the incoming test/server context to outgoing requests. */
+    public List<String> headersToForward() { return headersToForward; }
+
+    /** Returns the current test step type (e.g. "Given"/"When"/"Then"), or {@code null}. Set by adapters. */
+    public Supplier<String> currentStepTypeFetcher() { return currentStepTypeFetcher; }
+
+    /** OpenTelemetry activity-source names to capture for InternalFlow diagrams. */
+    public List<String> internalFlowActivitySources() { return internalFlowActivitySources; }
 
     /** A minimal configuration that resolves participant names from {@code portsToServiceNames}/host. */
     public static HttpTrackingConfig defaults() {
@@ -85,6 +100,9 @@ public final class HttpTrackingConfig {
         private boolean injectTraceparent = true;
         private TrackingVerbosity verbosity = TrackingVerbosity.DETAILED;
         private IdGenerator ids = IdGenerator.random();
+        private List<String> headersToForward = List.of();
+        private Supplier<String> currentStepTypeFetcher;
+        private List<String> internalFlowActivitySources = List.of();
 
         /** Sets a fixed participant name for the called service (highest-priority resolution). */
         public Builder fixedServiceName(String v) { this.fixedServiceName = v; return this; }
@@ -112,6 +130,15 @@ public final class HttpTrackingConfig {
             return this;
         }
         public Builder ids(IdGenerator v) { this.ids = v == null ? IdGenerator.random() : v; return this; }
+        public Builder headersToForward(List<String> v) {
+            this.headersToForward = v == null ? List.of() : List.copyOf(v);
+            return this;
+        }
+        public Builder currentStepTypeFetcher(Supplier<String> v) { this.currentStepTypeFetcher = v; return this; }
+        public Builder internalFlowActivitySources(List<String> v) {
+            this.internalFlowActivitySources = v == null ? List.of() : List.copyOf(v);
+            return this;
+        }
 
         public HttpTrackingConfig build() {
             return new HttpTrackingConfig(this);
