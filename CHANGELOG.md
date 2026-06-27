@@ -7,6 +7,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 messaging (injectable tracker)
+- **`MessageTracker`** (`kronikol4j-messaging`, + `MessageTrackerOptions`) — an injectable (non-static)
+  message/event tracker holding per-instance options, the Java port of the .NET `MessageTracker`. Exposes the
+  distinct tracking methods: `trackMessageRequest`/`trackMessageResponse` (caller-controlled request/response
+  timing), `trackSendEvent` (event-styled fire-and-forget pair), `trackSendMessage` (atomic send pair with a
+  `"Sent"` ack), and `trackConsumeEvent` (broker→consumer delivery + ack, note on the right). Emits
+  `MetaType.Event` logs with verbosity, phase suppression, unknown-phase variants and a configurable payload
+  serializer (default: the compact `TrackingSafeSerializer`). Proven by `MessageTrackerTest`. The Kafka
+  producer/consumer header-stamping wrappers (the cross-service correlation enabler) follow.
+
 ### Added — Tier-1 MongoDB (classifier)
 - **`MongoDbOperationClassifier`** (`kronikol4j-mongodb`, + `MongoDbOperation`, `MongoDbOperationInfo`) —
   Java port of the .NET Mongo classifier over `org.bson.BsonDocument` (bson `compileOnly`). 26 operations

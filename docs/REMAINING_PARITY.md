@@ -328,7 +328,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `BsonValue.toString()` debug form (`BsonString{value='…'}`); now emits the .NET-equivalent natural value so
   the correlation key matches across runtimes. **Remaining:** document-preview JSON byte-parity (golden) +
   change-stream end-to-end proof.
-- [ ] **Kafka / messaging** (`kronikol4j-messaging`) — **producer/consumer wrappers that stamp + read
+- [~] **Kafka / messaging** (`kronikol4j-messaging`) — **producer/consumer wrappers that stamp + read
   `kronikol-test-name`/`kronikol-test-id` in Kafka message headers** (this is what enables cross-service
   event-driven correlation — currently impossible in Java); Subscribe/Commit/Flush/Unsubscribe/Assign op
   tracking; the distinct tracking methods .NET exposes — `trackSendEvent` (event styling) vs `trackSendMessage`
@@ -337,6 +337,15 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   host isolation; an **injectable (non-static) tracker** (Java is static methods only → can't be DI-injected
   or hold per-instance options) with `ITrackingComponent` self-registration; full `MessageTrackerOptions`
   (verbosity, phase, serializer). *(.NET `MessageTracker.cs`, `TrackingKafkaProducer/Consumer`.)*
+  **Injectable tracker done:** `MessageTracker` (instance, per-instance options) + `MessageTrackerOptions`
+  port the .NET tracker — all distinct methods (`trackMessageRequest`/`trackMessageResponse` with
+  caller-controlled timing, `trackSendEvent` event-styled pair, `trackSendMessage` with a `"Sent"` ack,
+  `trackConsumeEvent` broker→consumer with note-on-right + ack label), `MetaType.Event` styling, verbosity,
+  phase suppression, unknown-phase variants, configurable payload serializer (defaults to the compact
+  `TrackingSafeSerializer`). Proven by `MessageTrackerTest` (5 cases). **Remaining:** the Kafka
+  producer/consumer wrappers that stamp/read the `kronikol-test-name`/`-id` headers (the cross-service
+  correlation enabler — `TrackingHeaders.MESSAGE_TEST_NAME/ID` already exist), Subscribe/Commit/Flush/etc op
+  tracking, `isCurrentRequestFromMyHost()`, `ITrackingComponent` self-registration, and a golden proof.
 - [ ] **`TrackingProxy` enhancements** (`kronikol4j-proxy`) — `TrackingLogMode` (Immediate **+ Deferred**,
   integrating `PendingRequestResponseLogs`); `ActivitySource`/OTel span lifecycle for InternalFlow span
   production (`InternalFlowSpanStore.complete(...)`); configurable `uriScheme` (hardcoded `proxy://local/`)
