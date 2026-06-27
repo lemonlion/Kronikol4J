@@ -175,9 +175,15 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `TrackDuringSetup/Action` or `Setup/ActionVerbosity` options (those option surfaces are the Tier-1 adapter
   + Tier-2 option items). Each Tier-1 adapter wires these primitives in as it is built; this box flips to
   `[x]` once every execution path consults them.
-- [ ] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
+- [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)
+  **Done:** `io.kronikol.core.naming.ServiceNameResolver` ports the full 4-step `ResolveServiceName` chain
+  (fixed → exact client → fuzzy endsWith-with-boundary then assembly-qualified-only contains → port →
+  `localhost:<port>`), preserving insertion order for deterministic fuzzy matching; `ExcludedHosts` ports the
+  OrdinalIgnoreCase host-exclusion check. The unmatched-client-name recording is exposed as an injectable
+  callback seam (the `UnmatchedClientNameRegistry` itself is a separate Tier-4 item). Per-adapter wiring
+  lands with the Tier-1 HTTP/cloud adapters. Proven by `ServiceNameResolverTest` + `ExcludedHostsTest`.
 - [ ] **Operation classifiers** — per-protocol command/operation classification (SQL, Redis, Mongo,
   Elasticsearch, gRPC, cloud). .NET has `UnifiedSqlClassifier`, `RedisOperationClassifier`, etc.; Java has
   keyword-only stubs.

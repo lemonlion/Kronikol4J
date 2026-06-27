@@ -22,6 +22,16 @@ Tier-1 tracker depends on).
   static generic helpers. Proven by `PhaseVariantExtensionsTest`. Completes the phase-awareness *primitives*
   (`shouldTrack` / `effectiveVerbosity` / variant attachment); per-adapter wiring lands with each Tier-1
   adapter as its phase/verbosity option surface is added.
+- **Service-name resolution chain** (`kronikol4j-core`, new `io.kronikol.core.naming` package) — shared by
+  the HTTP and cloud adapters:
+  - **`ServiceNameResolver`** — ports the .NET `TestTrackingMessageHandler.ResolveServiceName` 4-step chain:
+    fixed name → exact client-name mapping → fuzzy mapping (`endsWith` with a non-alphanumeric boundary,
+    then a `contains` fallback restricted to assembly-qualified names) → port mapping → `localhost:<port>`.
+    Insertion order is preserved for deterministic fuzzy matching. Unmatched client names invoke an
+    injectable callback (the seam for the future `UnmatchedClientNameRegistry`, a separate item).
+  - **`ExcludedHosts`** — case-insensitive (`Locale.ROOT`) host set reproducing the .NET `OrdinalIgnoreCase`
+    excluded-host check used to skip tracking entirely.
+  - Proven by `ServiceNameResolverTest` + `ExcludedHostsTest`. Per-adapter wiring lands with Tier-1 adapters.
 
 ## [0.1.24] — first published release
 
