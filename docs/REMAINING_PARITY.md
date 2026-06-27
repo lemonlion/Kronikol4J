@@ -166,9 +166,15 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `includesRawDetail()`). The per-tracker resolution logic already existed as the generic
   `PhaseConfiguration.effectiveVerbosity(...)` / `shouldTrack(...)`; `TrackingVerbosity` composes with it.
   Per-tracker *wiring* lands with each Tier-1 adapter. Proven by `TrackingVerbosityTest`.
-- [ ] **Phase-aware tracking suppression** — wire `PhaseConfiguration.shouldTrack()` (already in
+- [~] **Phase-aware tracking suppression** — wire `PhaseConfiguration.shouldTrack()` (already in
   `kronikol4j-core`) into every extension execution path, honoring `TrackDuringSetup` / `TrackDuringAction`
   + `SetupVerbosity` / `ActionVerbosity`. Currently no Java tracker consults phase at all.
+  **Primitives complete:** `shouldTrack(...)`, `effectiveVerbosity(...)` (both in `PhaseConfiguration`,
+  tested) and now `PhaseVariantExtensions.attachVariants/withVariants` (tested) are all in place. The
+  remaining work is the *per-adapter wiring*, which is intentionally deferred: no Java tracker yet exposes
+  `TrackDuringSetup/Action` or `Setup/ActionVerbosity` options (those option surfaces are the Tier-1 adapter
+  + Tier-2 option items). Each Tier-1 adapter wires these primitives in as it is built; this box flips to
+  `[x]` once every execution path consults them.
 - [ ] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)
@@ -360,10 +366,12 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
 Small but real parity items — convenience helpers, factory methods, and "the code exists but isn't wired in"
 fixes. Listed for completeness so nothing is silently dropped.
 
-- [ ] **`PhaseVariantExtensions`** (`attachVariants`/`withVariants`) — the helper that conditionally computes
+- [x] **`PhaseVariantExtensions`** (`attachVariants`/`withVariants`) — the helper that conditionally computes
   + sets `setupVariant`/`actionVariant` on a log (only when phase is Unknown and a verbosity override is
   configured). The fields exist on the log; the helper that populates them does not. *(.NET
-  `PhaseVariantExtensions.cs:24`.)*
+  `PhaseVariantExtensions.cs:24`.)* **Done:** `io.kronikol.core.tracking.PhaseVariantExtensions` (static
+  generic helpers, since Java has no extension methods); both no-op guards ported (phase ≠ Unknown → skip;
+  no override → skip) and per-override fallback to base verbosity. Proven by `PhaseVariantExtensionsTest`.
 - [ ] **`TestInfoResolver.createHttpFallbackFetcher`** — the static factory producing a combined
   "HTTP-headers-first, then delegate" identity fetcher. *(.NET `TestInfoResolver.cs:86`.)*
 - [ ] **`PhaseConfiguration.resolvePhaseFromStepType`** — expose the Given/And/But→Setup, When/Then→Action

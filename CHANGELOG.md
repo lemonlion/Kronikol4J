@@ -16,6 +16,12 @@ Tier-1 tracker depends on).
   per-phase resolution. Proven by `TrackingVerbosityTest`.
   - *Parity decision:* the `HeadersOnly` / `None` levels speculatively listed in the roadmap do **not**
     exist in the .NET source and were deliberately not modelled (no behaviour to mirror → would be a stub).
+- **`PhaseVariantExtensions`** (`kronikol4j-core`) — `attachVariants`/`withVariants`, the helper that
+  populates a log's `setupVariant`/`actionVariant` only when the phase is Unknown and a verbosity override is
+  configured (each variant falling back to the base level). Java port of the .NET extension methods as
+  static generic helpers. Proven by `PhaseVariantExtensionsTest`. Completes the phase-awareness *primitives*
+  (`shouldTrack` / `effectiveVerbosity` / variant attachment); per-adapter wiring lands with each Tier-1
+  adapter as its phase/verbosity option surface is added.
 
 ## [0.1.24] — first published release
 
