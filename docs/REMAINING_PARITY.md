@@ -529,6 +529,15 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   server-render meaning is out of scope), and the explicit booleans Java currently infers implicitly:
   `generateTestRunReportData` (Java infers from `dataFormats.isEmpty()`) and `generateMergeableData`
   (Java infers from whether `kronikol.run.dir` is set).
+  **Sequencing note (2026-06-27):** this bundle splits cleanly into flags with a live consumer today
+  (`testRunReportTitle`, `htmlTestRunReportFileName`, `reportsFolderPath`, explicit `generateTestRunReportData`/
+  `generateMergeableData`) and flags that gate features not yet built in Java (`generateComponentDiagram` → no
+  component-diagram *generator* yet; `diagnosticMode` → Tier-6 `DiagnosticReportGenerator` wiring;
+  `inlineBackgroundSteps` → no inline-background renderer; `expectedTestCount` guard; the
+  `requestResponsePostProcessor`/`midProcessor` note hooks). Adding the latter now would create toggles that
+  gate nothing (stubs) — so per the "resolve, don't work around" rule they land *with* their owning feature.
+  Pick this item up once the component-diagram generator + diagnostic wiring exist; do the live-consumer
+  subset alongside them in one honest pass.
 - [ ] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*
@@ -548,8 +557,22 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   parity. Proven by `StringCasingTest` (5 cases) + `ScenarioTitleResolverTest` (14 cases) + the unchanged
   report goldens. **Remaining:** per-adapter wiring (BDD/Cucumber test-info builders calling
   `resolveScenarioTitle`/`appendTestParameters`) lands with each framework adapter that needs it.
-- [ ] **HTML customization wiring** — `HtmlCustomization` (CSS/favicon/logo/step-numbers) exists as a model
+- [x] **HTML customization wiring** — `HtmlCustomization` (CSS/favicon/logo/step-numbers) exists as a model
   but is **not passed through `ReportFinalizer`** → users can't set it. Wire it + expose via system props.
+  **Done:** `HtmlCustomization` is now a fourth component of `ReportOptions` (defaulting to
+  `HtmlCustomization.NONE`, preserved across every wither, with a `withHtmlCustomization` setter), and
+  `HtmlReportGenerator.generate(...)` threads `options.customization()` through new
+  `generateFromDiagrams(...,HtmlCustomization)` / `renderHtml(...,HtmlCustomization)` overloads into the
+  renderer — so the standalone `ReportFinalizer.finalizeRun` path (IDE / single-JVM runs, which call
+  `generate(...,options)`) now applies custom CSS, custom stylesheet, favicon, logo HTML, step numbers, and
+  blank-on-failure. Exposed via six system properties (`kronikol.report.customCss`/`customStyleSheet`/
+  `customFaviconBase64`/`customLogoHtml`/`showStepNumbers`/`generateBlankOnFailedTests`) read by the new
+  `ReportOptions.customizationFromSystemProperties()` (returns NONE when none are set; CI metadata is supplied
+  by the CI/merge path, not a system prop). Proven by `HtmlCustomizationWiringTest` (end-to-end render applies
+  CSS/logo/favicon, wither round-trip + survival across unrelated withers, system-property parsing, NONE
+  fallback) with the existing golden + Playwright suites still green. **Note:** the cross-fork *merge* path
+  applies customization through the `kronikol merge` CLI's own render call (its `HtmlCustomization` overload
+  already exists); this item wires the standalone path.
 - [ ] **CI publish options** — `writeCiSummary`, `maxCiSummaryDiagrams`, `publishCiArtifacts`,
   `ciArtifactName`, `ciArtifactRetentionDays`. (Generator `CiSummaryGenerator` is ported; the options +
   artifact publishing are not.)

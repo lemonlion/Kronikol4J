@@ -8,6 +8,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-2 options
+- **HTML customization wiring** (`kronikol4j-report`) — `HtmlCustomization` (custom CSS / stylesheet / favicon
+  / logo / step numbers / blank-on-failure) is now a fourth `ReportOptions` component (default
+  `HtmlCustomization.NONE`, preserved across every wither, with `withHtmlCustomization`), threaded through new
+  `HtmlReportGenerator.generate`/`generateFromDiagrams`/`renderHtml` overloads into the renderer — so the
+  standalone `ReportFinalizer.finalizeRun` path now applies it (previously the model existed but was never
+  passed through, so users couldn't set it). Exposed via six system properties (`kronikol.report.customCss`,
+  `customStyleSheet`, `customFaviconBase64`, `customLogoHtml`, `showStepNumbers`, `generateBlankOnFailedTests`)
+  read by `ReportOptions.customizationFromSystemProperties()`. Proven by `HtmlCustomizationWiringTest`; golden
+  + Playwright suites unchanged.
 - **`MessageTrackerOptions`** (`kronikol4j-messaging`) — completed the parity surface by adding the three
   remaining fields: `currentStepTypeFetcher` (`Supplier<String>`), `useHttpContextCorrelation` (`boolean`),
   and `serializerOptions` (`TrackingSerializerOptions`, the named analog of .NET's `JsonSerializerOptions` —

@@ -58,7 +58,8 @@ public final class HtmlReportGenerator {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }
         }
-        return generateFromDiagrams(features, diagramByTestId, componentDiagram(logs), outputDir, title);
+        return generateFromDiagrams(features, diagramByTestId, componentDiagram(logs), outputDir, title,
+            options.customization());
     }
 
     /** The run-level component diagram from all tracked logs, or {@code null} if nothing was tracked. */
@@ -82,7 +83,19 @@ public final class HtmlReportGenerator {
                                                        String componentDiagram,
                                                        Path outputDir,
                                                        String title) throws IOException {
-        String html = renderHtml(features, diagramByTestId, componentDiagram, title);
+        return generateFromDiagrams(features, diagramByTestId, componentDiagram, outputDir, title,
+            HtmlCustomization.NONE);
+    }
+
+    /** As {@link #generateFromDiagrams(List, Map, String, Path, String)}, applying the HTML
+     *  {@code customization} (CSS/favicon/logo/step-numbers) to the rendered report. */
+    public static GeneratedReport generateFromDiagrams(List<Feature> features,
+                                                       Map<String, String> diagramByTestId,
+                                                       String componentDiagram,
+                                                       Path outputDir,
+                                                       String title,
+                                                       HtmlCustomization customization) throws IOException {
+        String html = renderHtml(features, diagramByTestId, componentDiagram, title, customization);
         Files.createDirectories(outputDir);
         Path file = outputDir.resolve("TestRunReport.html");
         Files.writeString(file, html, StandardCharsets.UTF_8);
@@ -99,6 +112,15 @@ public final class HtmlReportGenerator {
                                     String componentDiagram, String title) {
         return postProcess(DotNetHtmlReportRenderer.render(
             features, diagramByTestId, componentDiagram, title, ReportData.defaultKronikolVersion()));
+    }
+
+    /** As {@link #renderHtml(List, Map, String, String)}, applying the HTML {@code customization}
+     *  (custom CSS/stylesheet, favicon, logo, step numbers, blank-on-failure). */
+    public static String renderHtml(List<Feature> features, Map<String, String> diagramByTestId,
+                                    String componentDiagram, String title, HtmlCustomization customization) {
+        return postProcess(DotNetHtmlReportRenderer.render(
+            features, diagramByTestId, componentDiagram, title, ReportData.defaultKronikolVersion(),
+            false, Instant.EPOCH, Instant.EPOCH, customization));
     }
 
     /**

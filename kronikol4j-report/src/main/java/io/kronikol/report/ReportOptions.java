@@ -5,6 +5,7 @@ import io.kronikol.diagram.plantuml.FocusDeEmphasis;
 import io.kronikol.diagram.plantuml.FocusEmphasis;
 import io.kronikol.diagram.plantuml.GraphQlBodyFormat;
 import io.kronikol.report.data.ReportDataFormat;
+import io.kronikol.report.model.HtmlCustomization;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -31,7 +32,7 @@ import java.util.Set;
  * pick them up without an API change).
  */
 public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats,
-                            boolean generateSchema) {
+                            boolean generateSchema, HtmlCustomization customization) {
 
     /** System property (boolean) enabling per-dependency-type arrow colours. */
     public static final String ARROW_COLORS_PROPERTY = "kronikol.diagram.arrowColors";
@@ -70,11 +71,29 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     /** System property (comma-separated {@code ServiceName=category}) overriding a service's/caller's
      *  detected dependency category (which drives its shape + colour). */
     public static final String SERVICE_TYPE_OVERRIDES_PROPERTY = "kronikol.diagram.serviceTypeOverrides";
+    /** System property (CSS) injected into a trailing {@code <style>} block of the report. */
+    public static final String CUSTOM_CSS_PROPERTY = "kronikol.report.customCss";
+    /** System property (CSS) appended into the main {@code <style>} block after the base stylesheet. */
+    public static final String CUSTOM_STYLESHEET_PROPERTY = "kronikol.report.customStyleSheet";
+    /** System property (base64) overriding the report favicon {@code href}. */
+    public static final String CUSTOM_FAVICON_PROPERTY = "kronikol.report.customFaviconBase64";
+    /** System property (HTML) for a logo placed above the report {@code <h1>}. */
+    public static final String CUSTOM_LOGO_PROPERTY = "kronikol.report.customLogoHtml";
+    /** System property (boolean) prefixing each step with its 1-based number. */
+    public static final String SHOW_STEP_NUMBERS_PROPERTY = "kronikol.report.showStepNumbers";
+    /** System property (boolean) emitting a blank report when any scenario failed. */
+    public static final String BLANK_ON_FAILED_PROPERTY = "kronikol.report.generateBlankOnFailedTests";
 
     public ReportOptions {
         diagram = diagram == null ? DiagramOptions.defaults() : diagram;
         dataFormats = dataFormats == null
             ? Set.of() : Collections.unmodifiableSet(new LinkedHashSet<>(dataFormats));
+        customization = customization == null ? HtmlCustomization.NONE : customization;
+    }
+
+    /** Three-arg shape (no HTML customization) — the back-compatible canonical-ish constructor. */
+    public ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats, boolean generateSchema) {
+        this(diagram, dataFormats, generateSchema, HtmlCustomization.NONE);
     }
 
     /** Diagram colours only (no data files) — the back-compatible shape. */
@@ -137,7 +156,7 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     // --- withers ---
     public ReportOptions withDiagram(DiagramOptions value) {
-        return new ReportOptions(value, dataFormats, generateSchema);
+        return new ReportOptions(value, dataFormats, generateSchema, customization);
     }
 
     public ReportOptions withArrowColors(boolean value) {
@@ -201,12 +220,18 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     }
 
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
-        return new ReportOptions(diagram, formats, generateSchema);
+        return new ReportOptions(diagram, formats, generateSchema, customization);
     }
 
     /** Enables the {@code TestRunReport.schema.json}/{@code .xsd} schema alongside each data format. */
     public ReportOptions withGenerateSchema(boolean value) {
-        return new ReportOptions(diagram, dataFormats, value);
+        return new ReportOptions(diagram, dataFormats, value, customization);
+    }
+
+    /** The HTML customization (CSS/favicon/logo/step-numbers) applied to the generated report. */
+    public ReportOptions withHtmlCustomization(HtmlCustomization value) {
+        return new ReportOptions(diagram, dataFormats, generateSchema,
+            value == null ? HtmlCustomization.NONE : value);
     }
 
     /**
@@ -235,7 +260,28 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
             parseMap(System.getProperty(SERVICE_TYPE_OVERRIDES_PROPERTY), d.serviceTypeOverrides()));
         return new ReportOptions(diagram,
             parseDataFormats(System.getProperty(DATA_FORMATS_PROPERTY)),
-            boolProperty(GENERATE_SCHEMA_PROPERTY, false));
+            boolProperty(GENERATE_SCHEMA_PROPERTY, false),
+            customizationFromSystemProperties());
+    }
+
+    /**
+     * Builds the {@link HtmlCustomization} from system properties (CI metadata is supplied by the
+     * CI/merge path, not a system property, so it stays {@code null} here). Returns {@link
+     * HtmlCustomization#NONE} when no customization property is set.
+     */
+    public static HtmlCustomization customizationFromSystemProperties() {
+        String customCss = stringProperty(CUSTOM_CSS_PROPERTY, null);
+        String customStyleSheet = stringProperty(CUSTOM_STYLESHEET_PROPERTY, null);
+        String favicon = stringProperty(CUSTOM_FAVICON_PROPERTY, null);
+        String logo = stringProperty(CUSTOM_LOGO_PROPERTY, null);
+        boolean showStepNumbers = boolProperty(SHOW_STEP_NUMBERS_PROPERTY, false);
+        boolean blankOnFailed = boolProperty(BLANK_ON_FAILED_PROPERTY, false);
+        if (customCss == null && customStyleSheet == null && favicon == null && logo == null
+            && !showStepNumbers && !blankOnFailed) {
+            return HtmlCustomization.NONE;
+        }
+        return new HtmlCustomization(null, customCss, favicon, logo, showStepNumbers, blankOnFailed,
+            customStyleSheet);
     }
 
     private static String stringProperty(String name, String fallback) {
