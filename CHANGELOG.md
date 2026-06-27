@@ -12,8 +12,11 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   .NET SQS classifier: derives the operation from the `X-Amz-Target` header (JSON protocol), falling back to
   the `Action=` query parameter and form body (query protocol); maps 14 SQS operations and extracts the queue
   name from the URL path or the `QueueUrl`/`QueueName` body fields. Pure logic (no AWS SDK dependency).
-  Proven by `SqsOperationClassifierTest`. The S3/SNS/DynamoDB classifiers and the AWS SDK v2
-  `ExecutionInterceptor` follow.
+  Proven by `SqsOperationClassifierTest`.
+- **`SnsOperationClassifier`** (`kronikol4j-aws`, + `SnsOperation`, `SnsOperationInfo`) — Java port of the
+  .NET SNS classifier: operation from the `X-Amz-Target` header / `Action` fallbacks (12 operations), plus
+  topic name + full ARN extraction from the `TopicArn`/`TargetArn` body field. Pure logic. Proven by
+  `SnsOperationClassifierTest`. The S3/DynamoDB classifiers and the AWS SDK v2 `ExecutionInterceptor` follow.
 
 ### Added — Tier-1 Elasticsearch (classifier)
 - **`ElasticsearchOperationClassifier`** (`kronikol4j-elasticsearch`, + `ElasticsearchOperation`,

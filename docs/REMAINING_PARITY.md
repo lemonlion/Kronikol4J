@@ -388,8 +388,11 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   classifier — operation from the `X-Amz-Target` header (JSON protocol), with `Action=` query- and form-body
   fallbacks (query protocol), 14 mapped operations, and queue-name extraction from the URL path or the
   `QueueUrl`/`QueueName` body fields. Pure logic (no AWS SDK dep). Proven by `SqsOperationClassifierTest`
-  (6 cases). **Remaining:** the S3, SNS and DynamoDB per-service classifiers, the AWS SDK v2
-  `ExecutionInterceptor` that feeds them + emits the log pair, verbosity/phase wiring, and a golden proof.
+  (6 cases). **SNS classifier done:** `SnsOperationClassifier` (+ `SnsOperation`, `SnsOperationInfo`) — same
+  shape (target header / `Action` fallbacks, 12 operations) plus topic name + full ARN extraction from the
+  `TopicArn`/`TargetArn` body field. Proven by `SnsOperationClassifierTest` (6 cases). **Remaining:** the S3
+  and DynamoDB per-service classifiers, the AWS SDK v2 `ExecutionInterceptor` that feeds them + emits the log
+  pair, verbosity/phase wiring, and a golden proof.
 - [ ] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,
   `autoCorrelateWrites`, change-feed key extractor), Blob, Service Bus. *(.NET `CosmosTrackingMessageHandler`
   etc.)*
