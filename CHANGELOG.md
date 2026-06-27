@@ -13,7 +13,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   (Publish, PublishBatch when count > 1, Pull, Acknowledge, ModifyAckDeadline, Receive, Start/StopSubscriber),
   with topic/subscription + message-count extraction and short-name directional-arrow labels
   (`Publish (×4) → orders`, `Pull ← orders-sub`, `Ack`). Pure logic (no Pub/Sub SDK dependency). Proven by
-  `PubSubOperationClassifierTest`. The BigQuery/Cloud Storage classifiers and GCP SDK adapters follow.
+  `PubSubOperationClassifierTest`.
+- **`BigQueryOperationClassifier`** (`kronikol4j-gcp`, + `BigQueryOperation`, `BigQueryOperationInfo`) — Java
+  port of the .NET BigQuery classifier: HTTP method + the `/bigquery/v2/projects/{project}/…` path (with the
+  optional `/upload/` prefix) routed by resource segment (queries / datasets / tables / models / routines /
+  jobs) → 8 operations (Query/Insert/Read/List/Create/Delete/Update/Cancel), extracting project, dataset,
+  resource type + name. Pure logic. Proven by `BigQueryOperationClassifierTest`. The Cloud Storage classifier
+  and GCP SDK adapters follow.
 
 ### Added — Tier-1 Azure (Cosmos classifier)
 - **`CosmosOperationClassifier`** (`kronikol4j-azure`, + `CosmosOperation`, `CosmosOperationInfo`) — Java port

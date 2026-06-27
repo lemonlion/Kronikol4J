@@ -432,9 +432,13 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   the .NET classifier — SDK method name → one of 8 operations (Publish/PublishBatch when count>1/Pull/
   Acknowledge/ModifyAckDeadline/Receive/Start-/StopSubscriber), with topic/subscription + message-count
   extraction and short-name directional-arrow labels (`Publish (×4) → orders`, `Pull ← orders-sub`, `Ack`).
-  Pure logic (no Pub/Sub SDK dep). Proven by `PubSubOperationClassifierTest` (4 cases). **Remaining:** the
-  BigQuery + Cloud Storage classifiers, the GCP SDK adapters that feed them + emit the log pair, and a golden
-  proof.
+  Pure logic (no Pub/Sub SDK dep). Proven by `PubSubOperationClassifierTest` (4 cases). **BigQuery classifier
+  done:** `BigQueryOperationClassifier` (+ `BigQueryOperation`, `BigQueryOperationInfo`) ports the .NET
+  classifier — HTTP method + the `/bigquery/v2/projects/{project}/…` path (with the optional `/upload/` prefix)
+  routed by resource segment (queries / datasets / tables / models / routines / jobs) → 8 operations
+  (Query/Insert/Read/List/Create/Delete/Update/Cancel), extracting project/dataset/resource. Pure logic.
+  Proven by `BigQueryOperationClassifierTest` (6 cases). **Remaining:** the Cloud Storage classifier, the GCP
+  SDK adapters that feed them + emit the log pair, and a golden proof.
 
 ---
 
