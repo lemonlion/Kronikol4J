@@ -229,8 +229,15 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `resolve` time against the live `defaultTtl`, so shrinking the TTL retroactively expires existing entries
   (the old Java code computed `expiresAt` at write time and ignored later TTL changes). Proven by the
   expanded `TestCorrelationStoreTest`.
-- [ ] **Deferred flush** — `DeferredLogFlushHandler` + `PendingRequestResponseLogs`: queue logs emitted
+- [~] **Deferred flush** — `DeferredLogFlushHandler` + `PendingRequestResponseLogs`: queue logs emitted
   before identity is known, flush once it resolves. (.NET `Tracking/DeferredLogFlushHandler.cs`.)
+  **Mechanism done:** `io.kronikol.core.tracking.PendingRequestResponseLogs` (thread-safe queue:
+  `enqueue`/`count`/`flushAll`/`clear`) + `PendingLogEntry` (record + builder). `flushAll(name, id, ids)`
+  drains the queue, emitting each entry as a request+response pair sharing one trace/request-response id
+  (from the `IdGenerator` determinism seam) through `RequestResponseLogger`. Proven by
+  `PendingRequestResponseLogsTest`. **Remaining:** the `DeferredLogFlushHandler` itself is an HTTP-client
+  `DelegatingHandler` (flushes after each response) — HTTP-specific, so it lands with the Tier-1 HTTP adapter
+  (and the proxy's deferred `TrackingLogMode` consumes the same queue).
 
 ---
 

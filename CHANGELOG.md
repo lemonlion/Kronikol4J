@@ -69,6 +69,13 @@ Tier-1 tracker depends on).
   .NET: `onResolveMiss(Consumer<String>)` (diagnostic callback fired on both not-found and expired resolves),
   `remove(key)` (returns whether an entry was present), `seed(...)` (intent-revealing alias of `correlate`
   for pre-existing data), and a public `defaultTtl()` getter/setter.
+- **Deferred-flush queue** (`kronikol4j-core`) — `PendingRequestResponseLogs` (thread-safe queue with
+  `enqueue`/`count`/`flushAll`/`clear`) + `PendingLogEntry` (record + builder), the Java port of the .NET
+  deferred-logging mechanism: consumers queue interactions captured before test identity is known, then
+  `flushAll(name, id, idGenerator)` drains the queue emitting each as a request+response pair sharing one
+  trace/request-response id (via the `IdGenerator` seam) through `RequestResponseLogger`. The HTTP
+  `DeferredLogFlushHandler` trigger (a client `DelegatingHandler`) lands with the HTTP adapter. Proven by
+  `PendingRequestResponseLogsTest`.
 
 ### Fixed
 - **Batch correlation scope selection** (`ProcessingCorrelation.wrapBatch`) — previously used the first
