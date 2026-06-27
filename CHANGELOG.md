@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-3 integration modules
+- **`kronikol4j-bigtable`** (new module) — Cloud Bigtable tracking (classifier + options + recorder, the .NET
+  `BigtableTracker` analog). `BigtableOperationClassifier` maps SDK method names (incl. `…Async`) to operations
+  and labels them across Raw/Detailed/Summarised (directional arrows, `(×N)` mutation counts, short table
+  names); `BigtableInteractionRecorder` emits the two-phase `logRequest`/`logResponse` pair (event-styled
+  request via `MetaType.EVENT`, `bigtable:///table` URI, the new `DependencyCategories.BIGTABLE` → database
+  shape, phase + excluded-operation filtering, phase variants). Pure logic + core only. Proven by
+  `BigtableTrackingTest`; wiki row added. (SDK auto-capture hook + golden are the follow-up.)
 - **`kronikol4j-spanner`** (new module) — Cloud Spanner tracking. `SpannerTracking.wrap(dataSource)` delegates
   to the JDBC `TrackingDataSource` with Spanner defaults (service `"Spanner"`, `DependencyCategories.SPANNER`
   → database shape, `spanner` URI scheme). No Spanner driver dependency — works on any Spanner JDBC

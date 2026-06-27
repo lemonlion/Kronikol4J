@@ -41,4 +41,5 @@ include(
     "kronikol4j-hibernate",
     "kronikol4j-clickhouse",
     "kronikol4j-spanner",
+    "kronikol4j-bigtable",
 )

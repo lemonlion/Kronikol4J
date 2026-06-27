@@ -651,7 +651,19 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `DataSource`; the shared `UnifiedSqlClassifier` already strips Spanner statement hints. Proven by
   `SpannerTrackingTest` (Spanner defaults + end-to-end H2 capture with the `spanner://` URI + `Spanner`
   category + rendered database participant) + wiki row.
-- [ ] **Bigtable** — `BigtableTracker` + options + classifier; `BIGTABLE` category.
+- [~] **Bigtable** — `BigtableTracker` + options + classifier; `BIGTABLE` category.
+  **Done:** new `kronikol4j-bigtable` module porting all three named deliverables — `BigtableOperation`
+  (+ PascalCase `displayName()`), `BigtableOperationInfo`, `BigtableOperationClassifier` (method-name →
+  operation incl. `…Async` variants; `getDiagramLabel` across Raw/Detailed/Summarised with directional arrows,
+  `(×N)` mutation counts and short-table-name extraction), `BigtableTrackerOptions` (verbosity, phase,
+  excluded operations, service/caller, ids), and `BigtableInteractionRecorder` — the two-phase
+  `logRequest`/`logResponse` core (event-styled request via `MetaType.EVENT`, `bigtable:///table` URI,
+  phase suppression, excluded-operation + Summarised filtering, phase variants) matching the .NET
+  `BigtableTracker`. Pure logic + core only (no Bigtable SDK dependency). Proven by `BigtableTrackingTest`
+  (classifier incl. async variants + labels across verbosity, event-styled request/response pair with shared
+  correlation, excluded/identity gating, rendered database participant) + wiki row. **Remaining (`[~]`):** a
+  Bigtable client SDK hook (gRPC interceptor) that auto-feeds the recorder from real `ReadRows`/`MutateRow`
+  calls, and a golden-rendered proof — the same SDK-auto-capture follow-up tracked across the cloud adapters.
 - [ ] **Azure EventHubs** — producer/consumer client wrappers.
 - [ ] **Azure Storage Queues** — message-handler analog.
 - [ ] **AWS EventBridge** — interceptor.
