@@ -7,6 +7,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 JDBC (log-builder core)
+- **`SqlInteractionRecorder`** (`kronikol4j-jdbc`) — the parity-faithful SQL request/response log builder,
+  porting .NET `SqlDiagnosticTracker.LogRequest`/`LogResponse`. Two-phase (returns a `Correlation` token from
+  the request, consumed by the response); verbosity-driven method/content/URI building (classified label vs
+  raw keyword; the `sql://ds/db/table` / `sql:///db/table` / `sql://ds/db` URI matrix); Summarised/Other skip;
+  excluded-operations filter; phase suppression; unknown-phase variants. Composes the previously-built
+  `UnifiedSqlClassifier`, `PhaseConfiguration` and `PhaseVariantExtensions`.
+- **`SqlTrackingOptions`** + **`SqlResponseDetail`** (`kronikol4j-jdbc`) — the SQL option surface
+  (service/caller, verbosity + setup/action overrides, phase toggles, `uriScheme`, `logSqlText`,
+  `logParameters`, `logResponseContent`, `excludedOperations`, `maxResponseRows`, `maxValueDisplayLength`,
+  `responseDetail`), a Java port of .NET `SqlTrackingOptionsBase`. Proven by `SqlInteractionRecorderTest`.
+  The `DataSource`/`Connection`/`Statement` proxy plumbing and `ResultSet` response capture follow.
+
 ### Added — Tier-1 HTTP (OkHttp)
 - **`KronikolOkHttpInterceptor`** (`kronikol4j-http`) — a real `okhttp3.Interceptor` (okhttp `compileOnly`)
   that auto-captures each outgoing HTTP exchange as a tracked request/response pair, the Java analog of the

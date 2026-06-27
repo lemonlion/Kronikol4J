@@ -270,10 +270,19 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   body is a write-only reactive `BodyInserter`, readable only at the `ClientHttpConnector` layer (OkHttp/JDK
   capture both bodies); (b) arbitrary `headersToForward` propagation from an incoming request context
   (servlet-coupled; overlaps the Tier-2 `TestTrackingMessageHandlerOptions` item).
-- [ ] **SQL / JDBC** (`kronikol4j-jdbc`) — wrap `DataSource`/`Connection`/`Statement`/`ResultSet`; multi-
+- [~] **SQL / JDBC** (`kronikol4j-jdbc`) — wrap `DataSource`/`Connection`/`Statement`/`ResultSet`; multi-
   dialect `UnifiedSqlClassifier` (table extraction, CTE stripping, upsert variants, stored-proc detection);
   response capture (`TrackingDbDataReader` → row count / columns / rows); per-driver `DependencyCategory`;
   two-phase start/end correlation. *(.NET `Sql/`; Java `SqlOperationClassifier` extracts first word only.)*
+  **Log-builder core done:** `SqlInteractionRecorder` ports .NET `SqlDiagnosticTracker`'s `LogRequest`/
+  `LogResponse` with full parity — two-phase correlation (returns a `Correlation` token), verbosity-driven
+  method/content/URI building (`getDiagramLabel`/`getRawKeyword`, the `sql://ds/db/table` vs `sql:///db` vs
+  `sql://ds/db` URI matrix), Summarised/Other skip, excluded operations, phase suppression, and unknown-phase
+  variants — all via the already-built `UnifiedSqlClassifier`/`PhaseConfiguration`/`PhaseVariantExtensions`.
+  Backed by `SqlTrackingOptions` (+ `SqlResponseDetail`), which also satisfies most of the Tier-2
+  `SqlTrackingOptionsBase` item. Proven by `SqlInteractionRecorderTest` (7 cases across all verbosity levels).
+  **Remaining:** the `DataSource`/`Connection`/`Statement` proxy plumbing that auto-captures executions and
+  the `ResultSet` row/column response capture (`TrackingDbDataReader`), then a golden-rendered proof.
 - [ ] **Redis** (`kronikol4j-redis`) — Lettuce/Jedis command hook; `RedisOperationClassifier` (25+
   commands); GET hit/miss; endpoint/db/key in URI; verbosity. *(.NET `RedisTracking*`.)*
 - [ ] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
