@@ -462,10 +462,17 @@ automatically. Each needs: the real wire adapter + operation classification + ve
 
 Per-tracker option classes are mostly ~3-of-N fields; several whole option classes are absent.
 
-- [ ] **`ComponentDiagramOptions`** (entire class MISSING) — `fileName`, `embedInTestRunReport`, `title`,
+- [~] **`ComponentDiagramOptions`** (entire class MISSING) — `fileName`, `embedInTestRunReport`, `title`,
   `plantUmlTheme`, `participantFilter`, `relationshipLabelFormatter`, `showRelationshipFlows`,
   `relationshipFlowStyle`, `showSystemFlameChart`, `lowCoverageThreshold`, `arrowColorMode`,
   `dependencyColors`, `maxFlameChartTests`. *(.NET `ComponentDiagram/ComponentDiagramOptions.cs`.)*
+  **Class done:** `io.kronikol.report.component.ComponentDiagramOptions` (builder-based) ports all 13 fields
+  with the .NET defaults; plus the missing `io.kronikol.diagram.component.ArrowColorMode` enum
+  (DEPENDENCY_TYPE/PERFORMANCE). Placed in the report module (it references report's `InternalFlowDiagramStyle`
+  and composes diagram's `ArrowColorMode`/`ComponentRelationship`; report→diagram avoids a dependency cycle).
+  Proven by `ComponentDiagramOptionsTest`. **Remaining:** wiring it through the report orchestration
+  (`HtmlReportGenerator`/`ComponentDiagramGenerator`) so the options actually drive generation — lands with the
+  report control-flags wiring — plus a golden proof.
 - [ ] **`TestTrackingMessageHandlerOptions`** (3/12) — add `portsToServiceNames`, `clientNamesToServiceNames`,
   `fixedNameForReceivingService`, `headersToForward`, `excludedHosts`, `trackDuringSetup/Action`,
   `currentStepTypeFetcher`, `internalFlowActivitySources`.

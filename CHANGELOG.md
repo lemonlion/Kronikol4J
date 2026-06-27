@@ -7,6 +7,17 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-2 options
+- **`ComponentDiagramOptions`** (`kronikol4j-report`, new `io.kronikol.report.component` package) — Java port
+  of the .NET options record for C4-style component-diagram generation (all 13 fields: `fileName`,
+  `embedInTestRunReport`, `title`, `plantUmlTheme`, `participantFilter`, `relationshipLabelFormatter`,
+  `showRelationshipFlows`, `relationshipFlowStyle`, `showSystemFlameChart`, `lowCoverageThreshold`,
+  `arrowColorMode`, `dependencyColors`, `maxFlameChartTests`), builder-based with the .NET defaults. Lives in
+  report (references report's `InternalFlowDiagramStyle` + diagram's `ArrowColorMode`/`ComponentRelationship`;
+  report→diagram avoids a cycle). Proven by `ComponentDiagramOptionsTest`. Wiring it through the report
+  orchestration follows.
+- **`ArrowColorMode`** (`kronikol4j-diagram`) — the previously-missing `DependencyType`/`Performance` enum.
+
 ### Added — Tier-1 TrackingProxy enhancements
 - **`TrackingProxy`** (`kronikol4j-proxy`) — added `TrackingLogMode` (Immediate / **Deferred**): Deferred mode
   captures each call into `PendingRequestResponseLogs` (flushed once the test identity is known, e.g. after an
