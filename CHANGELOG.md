@@ -8,6 +8,11 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-3 integration modules
+- **`kronikol4j-spanner`** (new module) — Cloud Spanner tracking. `SpannerTracking.wrap(dataSource)` delegates
+  to the JDBC `TrackingDataSource` with Spanner defaults (service `"Spanner"`, `DependencyCategories.SPANNER`
+  → database shape, `spanner` URI scheme). No Spanner driver dependency — works on any Spanner JDBC
+  `DataSource` (the JDBC `ResultSet` proxy is the Java analog of .NET's async stream reader). Proven by
+  `SpannerTrackingTest`; wiki row added.
 - **`kronikol4j-clickhouse`** (new module) — ClickHouse tracking. `ClickHouseTracking.wrap(dataSource)`
   delegates to the JDBC `TrackingDataSource` with ClickHouse defaults (service `"ClickHouse"`, the new
   `DependencyCategories.CLICK_HOUSE` category → database shape, `clickhouse` URI scheme). No ClickHouse driver

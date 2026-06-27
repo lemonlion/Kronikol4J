@@ -641,7 +641,16 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   already maps all three to the database shape). Proven by `ClickHouseTrackingTest` (ClickHouse defaults,
   end-to-end H2 capture with the `clickhouse://` URI + `ClickHouse` category + rendered database participant)
   + wiki row.
-- [ ] **Spanner** — connection/command/transaction wrappers + async stream reader; `SPANNER` category.
+- [x] **Spanner** — connection/command/transaction wrappers + async stream reader; `SPANNER` category.
+  **Done:** new `kronikol4j-spanner` module with `SpannerTracking` — `wrap(DataSource[, options])` delegates to
+  the JDBC `TrackingDataSource` with Spanner defaults (service name `"Spanner"`, `DependencyCategories.SPANNER`
+  → `database` shape, `spanner` URI scheme), plus `options()`/`defaultOptions()`. Cloud Spanner ships a JDBC
+  driver, and `TrackingDataSource` already proxies `Connection`/`Statement`/`ResultSet` with full two-phase +
+  streaming result capture (the JDBC `ResultSet` is the Java analog of .NET's async stream reader), so no
+  driver-specific wrappers are needed — the module has **no** Spanner dependency and works on any Spanner JDBC
+  `DataSource`; the shared `UnifiedSqlClassifier` already strips Spanner statement hints. Proven by
+  `SpannerTrackingTest` (Spanner defaults + end-to-end H2 capture with the `spanner://` URI + `Spanner`
+  category + rendered database participant) + wiki row.
 - [ ] **Bigtable** — `BigtableTracker` + options + classifier; `BIGTABLE` category.
 - [ ] **Azure EventHubs** — producer/consumer client wrappers.
 - [ ] **Azure Storage Queues** — message-handler analog.

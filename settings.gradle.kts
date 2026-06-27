@@ -40,4 +40,5 @@ include(
     "kronikol4j-spock",
     "kronikol4j-hibernate",
     "kronikol4j-clickhouse",
+    "kronikol4j-spanner",
 )
