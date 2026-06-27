@@ -184,9 +184,17 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   OrdinalIgnoreCase host-exclusion check. The unmatched-client-name recording is exposed as an injectable
   callback seam (the `UnmatchedClientNameRegistry` itself is a separate Tier-4 item). Per-adapter wiring
   lands with the Tier-1 HTTP/cloud adapters. Proven by `ServiceNameResolverTest` + `ExcludedHostsTest`.
-- [ ] **Operation classifiers** — per-protocol command/operation classification (SQL, Redis, Mongo,
+- [~] **Operation classifiers** — per-protocol command/operation classification (SQL, Redis, Mongo,
   Elasticsearch, gRPC, cloud). .NET has `UnifiedSqlClassifier`, `RedisOperationClassifier`, etc.; Java has
   keyword-only stubs.
+  **SQL done:** `io.kronikol.core.sql.UnifiedSqlClassifier` (+ `UnifiedSqlOperation`, `UnifiedSqlOperationInfo`,
+  `SqlCommandType`) ports the full .NET `UnifiedSqlClassifier` — multi-dialect prefix stripping (Spanner
+  hints, SET, CTE), 20+ operations incl. upsert variants (`ON CONFLICT`/`ON DUPLICATE KEY`/`INSERT OR …`),
+  stored-proc detection, ClickHouse `OPTIMIZE`/`RENAME`/`ATTACH`/`DETACH` + lightweight `ALTER … UPDATE/DELETE`
+  mutations, quoted/schema-qualified table extraction, plus `getDiagramLabel` (Raw/Detailed/Summarised),
+  `getRawKeyword`, `extractProcName`. Placed in core (zero-dep) since JDBC/ClickHouse/Spanner/Bigtable all
+  share it. Proven by `UnifiedSqlClassifierTest` (18 cases). The Redis/Mongo/Elasticsearch/gRPC/cloud
+  classifiers are tracked under their respective Tier-1 adapter items and land with each adapter.
 - [ ] **`TrackingSafeSerializer` equivalent** — mock-proxy detection, `Future`/`CompletableFuture` result
   unwrapping, circular-ref handling, `MaxDepth`, `SkipTypes`. (.NET `Tracking/TrackingSafeSerializer.cs`.)
 - [ ] **`CorrelationKeys` completion** — add the 6 missing key-format helpers: `cosmos(svc,partition,doc)`

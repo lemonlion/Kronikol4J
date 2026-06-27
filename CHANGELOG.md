@@ -32,6 +32,16 @@ Tier-1 tracker depends on).
   - **`ExcludedHosts`** — case-insensitive (`Locale.ROOT`) host set reproducing the .NET `OrdinalIgnoreCase`
     excluded-host check used to skip tracking entirely.
   - Proven by `ServiceNameResolverTest` + `ExcludedHostsTest`. Per-adapter wiring lands with Tier-1 adapters.
+- **`UnifiedSqlClassifier`** (`kronikol4j-core`, new `io.kronikol.core.sql` package) — the SQL operation
+  classifier shared across all database tracking extensions. Java port of the .NET `UnifiedSqlClassifier`:
+  multi-dialect prefix stripping (Spanner statement hints, `SET …;`, CTEs), classification into 20+
+  operations including upsert detection (`ON CONFLICT DO UPDATE`, `ON DUPLICATE KEY UPDATE`,
+  `INSERT OR REPLACE/UPDATE/IGNORE`), stored-procedure detection (`EXEC`/`EXECUTE`/`CALL` + `CommandType`),
+  ClickHouse extensions (`OPTIMIZE`/`RENAME`/`ATTACH`/`DETACH` and lightweight `ALTER TABLE … UPDATE/DELETE`
+  mutations), and quoted/schema-qualified table extraction. Plus `getDiagramLabel` (Raw/Detailed/Summarised
+  arrow labels), `getRawKeyword`, `extractProcName`. Placed in zero-dependency core so JDBC, ClickHouse,
+  Spanner and Bigtable share one classifier. Proven by `UnifiedSqlClassifierTest` (18 cases). Per-adapter
+  wiring (and the Redis/Mongo/Elasticsearch/gRPC/cloud classifiers) lands with each adapter.
 
 ## [0.1.24] — first published release
 
