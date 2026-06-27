@@ -17,8 +17,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   builder, porting .NET `RedisTracker.LogRedisRequest`/`LogRedisResponse`. The request label omits hit/miss
   (only known at response time); the response label includes it. Verbosity-driven `redis://` URI matrix
   (`redis://endpoint/db/key` raw, `redis://db<n>/key` detailed, `redis://db<n>/` summarised), Summarised/Other
-  skip, phase suppression, unknown-phase variants. Proven by `RedisInteractionRecorderTest`. The Lettuce/Jedis
-  command-hook plumbing follows.
+  skip, phase suppression, unknown-phase variants. Proven by `RedisInteractionRecorderTest`.
+- **`RedisCommandsTracker`** (`kronikol4j-redis`) — auto-captures Lettuce commands. `wrap(redisCommands,
+  options, endpoint)` returns a dynamic `Proxy` over `RedisCommands` (lettuce `compileOnly`): a command
+  method's name is the Redis command, its first `String` argument the key, and a non-null return drives GET/
+  HGET hit/miss — feeding `RedisInteractionRecorder`. Connection-management and `Object` methods pass through
+  untracked. Proven by `RedisCommandsTrackerTest` (fake `RedisCommands` proxy, no server). A Jedis wrapper and
+  per-connection database-number extraction follow.
 
 ### Added — Tier-1 JDBC (log-builder core)
 - **`SqlInteractionRecorder`** (`kronikol4j-jdbc`) — the parity-faithful SQL request/response log builder,

@@ -302,9 +302,13 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `LogRedisRequest`/`LogRedisResponse` with full parity — two-phase correlation, the request label omitting
   hit/miss (only the response carries `(Hit)`/`(Miss)`), the verbosity-driven `redis://endpoint/db/key` (Raw)
   vs `redis://db<n>/key` (Detailed) vs `redis://db<n>/` (Summarised) URI matrix, Summarised/Other skip, phase
-  suppression and unknown-phase variants. Proven by `RedisInteractionRecorderTest` (6 cases). **Remaining:**
-  the Lettuce/Jedis command-hook plumbing that feeds the recorder (dynamic-proxy over the commands interface,
-  like the JDBC `DataSource`), plus a golden-rendered proof.
+  suppression and unknown-phase variants. Proven by `RedisInteractionRecorderTest` (6 cases).
+  **Lettuce auto-capture done:** `RedisCommandsTracker.wrap(redisCommands, options, endpoint)` dynamic-proxies
+  Lettuce's `RedisCommands` (lettuce `compileOnly`) — a command method's name is the Redis command, its first
+  `String` arg the key, a non-null return drives hit/miss; connection-management + `Object` methods pass
+  through untracked. Proven by `RedisCommandsTrackerTest` (fake `RedisCommands` proxy — no server needed:
+  GET hit/miss, SET, Object-method pass-through). **Remaining:** a Jedis wrapper, per-connection database-
+  number extraction (currently 0), and a golden-rendered proof.
 - [ ] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
   analog) for true two-phase correlation; operation classification; filter extraction; response document
   preview; `autoCorrelateWrites`; `ignoredCommands`; change-stream support. *(.NET
