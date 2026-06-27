@@ -222,7 +222,13 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   first *non-null* key and stopped, leaving the batch unattributed when that key didn't resolve; now it picks
   the first key that actually *resolves*, matching .NET `WrapBatch` (fixes the existing sync `wrapBatch` too).
   Proven by `ProcessingCorrelationTest`.
-- [ ] **`TestCorrelationStore` gaps** — `onResolveMiss` callback, `remove(key)`, `seed(...)`, public TTL.
+- [x] **`TestCorrelationStore` gaps** — `onResolveMiss` callback, `remove(key)`, `seed(...)`, public TTL.
+  **Done:** added `onResolveMiss(Consumer<String>)` (fires on both not-found and expired, matching .NET),
+  `remove(key)` (boolean), `seed(...)` (intent alias of `correlate`), and public `defaultTtl()` getter/setter.
+  Also corrected the TTL model to .NET semantics: entries store `createdAt` and the TTL is evaluated at
+  `resolve` time against the live `defaultTtl`, so shrinking the TTL retroactively expires existing entries
+  (the old Java code computed `expiresAt` at write time and ignored later TTL changes). Proven by the
+  expanded `TestCorrelationStoreTest`.
 - [ ] **Deferred flush** — `DeferredLogFlushHandler` + `PendingRequestResponseLogs`: queue logs emitted
   before identity is known, flush once it resolves. (.NET `Tracking/DeferredLogFlushHandler.cs`.)
 

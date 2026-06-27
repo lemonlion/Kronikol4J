@@ -65,10 +65,19 @@ Tier-1 tracker depends on).
   continuations the way .NET `AsyncLocal` does — cross-thread attribution uses the data-keyed
   `TestCorrelationStore`). Proven by `ProcessingCorrelationTest`.
 
+- **`TestCorrelationStore` gaps** (`kronikol4j-core`) — added the missing public API to reach parity with
+  .NET: `onResolveMiss(Consumer<String>)` (diagnostic callback fired on both not-found and expired resolves),
+  `remove(key)` (returns whether an entry was present), `seed(...)` (intent-revealing alias of `correlate`
+  for pre-existing data), and a public `defaultTtl()` getter/setter.
+
 ### Fixed
 - **Batch correlation scope selection** (`ProcessingCorrelation.wrapBatch`) — previously used the first
   *non-null* key and stopped, leaving the whole batch unattributed when that key didn't resolve. Now it
   selects the first key that actually resolves to a test, matching .NET `WrapBatch`.
+- **Correlation TTL evaluation** (`TestCorrelationStore`) — entries now store their creation instant and the
+  TTL is evaluated at `resolve` time against the live `defaultTtl` (matching .NET), so changing the TTL
+  retroactively affects stored entries. Previously the expiry was fixed at write time and ignored later
+  TTL changes.
 
 ## [0.1.24] — first published release
 
