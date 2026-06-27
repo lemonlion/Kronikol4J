@@ -792,11 +792,23 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   response independence, clearAll, null-when-unset, empty-on-no-args, feeds `log.focusFields`) +
   `KronikolOkHttpInterceptorTest` (ambient focus flows onto the captured pair, consumed once across calls).
   **Note:** the other adapters consume `DiagramFocus` the same way as they wire it in.
-- [ ] **Assertion fidelity** — `Track.attachment(file, name)`; `Track.that` returning a value (`<T>`);
+- [~] **Assertion fidelity** — `Track.attachment(file, name)`; `Track.that` returning a value (`<T>`);
   `@SuppressAssertionTracking`; `Track.diagnosticMode` toggle + `diagnosticLog`/`clearDiagnosticLog`;
   `Track.testIdResolver` static hook; closure-value resolution + `AssertionExpressionFormatter` (readable
   "Order status should be equivalent to 'Confirmed'" text). *(C#-reflection-specific parts — closure-field
   inspection — may be a documented boundary; decide per item. `thatAsync` is N/A in Java.)*
+  **Done (Java-feasible parts):** `Track.that(Supplier<T>)` + `Track.that(String, Supplier<T>)` (value-
+  returning, with source-expression auto-capture; `thatAsync` N/A); the `diagnosticMode` toggle +
+  `diagnosticLog()`/`clearDiagnosticLog()`/`recordDiagnostic(...)` (thread-safe), now rendered end-to-end as
+  the diagnostic report's "Assertion Value Resolution" section (conditional, golden insulated); the
+  `testIdResolver` static hook (`Supplier<String>`), consulted before the ambient scope in assertion
+  resolution (its id used as name+id, matching .NET's override marker, with throwing-resolver fallback); and
+  the `@SuppressAssertionTracking` runtime-retained marker (METHOD+TYPE). Proven by `TrackFidelityTest` +
+  `DiagnosticReportGeneratorTest` (assertion-log section renders / omitted). **Remaining (`[~]`):**
+  `Track.attachment(file, name)` is blocked on `StepCollector` (Step-tracking item — `Attachment` delegates to
+  `StepCollector.AddAttachment`); and the closure-value resolution + `AssertionExpressionFormatter` readable-
+  text substitution is the C#-IL-weaver / reflection-closure-field boundary (the Tier-5 AssertionRewriter) —
+  `recordDiagnostic` is the seam those fallbacks will log through.
 - [x] **`TrackingTraceContext`** (`beginTrace`/`createParentContext`) — creates a new ambient trace id and
   builds a parent span context for the proxy's `ActivitySource` (the *write* counterpart to the read-only
   `OtelBridge`). Pairs with the `TrackingProxy` span-lifecycle work. *(.NET `Tracking/TrackingTraceContext.cs`.)*

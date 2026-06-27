@@ -5,8 +5,11 @@ import io.kronikol.core.context.TestInfoResolver;
 import io.kronikol.core.context.TestPhaseContext;
 import io.kronikol.core.support.SourceExpression;
 import java.net.URI;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Supplier;
 
 /**
  * Assertion tracking — <strong>Tier 0</strong> (plan §3.9): a manual wrapper that records the outcome
@@ -59,8 +62,98 @@ public final class Track {
         logAssertion(description, true, null);
     }
 
+    /**
+     * As {@link #that(Runnable)}, but for a value-returning assertion: runs {@code assertion}, records it,
+     * and returns its value (the .NET {@code Track.That<T>}). {@code thatAsync} is N/A in Java.
+     */
+    public static <T> T that(Supplier<T> assertion) {
+        String line = SourceExpression.forCallerOutside(
+            Set.of(Track.class.getName(), SourceExpression.class.getName()));
+        String description = SourceExpression.extractLambdaBody(line);
+        if (description == null || description.isBlank()) {
+            description = "assertion";
+        }
+        return that(description, assertion);
+    }
+
+    /** As {@link #that(String, Runnable)}, but returns the assertion's value. */
+    public static <T> T that(String description, Supplier<T> assertion) {
+        T result;
+        try {
+            result = assertion.get();
+        } catch (AssertionError failure) {
+            logAssertion(description, false, failure.getMessage());
+            throw failure;
+        }
+        logAssertion(description, true, null);
+        return result;
+    }
+
+    // --- diagnostic log (assertion value-resolution fallbacks; rendered by the diagnostic report) ---
+
+    private static volatile boolean diagnosticMode;
+    private static final ConcurrentLinkedQueue<String> DIAGNOSTIC_ENTRIES = new ConcurrentLinkedQueue<>();
+
+    /** Whether diagnostic entries are recorded for assertion value-resolution fallbacks. */
+    public static boolean diagnosticMode() {
+        return diagnosticMode;
+    }
+
+    /** Enables/disables diagnostic recording. */
+    public static void diagnosticMode(boolean enabled) {
+        diagnosticMode = enabled;
+    }
+
+    /** The recorded diagnostic log entries (a snapshot). */
+    public static List<String> diagnosticLog() {
+        return List.copyOf(DIAGNOSTIC_ENTRIES);
+    }
+
+    /** Clears all diagnostic log entries. */
+    public static void clearDiagnosticLog() {
+        DIAGNOSTIC_ENTRIES.clear();
+    }
+
+    /** Records a diagnostic entry (no-op unless {@link #diagnosticMode()} is on). Called by value resolution. */
+    public static void recordDiagnostic(String entry) {
+        if (diagnosticMode && entry != null) {
+            DIAGNOSTIC_ENTRIES.add(entry);
+        }
+    }
+
+    // --- test-id resolver hook (framework-context id, checked before the ambient scope) ---
+
+    private static volatile Supplier<String> testIdResolver;
+
+    /** The optional hook resolving the current test id from a framework context (or {@code null}). */
+    public static Supplier<String> testIdResolver() {
+        return testIdResolver;
+    }
+
+    /** Sets the hook that resolves the current test id from a framework context (checked before the scope). */
+    public static void testIdResolver(Supplier<String> resolver) {
+        testIdResolver = resolver;
+    }
+
+    /** Resolves the test identity for an assertion note: the {@link #testIdResolver} hook first (its id used
+     *  as both name + id, matching .NET's override marker), then the ambient scope via {@link TestInfoResolver}. */
+    private static TestInfo resolveWho() {
+        Supplier<String> hook = testIdResolver;
+        if (hook != null) {
+            try {
+                String id = hook.get();
+                if (id != null && !id.isEmpty()) {
+                    return new TestInfo(id, id);
+                }
+            } catch (RuntimeException ignored) {
+                // resolver threw (e.g. no active scenario context) — fall through to the scope
+            }
+        }
+        return TestInfoResolver.resolve(null);
+    }
+
     private static void logAssertion(String description, boolean passed, String failureMessage) {
-        TestInfo who = TestInfoResolver.resolve(null);
+        TestInfo who = resolveWho();
         if (who == null) {
             return;
         }

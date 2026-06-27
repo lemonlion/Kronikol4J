@@ -31,8 +31,10 @@ class DiagnosticReportGeneratorTest {
     @org.junit.jupiter.api.BeforeEach
     @org.junit.jupiter.api.AfterEach
     void resetRegistry() {
-        // The unmatched-client-names section reads a process-wide registry; keep tests isolated.
+        // The unmatched-client-names + assertion-value-resolution sections read process-wide state; isolate.
         io.kronikol.core.tracking.UnmatchedClientNameRegistry.clear();
+        io.kronikol.core.tracking.Track.clearDiagnosticLog();
+        io.kronikol.core.tracking.Track.diagnosticMode(false);
     }
 
     @Test
@@ -88,6 +90,27 @@ class DiagnosticReportGeneratorTest {
         String html = DiagnosticReportGenerator.buildHtml(
             List.of(), List.of(), DiagnosticConfig.dotNetDefaults());
         assertThat(html).doesNotContain("Unmatched HTTP Client Names");
+    }
+
+    @Test
+    void buildHtml_rendersAssertionValueResolutionSectionWhenDiagnosticLogNonEmpty() {
+        io.kronikol.core.tracking.Track.diagnosticMode(true);
+        io.kronikol.core.tracking.Track.recordDiagnostic("order.status fell back to ToString");
+
+        String html = DiagnosticReportGenerator.buildHtml(
+            List.of(), List.of(), DiagnosticConfig.dotNetDefaults());
+
+        assertThat(html)
+            .contains("Assertion Value Resolution")
+            .contains("1 fallback(s) recorded during closure value resolution.")
+            .contains("<tr><td>1</td><td>order.status fell back to ToString</td></tr>");
+    }
+
+    @Test
+    void buildHtml_omitsAssertionValueResolutionSectionWhenEmpty() {
+        String html = DiagnosticReportGenerator.buildHtml(
+            List.of(), List.of(), DiagnosticConfig.dotNetDefaults());
+        assertThat(html).doesNotContain("Assertion Value Resolution");
     }
 
     private static RequestResponseLog log(String testName, String testId, Method method, String uri,

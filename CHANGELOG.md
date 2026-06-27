@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **Assertion fidelity** (`kronikol4j-core`) — added the Java-feasible parts of the .NET `Track` surface:
+  value-returning `Track.that(Supplier<T>)`/`that(String, Supplier<T>)`; the `diagnosticMode` toggle +
+  `diagnosticLog()`/`clearDiagnosticLog()`/`recordDiagnostic()`, now rendered as the diagnostic report's
+  "Assertion Value Resolution" section; the `testIdResolver` static hook (consulted before the ambient scope);
+  and the `@SuppressAssertionTracking` runtime marker. Proven by `TrackFidelityTest` +
+  `DiagnosticReportGeneratorTest`. (`Track.attachment` awaits `StepCollector`; closure-value resolution +
+  `AssertionExpressionFormatter` is the C#-IL-weaver/reflection boundary — the Tier-5 AssertionRewriter.)
 - **HTTP-client auto-injection** (`kronikol4j-spring-boot-starter`) — the `IHttpMessageHandlerBuilderFilter`
   analog: the starter now auto-injects tracking into every framework-created HTTP client, not just
   `RestTemplate`. Added a `RestClientCustomizer` (reuses the `ClientHttpRequestInterceptor`-based
