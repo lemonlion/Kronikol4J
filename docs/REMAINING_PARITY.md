@@ -764,8 +764,21 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   + DI/eager-start registration. The *rendering* is done; nothing currently captures spans. Plus the ~12
   InternalFlow sub-options (`InternalFlowDisplay/Trigger/DiagramStyle/SpanGranularity/...`) and
   `WholeTestFlowVisualization` as a user option.
-- [ ] **`TrackingDiagramOverride`** — inject arbitrary PlantUML fragments + programmatic phase boundaries
+- [x] **`TrackingDiagramOverride`** — inject arbitrary PlantUML fragments + programmatic phase boundaries
   (`insertPlantUml`/`startOverride`/`endOverride`/`startAction`/`startSetup`).
+  **Done:** `io.kronikol.core.tracking.TrackingDiagramOverride` ports the .NET
+  `DefaultTrackingDiagramOverride` — `startOverride`/`endOverride` (optional fragment), `insertPlantUml`
+  (start+end pair), `insertTestDelimiter` (full-width black header note), `startAction` (sets ambient phase to
+  Action + emits an action-start marker), `startSetup` (sets phase to Setup, no marker), each with a
+  `Supplier<String>` test-id overload for framework adapters. Each emits a marker `RequestResponseLog`
+  (empty method/content/service, the `http://override.com` URI, the `overrideStart`/`overrideEnd`/
+  `actionStart` flags + buffered `plantUml`) via `RequestResponseLogger`; the buffered fragment form
+  (`"\n" + fragment + "\n\n"`) matches the .NET raw-string exactly. The log flags + diagram rendering of
+  override markers were already byte-complete; this is the capture-side emitter. Proven by
+  `TrackingDiagramOverrideTest` (each marker's flags + buffered fragment, action-start phase change, setup
+  phase change with no marker, Supplier overload). **Unblocks** the deferred `currentStepTypeFetcher`
+  Given/And/But→When action-start injection in the HTTP/messaging adapters (they can now call
+  `TrackingDiagramOverride.startAction`).
 - [x] **`DiagramFocus`** — ambient "emphasize these JSON fields in the next note" mechanism.
   **Done:** `io.kronikol.core.tracking.DiagramFocus` ports the .NET `DiagramFocus` — `request(String...)` /
   `response(String...)` stash field names on a `ThreadLocal`; `consumePendingRequestFocus()` /

@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **`TrackingDiagramOverride`** (`kronikol4j-core`) — ports the .NET `DefaultTrackingDiagramOverride`:
+  `startOverride`/`endOverride`/`insertPlantUml`/`insertTestDelimiter` inject custom PlantUML fragments, and
+  `startAction`/`startSetup` mark the Setup→Action boundary (the action-start marker + ambient phase change),
+  each with a `Supplier<String>` overload. Emits marker `RequestResponseLog`s (the `overrideStart`/
+  `overrideEnd`/`actionStart` flags + buffered `plantUml`, the rendering of which was already byte-complete).
+  Proven by `TrackingDiagramOverrideTest`. Unblocks the deferred step-type action-injection in the
+  HTTP/messaging adapters.
 - **`DiagramFocus`** (`kronikol4j-core`) — ambient "emphasize these JSON fields in the next note" mechanism
   (the .NET `DiagramFocus` analog): `request(String...)`/`response(String...)` stash field names on a
   `ThreadLocal`, consumed once (`consumePendingRequest/ResponseFocus`) by the next tracked log's
