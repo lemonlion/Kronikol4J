@@ -12,8 +12,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   of the .NET Cosmos DB classifier: maps the HTTP method + the `/dbs/…/colls/…/docs/…` resource path + the
   `x-ms-documentdb-isquery` / `-is-upsert` header flags to one of 11 operations (Create/Read/Replace/Patch/
   Delete/Upsert/Query/List/ExecStoredProc/Batch), extracting database/collection/document-id and the query
-  text for queries. Pure logic (no Cosmos SDK dependency). Proven by `CosmosOperationClassifierTest`. The
-  Blob/Service Bus classifiers and the Azure SDK pipeline policies follow.
+  text for queries. Pure logic (no Cosmos SDK dependency). Proven by `CosmosOperationClassifierTest`.
+- **`BlobOperationClassifier`** (`kronikol4j-azure`, + `BlobOperation`, `BlobOperationInfo`) — Java port of
+  the .NET Blob Storage classifier: HTTP method + `/{container}/{blob}` path + `restype`/`comp` query params →
+  14 operations (blob upload/download/delete/get-properties, container create/delete/list, set/get metadata,
+  copy, put-block, put-block-list, lease), with container + blob extraction. Pure logic. Proven by
+  `BlobOperationClassifierTest`. The Service Bus classifier and the Azure SDK pipeline policies follow.
 
 ### Added — Tier-1 AWS (SQS classifier)
 - **`SqsOperationClassifier`** (`kronikol4j-aws`, + `SqsOperation`, `SqsOperationInfo`) — Java port of the

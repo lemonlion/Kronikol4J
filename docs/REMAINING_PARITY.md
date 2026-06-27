@@ -415,8 +415,12 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `x-ms-documentdb-isquery`/`-is-upsert` header flags → one of 11 operations (Create/Read/Replace/Patch/Delete/
   Upsert/Query/List/ExecStoredProc/Batch), with db/collection/document-id extraction and query-text extraction
   for queries. Pure logic (no Cosmos SDK dep). Proven by `CosmosOperationClassifierTest` (5 cases).
-  **Remaining:** the Blob + Service Bus classifiers, the Azure SDK pipeline policies that feed them + emit the
-  log pair, `autoCorrelateWrites`/change-feed key extractor, and a golden proof.
+  **Blob classifier done:** `BlobOperationClassifier` (+ `BlobOperation`, `BlobOperationInfo`) — HTTP method +
+  `/{container}/{blob}` path + `restype`/`comp` query params → 14 operations (blob CRUD, container
+  create/delete/list, metadata, copy, put-block/-list, lease), with container/blob extraction. Proven by
+  `BlobOperationClassifierTest` (4 cases). **Remaining:** the Service Bus classifier, the Azure SDK pipeline
+  policies that feed them + emit the log pair, `autoCorrelateWrites`/change-feed key extractor, and a golden
+  proof.
 - [ ] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
   classifiers + verbosity. *(.NET ships handlers + interceptors per service.)*
 
