@@ -395,8 +395,13 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   vs virtual-hosted-style bucket/key extraction, and query-parameter-driven operation matching for object CRUD,
   copy (`x-amz-copy-source`), multipart (`uploads`/`uploadId`/`partNumber`), tagging, and bucket-level
   (`list-type`/`versions`/`location`/`delete`/create/delete) — 19 operations. Proven by
-  `S3OperationClassifierTest` (7 cases). **Remaining:** the DynamoDB classifier, the AWS SDK v2
-  `ExecutionInterceptor` that feeds them + emits the log pair, verbosity/phase wiring, and a golden proof.
+  `S3OperationClassifierTest` (7 cases). **DynamoDB classifier done:** `DynamoDbOperationClassifier`
+  (+ `DynamoDbOperation`, `DynamoDbOperationInfo`) — operation from the `DynamoDB_<ver>.<Op>` target header
+  (18 operations), table-name extraction (+ `RequestItems`-key extraction for batch ops via a small
+  dependency-free top-level-key scan, with the `TableName` regex fallback), and PartiQL `Statement` text for
+  ExecuteStatement-family ops. Proven by `DynamoDbOperationClassifierTest` (6 cases). **All four AWS service
+  classifiers (SQS, SNS, S3, DynamoDB) are now done. Remaining:** the AWS SDK v2 `ExecutionInterceptor` that
+  feeds them + emits the log pair, verbosity/phase wiring, and a golden proof.
 - [ ] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,
   `autoCorrelateWrites`, change-feed key extractor), Blob, Service Bus. *(.NET `CosmosTrackingMessageHandler`
   etc.)*

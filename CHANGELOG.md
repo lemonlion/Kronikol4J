@@ -22,7 +22,14 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   query-parameter-driven operation matching — object CRUD, copy (`x-amz-copy-source` header), multipart
   (`uploads`/`uploadId`/`partNumber`), tagging, and bucket-level operations
   (`list-type`/`versions`/`location`/`delete`/create/delete) — 19 operations. Pure logic. Proven by
-  `S3OperationClassifierTest`. The DynamoDB classifier and the AWS SDK v2 `ExecutionInterceptor` follow.
+  `S3OperationClassifierTest`.
+- **`DynamoDbOperationClassifier`** (`kronikol4j-aws`, + `DynamoDbOperation`, `DynamoDbOperationInfo`) — Java
+  port of the .NET DynamoDB classifier: operation from the `DynamoDB_<version>.<Op>` target header (18
+  operations), table-name extraction with `RequestItems`-key extraction for batch operations (a small
+  dependency-free top-level-key scan, since core has no JSON parser, with the `TableName` regex fallback), and
+  PartiQL `Statement` text for the ExecuteStatement family. Proven by `DynamoDbOperationClassifierTest`. This
+  completes all four AWS service classifiers (SQS, SNS, S3, DynamoDB); the AWS SDK v2 `ExecutionInterceptor`
+  follows.
 
 ### Added — Tier-1 Elasticsearch (classifier)
 - **`ElasticsearchOperationClassifier`** (`kronikol4j-elasticsearch`, + `ElasticsearchOperation`,
