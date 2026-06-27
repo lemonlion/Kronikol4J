@@ -8,6 +8,11 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-3 integration modules
+- **Dapper analog (JDBC verbosity + classifier proof)** (`kronikol4j-jdbc`) — confirmed the Dapper analog is
+  fully covered by `TrackingDataSource` + the shared `UnifiedSqlClassifier` + `SqlTrackingOptions` verbosity
+  (no separate module; the .NET "N/A directly" note holds). Added an end-to-end verbosity proof through the
+  DataSource path: `TrackingDataSourceTest` asserts RAW (raw keyword + host URI + full SQL) vs SUMMARISED
+  (classifier label + dropped content + scheme-only URI).
 - **MongoDB Atlas Data API classifier** (`kronikol4j-mongodb`) — `AtlasDataApiOperationClassifier`
   (+ operation / info) ports the .NET classifier: the `/action/{actionName}` endpoint path → 11 operations,
   request-body extraction of `dataSource`/`database`/`collection` + the `filter` document (string-aware

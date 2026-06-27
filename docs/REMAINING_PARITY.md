@@ -732,7 +732,17 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   balanced-filter extraction, directional-arrow labels, Summarised/no-collection fallbacks). **Remaining
   (`[~]`):** the `AtlasDataApiTrackingMessageHandler` HTTP `DelegatingHandler` analog (an interceptor on the
   Data-API HTTP client) that feeds the classifier + emits the log pair, and a golden-rendered proof.
-- [ ] **Dapper analog** — N/A directly (raw JDBC covers it); just expose verbosity + classifier on JDBC.
+- [x] **Dapper analog** — N/A directly (raw JDBC covers it); just expose verbosity + classifier on JDBC.
+  **Done:** confirmed + proven. Dapper is a micro-ORM over ADO.NET; its Java analog (plain JDBC / Spring
+  `JdbcTemplate`) is already fully covered by `TrackingDataSource` (which proxies any `Connection`/`Statement`/
+  `ResultSet`), and both named deliverables are already exposed on the JDBC surface: **verbosity** via
+  `SqlTrackingOptions.verbosity`/`setupVerbosity`/`actionVerbosity` and **classification** via the shared
+  `UnifiedSqlClassifier` (driving the method label + URI). Added end-to-end verbosity proof through the
+  *DataSource* path (the way a Dapper/JdbcTemplate user actually consumes it): `TrackingDataSourceTest` now
+  asserts RAW (raw keyword method + `sql://localhost/<db>` host URI + full SQL content) vs SUMMARISED
+  (classifier label + content dropped + scheme-only `sql:///<db>/<table>` URI), complementing the existing
+  recorder-level verbosity coverage (`SqlInteractionRecorderTest`) and the classifier coverage
+  (`UnifiedSqlClassifierTest`). No separate module needed (the .NET note "N/A directly" holds).
 
 ---
 

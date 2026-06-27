@@ -108,4 +108,41 @@ class TrackingDataSourceTest {
         assertThat(logs.get(0).method().value()).isEqualTo("INSERT INTO customers");
         assertThat(logs.get(1).content()).isEqualTo("1 rows affected");
     }
+
+    // --- verbosity + classifier exposed end-to-end through the DataSource (the Dapper/JdbcTemplate analog) ---
+
+    @Test
+    void rawVerbosityThroughDataSourceUsesKeywordMethodAndFullUri() throws Exception {
+        javax.sql.DataSource raw = wrapWith(io.kronikol.core.tracking.TrackingVerbosity.RAW);
+        try (Connection c = raw.getConnection(); Statement s = c.createStatement()) {
+            s.executeUpdate("INSERT INTO customers (id, name) VALUES (40, 'Ada')");
+        }
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs.get(0).method().value()).isEqualTo("INSERT");          // Raw = the raw keyword
+        assertThat(logs.get(0).uri().toString()).isEqualTo("sql://localhost/TRACKINGTEST"); // host + db
+        assertThat(logs.get(0).content()).isEqualTo("INSERT INTO customers (id, name) VALUES (40, 'Ada')");
+    }
+
+    @Test
+    void summarisedVerbosityThroughDataSourceOmitsContentAndUsesSchemeOnlyUri() throws Exception {
+        javax.sql.DataSource summarised = wrapWith(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        try (Connection c = summarised.getConnection(); Statement s = c.createStatement()) {
+            s.executeUpdate("INSERT INTO customers (id, name) VALUES (41, 'Grace')");
+        }
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs.get(0).method().value()).isEqualTo("INSERT");  // classifier's summarised label
+        assertThat(logs.get(0).content()).isNull();                    // Summarised drops the SQL text
+        assertThat(logs.get(0).uri().toString()).isEqualTo("sql:///TRACKINGTEST/customers"); // scheme-only host
+    }
+
+    private static javax.sql.DataSource wrapWith(io.kronikol.core.tracking.TrackingVerbosity verbosity) {
+        JdbcDataSource h2 = new JdbcDataSource();
+        h2.setURL("jdbc:h2:mem:trackingtest;DB_CLOSE_DELAY=-1");
+        return TrackingDataSource.wrap(h2, SqlTrackingOptions.builder()
+            .serviceName("ShopDb").verbosity(verbosity)
+            .testInfoFetcher(() -> new TestInfo("MyTest", "id-1"))
+            .ids(IdGenerator.seeded(1)).build());
+    }
 }
