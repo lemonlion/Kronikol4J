@@ -2,6 +2,21 @@
 
 All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
+## [0.1.25] — unreleased
+
+**Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
+Tier-1 tracker depends on).
+
+### Added
+- **`TrackingVerbosity`** (`kronikol4j-core`) — the shared verbosity scale unifying the two
+  structurally-identical .NET per-tracker enums (`MessageTrackerVerbosity`, `SqlTrackingVerbosityLevel`).
+  Three levels `RAW` / `DETAILED` / `SUMMARISED` (+ `DEFAULT = DETAILED`) with `includesPayload()` and
+  `includesRawDetail()` capturing the only two distinctions the .NET trackers make. Composes with the
+  existing generic `PhaseConfiguration.effectiveVerbosity(...)` / `shouldTrack(...)` for base + setup/action
+  per-phase resolution. Proven by `TrackingVerbosityTest`.
+  - *Parity decision:* the `HeadersOnly` / `None` levels speculatively listed in the roadmap do **not**
+    exist in the .NET source and were deliberately not modelled (no behaviour to mirror → would be a stub).
+
 ## [0.1.24] — first published release
 
 The first version published to **Maven Central** (`io.github.lemonlion:kronikol4j-*`). No library changes

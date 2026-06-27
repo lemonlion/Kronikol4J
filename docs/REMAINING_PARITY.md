@@ -157,8 +157,15 @@ shape the data. This is PORT_PLAN "Phase 5+ breadth" — additive work against a
 
 These are shared mechanisms the .NET trackers all use. Building them once unblocks the per-integration work.
 
-- [ ] **Verbosity framework** — a shared `TrackingVerbosity` enum (`Raw` / `Detailed` / `Summarised` /
-  `HeadersOnly` / `None`) + the per-tracker resolution logic. .NET every tracker has it; Java has none.
+- [x] **Verbosity framework** — shared `TrackingVerbosity` enum + per-tracker resolution logic.
+  **Resolved:** the .NET source of truth defines exactly three levels (`Raw` / `Detailed` / `Summarised`),
+  duplicated across `MessageTrackerVerbosity` + `SqlTrackingVerbosityLevel`; the `HeadersOnly` / `None`
+  levels originally floated here do **not** exist anywhere in `c:\Code\Kronikol\src\Kronikol`, so they were
+  deliberately not modelled (an unbacked enum member would be a stub). Java now has
+  `io.kronikol.core.tracking.TrackingVerbosity` (RAW/DETAILED/SUMMARISED + `DEFAULT`, `includesPayload()`,
+  `includesRawDetail()`). The per-tracker resolution logic already existed as the generic
+  `PhaseConfiguration.effectiveVerbosity(...)` / `shouldTrack(...)`; `TrackingVerbosity` composes with it.
+  Per-tracker *wiring* lands with each Tier-1 adapter. Proven by `TrackingVerbosityTest`.
 - [ ] **Phase-aware tracking suppression** — wire `PhaseConfiguration.shouldTrack()` (already in
   `kronikol4j-core`) into every extension execution path, honoring `TrackDuringSetup` / `TrackDuringAction`
   + `SetupVerbosity` / `ActionVerbosity`. Currently no Java tracker consults phase at all.
