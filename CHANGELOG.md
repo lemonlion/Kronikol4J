@@ -42,6 +42,17 @@ Tier-1 tracker depends on).
   arrow labels), `getRawKeyword`, `extractProcName`. Placed in zero-dependency core so JDBC, ClickHouse,
   Spanner and Bigtable share one classifier. Proven by `UnifiedSqlClassifierTest` (18 cases). Per-adapter
   wiring (and the Redis/Mongo/Elasticsearch/gRPC/cloud classifiers) lands with each adapter.
+- **`TrackingSafeSerializer`** (`kronikol4j-core`, new `io.kronikol.core.serialization` package) — Java port
+  of the .NET safe serializer that turns arbitrary captured values into JSON note content. Ports the guard
+  layer (null, mock-proxy → `"<mock proxy>"`, future/`CompletableFuture` unwrapping → result or
+  `"<pending Task>"`, `Object[]` filtering by skip-types/mock-proxies while keeping null elements) plus a
+  dependency-free reflective JSON writer — maps, collections, arrays, records, public-getter POJOs and
+  primitives — with `IgnoreCycles`-style circular-reference handling, a configurable max depth, null-property
+  stripping, UnsafeRelaxed escaping, and a quoted-`toString()` fallback on any failure (matching the .NET
+  `catch`). `TrackingSerializerOptions` carries `maxDepth`/`writeIndented`/`unwrapFutures`/`skipMockProxies`/
+  `skipTypes`/`mockProxyMarkers`. Platform adaptations: `mockProxyMarkers` is configurable (replacing the
+  hard-coded `Castle.Proxies`) and `FilterCancellationTokens` is dropped (no Java analog — use `skipTypes`).
+  Proven by `TrackingSafeSerializerTest` (14 cases).
 
 ## [0.1.24] — first published release
 

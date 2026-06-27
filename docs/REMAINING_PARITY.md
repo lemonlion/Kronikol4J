@@ -195,8 +195,17 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `getRawKeyword`, `extractProcName`. Placed in core (zero-dep) since JDBC/ClickHouse/Spanner/Bigtable all
   share it. Proven by `UnifiedSqlClassifierTest` (18 cases). The Redis/Mongo/Elasticsearch/gRPC/cloud
   classifiers are tracked under their respective Tier-1 adapter items and land with each adapter.
-- [ ] **`TrackingSafeSerializer` equivalent** — mock-proxy detection, `Future`/`CompletableFuture` result
+- [x] **`TrackingSafeSerializer` equivalent** — mock-proxy detection, `Future`/`CompletableFuture` result
   unwrapping, circular-ref handling, `MaxDepth`, `SkipTypes`. (.NET `Tracking/TrackingSafeSerializer.cs`.)
+  **Done:** `io.kronikol.core.serialization.TrackingSafeSerializer` + `TrackingSerializerOptions`. Ports the
+  guard layer (null→null, mock-proxy→`"<mock proxy>"`, future unwrap→value/`"<pending Task>"`, `Object[]`
+  filtering by skip-types/proxies keeping nulls) and — because the JDK has no reflective JSON and core is
+  zero-dep — a dependency-free reflective JSON writer (maps/collections/arrays/records/getter-POJOs/
+  primitives) with IgnoreCycles-style cycle handling, a max-depth guard, null-property stripping, UnsafeRelaxed
+  escaping, and a quoted-`toString()` fallback on failure. Two .NET fields adapted to the platform:
+  `mockProxyMarkers` (configurable, replaces the hard-coded `Castle.Proxies`) and dropping
+  `FilterCancellationTokens` (no Java analog → use `skipTypes`). Proven by `TrackingSafeSerializerTest`
+  (14 cases). Per-adapter wiring (e.g. `TrackingProxy` serializer options) lands with those adapters.
 - [ ] **`CorrelationKeys` completion** — add the 6 missing key-format helpers: `cosmos(svc,partition,doc)`
   3-arg, `eventHubs`, `pubSub`, `sqs`, `sns`, `storageQueue`. (.NET `CorrelationKeys.cs`.)
 - [ ] **`ProcessingCorrelation` async wrappers** — `CompletableFuture`/`Callable` handler wrapping (Java has
