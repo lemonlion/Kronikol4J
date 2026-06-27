@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 MongoDB (classifier)
+- **`MongoDbOperationClassifier`** (`kronikol4j-mongodb`, + `MongoDbOperation`, `MongoDbOperationInfo`) —
+  Java port of the .NET Mongo classifier over `org.bson.BsonDocument` (bson `compileOnly`). 26 operations
+  with change-stream detection (`aggregate` + `$changeStream` → Watch), collection/filter/document-id
+  extraction, insert document count, aggregation pipeline-stage names, and GridFS detection; `getDiagramLabel`
+  builds directional-arrow labels (`←` read / `↔` find-and-modify / `→` write) with `(×N)` / pipeline-stage /
+  `(GridFS)` annotations. Proven by `MongoDbOperationClassifierTest`. The driver `CommandListener` auto-capture
+  plumbing follows.
+
 ### Added — Tier-1 Redis (classifier)
 - **`RedisOperationClassifier`** (`kronikol4j-redis`, + `RedisOperation`, `RedisCacheResult`,
   `RedisOperationInfo`) — Java port of the .NET Redis classifier. Maps 40+ command names to 17 typed

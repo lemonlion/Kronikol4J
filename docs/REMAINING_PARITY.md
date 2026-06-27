@@ -309,10 +309,17 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   through untracked. Proven by `RedisCommandsTrackerTest` (fake `RedisCommands` proxy — no server needed:
   GET hit/miss, SET, Object-method pass-through). **Remaining:** a Jedis wrapper, per-connection database-
   number extraction (currently 0), and a golden-rendered proof.
-- [ ] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
+- [~] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
   analog) for true two-phase correlation; operation classification; filter extraction; response document
   preview; `autoCorrelateWrites`; `ignoredCommands`; change-stream support. *(.NET
   `MongoDbTrackingSubscriber.cs`.)*
+  **Classifier done:** `MongoDbOperationClassifier` (+ `MongoDbOperation`, `MongoDbOperationInfo`) ports the
+  full .NET classifier over `org.bson.BsonDocument` (bson `compileOnly`) — 26 operations, change-stream
+  detection (`aggregate` + `$changeStream` → Watch), collection/filter/document-id extraction, insert document
+  count, pipeline-stage names, GridFS detection, and `getDiagramLabel` with directional arrows (`←`/`↔`/`→`),
+  `(×N)` count + pipeline-stage + `(GridFS)` annotations. Proven by `MongoDbOperationClassifierTest` (8
+  cases). **Remaining:** register a driver `CommandListener` for two-phase correlation (the auto-capture
+  plumbing), `autoCorrelateWrites`, `ignoredCommands`, response document preview, and a golden-rendered proof.
 - [ ] **Kafka / messaging** (`kronikol4j-messaging`) — **producer/consumer wrappers that stamp + read
   `kronikol-test-name`/`kronikol-test-id` in Kafka message headers** (this is what enables cross-service
   event-driven correlation — currently impossible in Java); Subscribe/Commit/Flush/Unsubscribe/Assign op
