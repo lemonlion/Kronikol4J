@@ -206,8 +206,11 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `mockProxyMarkers` (configurable, replaces the hard-coded `Castle.Proxies`) and dropping
   `FilterCancellationTokens` (no Java analog → use `skipTypes`). Proven by `TrackingSafeSerializerTest`
   (14 cases). Per-adapter wiring (e.g. `TrackingProxy` serializer options) lands with those adapters.
-- [ ] **`CorrelationKeys` completion** — add the 6 missing key-format helpers: `cosmos(svc,partition,doc)`
+- [x] **`CorrelationKeys` completion** — add the 6 missing key-format helpers: `cosmos(svc,partition,doc)`
   3-arg, `eventHubs`, `pubSub`, `sqs`, `sns`, `storageQueue`. (.NET `CorrelationKeys.cs`.)
+  **Done:** all 6 added to `io.kronikol.core.context.CorrelationKeys` with byte-identical prefixes
+  (`cosmos:`/`eventhubs:`/`pubsub:`/`sqs:`/`sns:`/`storagequeue:`). Proven by `CorrelationKeysTest`
+  (covers all 11 helpers).
 - [ ] **`ProcessingCorrelation` async wrappers** — `CompletableFuture`/`Callable` handler wrapping (Java has
   only sync `Consumer` forms). (.NET `ProcessingCorrelation.cs:21`.)
 - [ ] **`TestCorrelationStore` gaps** — `onResolveMiss` callback, `remove(key)`, `seed(...)`, public TTL.

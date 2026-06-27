@@ -53,6 +53,10 @@ Tier-1 tracker depends on).
   `skipTypes`/`mockProxyMarkers`. Platform adaptations: `mockProxyMarkers` is configurable (replacing the
   hard-coded `Castle.Proxies`) and `FilterCancellationTokens` is dropped (no Java analog — use `skipTypes`).
   Proven by `TrackingSafeSerializerTest` (14 cases).
+- **`CorrelationKeys` completion** (`kronikol4j-core`) — added the 6 missing key-format helpers to reach
+  parity with .NET: `cosmos(serviceName, partitionKey, documentId)` (3-arg), `eventHubs`, `pubSub`, `sqs`,
+  `sns`, `storageQueue`, with byte-identical prefixes so write-time auto-population and processing-time
+  resolution agree across runtimes. Proven by `CorrelationKeysTest` (all 11 helpers).
 
 ## [0.1.24] — first published release
 
