@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-3 integration modules
+- **`kronikol4j-eventhubs`** (new module) — Azure Event Hubs tracking (classifier + options + recorder, the
+  .NET `EventHubsTracker` analog). `EventHubsOperationClassifier` maps SDK method names to operations (incl.
+  the `SendAsync`+count>1 → `SendBatch` split) and labels them across Raw/Detailed/Summarised (directional
+  arrows, `(×N)` batch counts, `hub[partition]`); `EventHubsInteractionRecorder` emits the two-phase pair
+  (event-styled request via `MetaType.EVENT`, `eventhubs:///hub[/partition]` URI, `MessageQueue` → queue
+  shape, phase + Summarised filtering, phase variants). Pure logic + core only. Proven by
+  `EventHubsTrackingTest`; wiki row added. (Producer/consumer SDK wrappers + golden are the follow-up.)
 - **`kronikol4j-bigtable`** (new module) — Cloud Bigtable tracking (classifier + options + recorder, the .NET
   `BigtableTracker` analog). `BigtableOperationClassifier` maps SDK method names (incl. `…Async`) to operations
   and labels them across Raw/Detailed/Summarised (directional arrows, `(×N)` mutation counts, short table

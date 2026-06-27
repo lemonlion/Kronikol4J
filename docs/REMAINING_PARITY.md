@@ -664,7 +664,19 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   correlation, excluded/identity gating, rendered database participant) + wiki row. **Remaining (`[~]`):** a
   Bigtable client SDK hook (gRPC interceptor) that auto-feeds the recorder from real `ReadRows`/`MutateRow`
   calls, and a golden-rendered proof — the same SDK-auto-capture follow-up tracked across the cloud adapters.
-- [ ] **Azure EventHubs** — producer/consumer client wrappers.
+- [~] **Azure EventHubs** — producer/consumer client wrappers.
+  **Done:** new `kronikol4j-eventhubs` module porting the .NET `EventHubsTracker` + classifier + options —
+  `EventHubsOperation` (+ PascalCase `displayName()`), `EventHubsOperationInfo`,
+  `EventHubsOperationClassifier` (method-name → operation incl. the `SendAsync`+count>1 → `SendBatch` split;
+  `getDiagramLabel` across Raw/Detailed/Summarised with directional arrows, `(×N)` batch counts and
+  `hub[partition]` formatting), `EventHubsTrackerOptions`, and `EventHubsInteractionRecorder` — the two-phase
+  `logRequest`/`logResponse` core (event-styled request via `MetaType.EVENT`, `eventhubs:///hub[/partition]`
+  URI, the `MessageQueue` category → queue shape, phase suppression + Summarised filtering, phase variants).
+  Pure logic + core only (no Event Hubs SDK dependency). Proven by `EventHubsTrackingTest` (Send/SendBatch
+  split + labels across verbosity, event-styled pair with partition URI + shared correlation, identity gate,
+  rendered queue participant) + wiki row. **Remaining (`[~]`):** the `TrackingEventHubProducerClient`/
+  `TrackingEventHubConsumerClient` SDK wrappers that auto-feed the recorder from real send/read calls, and a
+  golden-rendered proof — the SDK-auto-capture follow-up tracked across the cloud/messaging adapters.
 - [ ] **Azure Storage Queues** — message-handler analog.
 - [ ] **AWS EventBridge** — interceptor.
 - [ ] **MassTransit analog** — bus observer hooks (Java equivalent: Spring `ApplicationEvent`s / Axon — see
