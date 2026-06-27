@@ -122,7 +122,8 @@ public final class SqlTrackingOptions {
             this.excludedOperations = v == null ? Set.of() : v;
             return this;
         }
-        public Builder maxResponseRows(int v) { this.maxResponseRows = v; return this; }
+        /** Max rows in response content; negative values are treated as 0 (matches .NET). */
+        public Builder maxResponseRows(int v) { this.maxResponseRows = Math.max(0, v); return this; }
         public Builder maxValueDisplayLength(int v) { this.maxValueDisplayLength = v; return this; }
         public Builder responseDetail(SqlResponseDetail v) {
             this.responseDetail = v == null ? SqlResponseDetail.ROW_COUNT_AND_COLUMNS : v;

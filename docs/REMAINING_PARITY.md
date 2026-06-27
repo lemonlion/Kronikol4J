@@ -490,9 +490,22 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   Tier-4 `TestTrackingServerBridge`); `currentStepTypeFetcher`'s Given/And/But→When action-start injection
   needs `TrackingDiagramOverride.startAction` (Tier-4); `internalFlowActivitySources` is consumed by the
   InternalFlow `ActivityListener` (Tier-4 InternalFlow capture).
-- [ ] **`SqlTrackingOptionsBase`** (3/17) — add `verbosity`, `excludedOperations`, `logParameters`,
+- [x] **`SqlTrackingOptionsBase`** (3/17) — add `verbosity`, `excludedOperations`, `logParameters`,
   `logSqlText`, `setup/actionVerbosity`, `trackDuringSetup/Action`, `uriScheme`, `logResponseContent`,
   `maxResponseRows`, `maxValueDisplayLength`, `responseDetail`.
+  **Done:** the Java analog `io.kronikol.jdbc.SqlTrackingOptions` (built out during the JDBC Tier-1 work) now
+  carries every .NET `SqlTrackingOptionsBase` field: `serviceName`, `callerName`, `verbosity`,
+  `setupVerbosity`/`actionVerbosity` (nullable, matching `SqlTrackingVerbosityLevel?`), `testInfoFetcher`
+  (= `currentTestInfoFetcher`), `excludedOperations`, `logParameters`, `logSqlText`, `trackDuringSetup`/
+  `trackDuringAction`, `dependencyCategory`, `uriScheme`, `logResponseContent`, `maxResponseRows`,
+  `maxValueDisplayLength`, `responseDetail`. The obsolete `CallingServiceName` alias and the .NET-DI-specific
+  `HttpContextAccessor` have no Java analog (Java reads server identity through the servlet filter). Verbosity
+  uses the unified `TrackingVerbosity` (the deliberate RAW/DETAILED/SUMMARISED consolidation). This item also
+  added the documented `maxResponseRows` negative→0 clamp at the option boundary, and a full
+  `SqlTrackingOptionsTest` (defaults vs the .NET record, builder round-trip of every field, the clamp, and an
+  immutable-snapshot check on `excludedOperations`). **Consumption note:** `maxResponseRows`/
+  `maxValueDisplayLength` are consumed by `FULL_ROWS` cell-level rendering — the JDBC Tier-1 item's already-
+  documented follow-up; the rest are consumed today by `SqlInteractionRecorder`/`TrackingDataSource`.
 - [ ] **`MessageTrackerOptions`** (2/14) — add `verbosity`, `setup/actionVerbosity`, `trackDuringSetup/
   Action`, `dependencyCategory`, `callerDependencyCategory`, `useHttpContextCorrelation`,
   `currentStepTypeFetcher`, `serializerOptions`.

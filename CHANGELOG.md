@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-2 options
+- **`SqlTrackingOptions`** (`kronikol4j-jdbc`) — verified/completed the `SqlTrackingOptionsBase` parity
+  surface: every .NET field is present (`serviceName`, `callerName`, `verbosity`, `setup`/`actionVerbosity`,
+  `testInfoFetcher`, `excludedOperations`, `logParameters`, `logSqlText`, `trackDuringSetup`/`Action`,
+  `dependencyCategory`, `uriScheme`, `logResponseContent`, `maxResponseRows`, `maxValueDisplayLength`,
+  `responseDetail`). Added the documented `maxResponseRows` negative→0 clamp and a full `SqlTrackingOptionsTest`
+  (defaults, builder round-trip, clamp, immutable-snapshot). `HttpContextAccessor`/`CallingServiceName` have no
+  Java analog. `maxResponseRows`/`maxValueDisplayLength` are consumed by FULL_ROWS rendering (JDBC follow-up).
 - **`HttpTrackingConfig`** (`kronikol4j-http`) — completed the `TestTrackingMessageHandlerOptions` parity
   surface by adding the three remaining fields: `headersToForward` (`List<String>`, defensively copied),
   `currentStepTypeFetcher` (`Supplier<String>`), and `internalFlowActivitySources` (`List<String>`). The
