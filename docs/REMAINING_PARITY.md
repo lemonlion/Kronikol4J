@@ -803,11 +803,27 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   end-to-end `write` of html+data, toggle + format honouring) + wiki page. **Note:** auto-invocation from the
   default end-of-run path (the `generateSpecificationsReport` toggle in `ReportFinalizer`) lands with the
   deferred Tier-2 report-control-flags wiring; a byte-golden capture against real .NET is the usual follow-up.
-- [ ] **InternalFlow CAPTURE side** — `ActivityListener` (subscribe to OTel `ActivitySource`s, excluding the
+- [~] **InternalFlow CAPTURE side** — `ActivityListener` (subscribe to OTel `ActivitySource`s, excluding the
   AppInsights-conflict set) + `SpanStore` + `SpanCollector` (granularity filtering) + `ActivitySourceDiscovery`
   + DI/eager-start registration. The *rendering* is done; nothing currently captures spans. Plus the ~12
   InternalFlow sub-options (`InternalFlowDisplay/Trigger/DiagramStyle/SpanGranularity/...`) and
   `WholeTestFlowVisualization` as a user option.
+  **Capture pipeline done — the "nothing captures spans" gap is closed:** `InternalFlowSpanStore`
+  (`kronikol4j-report`, thread-safe, span-id-deduped store of the runtime-neutral `InternalFlowSpan`),
+  `InternalFlowSpanCollector` (granularity filtering — Full / Manual-by-source / AutoInstrumentation
+  trace-grouping, with a Java-adapted well-known-source set + `io.opentelemetry.*` prefix rule), and
+  `KronikolSpanProcessor` (`kronikol4j-opentelemetry`, an OTel SDK `SpanProcessor` — the Java analog of the
+  .NET `ActivityListener` — that on span-end projects the OTel span to an `InternalFlowSpan` and stores it).
+  `ActivitySourceDiscovery.discoveredSources()` returns the distinct scopes seen (the Java analog — Java has
+  no global ActivitySource registry). The collector output feeds the existing `InternalFlowSegmentBuilder`
+  (rendering already byte-complete). Proven by `InternalFlowSpanStoreTest`, `InternalFlowSpanCollectorTest`
+  (granularity matrix), `KronikolSpanProcessorTest` (real SDK tracer → store, projected fields + parent
+  linkage). **Boundary/remaining:** the .NET "exclude the AppInsights-conflict sources" has no Java analog
+  (no AppInsights DependencyTracking conflict) — documented N/A. **Remaining (`[~]`):** DI/eager-start
+  auto-registration of the `KronikolSpanProcessor` (a Spring Boot starter bean wiring it onto the
+  `SdkTracerProvider`) and exposing the ~12 InternalFlow sub-options + `WholeTestFlowVisualization` on the
+  report-options surface (the rendering enums already exist — this is the config-surface wiring, with the
+  report-control-flags pass).
 - [x] **`TrackingDiagramOverride`** — inject arbitrary PlantUML fragments + programmatic phase boundaries
   (`insertPlantUml`/`startOverride`/`endOverride`/`startAction`/`startSetup`).
   **Done:** `io.kronikol.core.tracking.TrackingDiagramOverride` ports the .NET

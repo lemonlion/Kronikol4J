@@ -8,6 +8,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **InternalFlow span capture** (`kronikol4j-report` + `kronikol4j-opentelemetry`) — closes the "nothing
+  captures spans" gap (rendering was already done). `InternalFlowSpanStore` (thread-safe, span-id-deduped),
+  `InternalFlowSpanCollector` (granularity filtering: Full / Manual-by-source / AutoInstrumentation
+  trace-grouping with a Java-adapted well-known set + `io.opentelemetry.*` prefix), `KronikolSpanProcessor`
+  (an OTel SDK `SpanProcessor` projecting finished spans into `InternalFlowSpan`s — the .NET `ActivityListener`
+  analog), and `ActivitySourceDiscovery`. The collector feeds the existing `InternalFlowSegmentBuilder`. Proven
+  by `InternalFlowSpanStoreTest`/`InternalFlowSpanCollectorTest`/`KronikolSpanProcessorTest`. (DI/eager-start
+  auto-registration + capture sub-options on the report surface are the follow-up.)
 - **Specifications report** (`kronikol4j-report`, `io.kronikol.report.spec`) — the living-documentation view,
   emitted separately from `TestRunReport`. `SpecificationsData` generates the text-only feature/scenario/step
   data in YAML/JSON/XML (`.NET`-identical ordering + `SanitiseForYml`); `SpecificationsReport.write` emits
