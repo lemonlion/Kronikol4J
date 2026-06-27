@@ -7,6 +7,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 AWS (SQS classifier)
+- **`SqsOperationClassifier`** (`kronikol4j-aws`, + `SqsOperation`, `SqsOperationInfo`) — Java port of the
+  .NET SQS classifier: derives the operation from the `X-Amz-Target` header (JSON protocol), falling back to
+  the `Action=` query parameter and form body (query protocol); maps 14 SQS operations and extracts the queue
+  name from the URL path or the `QueueUrl`/`QueueName` body fields. Pure logic (no AWS SDK dependency).
+  Proven by `SqsOperationClassifierTest`. The S3/SNS/DynamoDB classifiers and the AWS SDK v2
+  `ExecutionInterceptor` follow.
+
 ### Added — Tier-1 Elasticsearch (classifier)
 - **`ElasticsearchOperationClassifier`** (`kronikol4j-elasticsearch`, + `ElasticsearchOperation`,
   `ElasticsearchOperationInfo`) — Java port of the .NET classifier: maps an HTTP method + URL path to one of

@@ -382,8 +382,14 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `elasticsearch:///index` URI builder. Pure logic (no ES SDK dep). Proven by
   `ElasticsearchOperationClassifierTest` (6 cases). **Remaining:** the ES Java client callback/transport hook
   that feeds the classifier + emits the log pair, verbosity wiring, and a golden proof.
-- [ ] **AWS** (`kronikol4j-aws`) — real `ExecutionInterceptor` (AWS SDK v2) for S3/DynamoDB/SQS/SNS;
+- [~] **AWS** (`kronikol4j-aws`) — real `ExecutionInterceptor` (AWS SDK v2) for S3/DynamoDB/SQS/SNS;
   per-service classifiers + verbosity + phase. *(.NET ships a `DelegatingHandler` per service.)*
+  **SQS classifier done:** `SqsOperationClassifier` (+ `SqsOperation`, `SqsOperationInfo`) ports the .NET
+  classifier — operation from the `X-Amz-Target` header (JSON protocol), with `Action=` query- and form-body
+  fallbacks (query protocol), 14 mapped operations, and queue-name extraction from the URL path or the
+  `QueueUrl`/`QueueName` body fields. Pure logic (no AWS SDK dep). Proven by `SqsOperationClassifierTest`
+  (6 cases). **Remaining:** the S3, SNS and DynamoDB per-service classifiers, the AWS SDK v2
+  `ExecutionInterceptor` that feeds them + emits the log pair, verbosity/phase wiring, and a golden proof.
 - [ ] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,
   `autoCorrelateWrites`, change-feed key extractor), Blob, Service Bus. *(.NET `CosmosTrackingMessageHandler`
   etc.)*
