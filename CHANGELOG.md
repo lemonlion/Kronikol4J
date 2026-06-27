@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-3 integration modules
+- **AWS EventBridge classifier** (`kronikol4j-aws`) — `EventBridgeOperationClassifier` (+ operation / info)
+  ports the .NET classifier: `X-Amz-Target` (`AWSEvents.<Op>`, case-insensitive) → 28 operations, `PutEvents`
+  body extraction (bus/detailType/source + a string-aware brace scan counting the `Entries` array), rule body
+  extraction, and labels across Raw/Detailed/Summarised (`PutEvents [type] xN`, `ManageRule`/`ManageTargets`/
+  `ManageBus` collapsing). Pure logic, alongside the SQS/SNS/S3/DynamoDB classifiers. Proven by
+  `EventBridgeOperationClassifierTest`. (The AWS SDK v2 `ExecutionInterceptor` + golden are the follow-up.)
 - **Azure Storage Queues classifier** (`kronikol4j-azure`) — `StorageQueueOperationClassifier` (+ operation /
   info) ports the .NET classifier: the `/{queue}/messages[/{messageId}]` path + `comp`/`peekonly` query flags
   + (method, hasMessages, hasMessageId) matrix → 11 operations, with directional-arrow Detailed labels. Pure

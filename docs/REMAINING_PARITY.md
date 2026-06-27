@@ -690,7 +690,19 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `StorageQueueTrackingMessageHandler` HTTP `DelegatingHandler` analog (an interceptor on the Queue REST
   client) that feeds the classifier + emits the log pair, and a golden-rendered proof — the same SDK-auto-
   capture follow-up tracked across the cloud adapters.
-- [ ] **AWS EventBridge** — interceptor.
+- [~] **AWS EventBridge** — interceptor.
+  **Done:** added the EventBridge classifier to `kronikol4j-aws` (alongside the existing SQS/SNS/S3/DynamoDB
+  classifiers) — `EventBridgeOperation` (28 ops + PascalCase `displayName()`), `EventBridgeOperationInfo`
+  (bus/rule/detailType/source/entryCount), and `EventBridgeOperationClassifier`, a full port of the .NET
+  classifier: the `X-Amz-Target` (`AWSEvents.<Op>`, case-insensitive) → operation mapping, `PutEvents` body
+  extraction (top-level/entry `EventBusName`, first entry's `DetailType`/`Source`, and a string-aware
+  brace-depth scan counting the `Entries` array — the dependency-free analog of .NET's `JsonDocument`), rule
+  body extraction (`Name`/`EventBusName`), and `getDiagramLabel` across Raw/Detailed/Summarised (incl.
+  `PutEvents [type] xN`, `ManageRule`/`ManageTargets`/`ManageBus` collapsing). Pure logic (no AWS SDK
+  dependency). Proven by `EventBridgeOperationClassifierTest` (target mapping incl. case-insensitive + Other,
+  PutEvents + rule body extraction, labels across verbosity, Raw bus/count). **Remaining (`[~]`):** the AWS
+  SDK v2 `ExecutionInterceptor` that feeds the classifier + emits the log pair, and a golden-rendered proof —
+  the same SDK-auto-capture follow-up tracked across the AWS adapters.
 - [ ] **MassTransit analog** — bus observer hooks (Java equivalent: Spring `ApplicationEvent`s / Axon — see
   PORT_PLAN Appendix B open question).
 - [ ] **Atlas Data API** — HTTP-handler analog.
