@@ -18,7 +18,9 @@ actual execution, not AI.
 > starter, Maven Central publishing, and CI are implemented and tested. The entire `PlantUmlCreator`
 > diagram surface and every `ReportGenerator` rendering branch are golden-proven against real .NET. See
 > [CHANGELOG.md](CHANGELOG.md) for the full list and [docs/PORT_PLAN.md](docs/PORT_PLAN.md) for the
-> plan, architecture, and deep-dive analyses (its §0 is the authoritative status & resume guide).
+> plan, architecture, and deep-dive analyses (its §0 captures the original design-time intent). For
+> **current status and how to resume work**, use [docs/REMAINING_PARITY.md](docs/REMAINING_PARITY.md) §0 —
+> the cold-start runbook (repo map, the seams, build/prove commands, a worked example).
 
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-

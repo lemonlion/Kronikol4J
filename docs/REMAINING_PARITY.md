@@ -17,6 +17,127 @@ but incomplete.
 
 ---
 
+## §0 — Cold-start resume guide (read this first)
+
+*Written so a fresh session with zero prior context can resume from this file alone. Everything below was
+verified against the working tree on 2026-06-27; re-confirm paths if the tree has moved.*
+
+### Repos & key locations
+
+| What | Where |
+|---|---|
+| **Java port** (you work here) | `c:\Code\Kronikol4J` — git branch `main`, origin `github.com/lemonlion/Kronikol4J` (push authorized) |
+| **.NET source of truth** (behavioral spec — read, don't translate line-by-line) | `c:\Code\Kronikol\src\Kronikol` |
+| **Wiki** | `c:\Code\Kronikol4J.wiki` → `github.com/lemonlion/Kronikol4J.wiki.git` (branch `master`) |
+| **Parity harness** (drives REAL .NET, emits goldens) | `parity-harness/dotnet-capture/` (`Capture.csproj`, `Program.cs`) |
+| **Golden fixtures** (committed) | `kronikol4j-report/src/test/resources/parity/`, `kronikol4j-diagram/src/test/resources/parity/` |
+| **Golden test** (asserts byte-parity) | `kronikol4j-report/src/test/java/io/kronikol/report/GoldenHtmlParityTest.java` |
+| **Playwright E2E** | `playwright/` (`playwright.config.js`, `tests/`) |
+
+The .NET version pinned into the current goldens is **Kronikol v3.0.43** (see `PINNED_VERSION` in
+`GoldenHtmlParityTest`). If you re-capture against a newer .NET, that constant + the goldens move together.
+
+### How the system fits together — the seams you'll actually touch
+
+Three boundaries (full detail in [PORT_PLAN.md](PORT_PLAN.md) §1; condensed here):
+
+- **Seam A — ingestion (where capture work lands).** *Every* tracker, no matter what it instruments,
+  ultimately builds one `RequestResponseLog` and calls **one sink**:
+  `kronikol4j-core/src/main/java/io/kronikol/core/tracking/RequestResponseLogger.java` → `log(...)`. The data
+  model + builder is `…/core/tracking/RequestResponseLog.java`. **An integration's whole job is: observe a
+  dependency call → build a `RequestResponseLog` (request half + response half, sharing `traceId` +
+  `requestResponseId`) → `log()` it.** Almost all of Tier 1/3 is "do this automatically from an SDK hook
+  instead of making the user call a recorder by hand."
+- **Seam B — context/identity.** Trackers resolve *which test* they belong to via
+  `…/core/context/TestInfoResolver.java` (the fallback cascade), `TestIdentityScope.java` (ambient scope),
+  and `TestCorrelationStore.java` (data-keyed correlation for background work). Phase (Setup vs Action) lives
+  in `…/core/context/PhaseConfiguration.java`. Phase-aware suppression + verbosity (cross-cutting infra
+  below) plug in here.
+- **Seam C — output (DONE — you feed it, you don't rebuild it).** `RequestResponseLog[]` → PlantUML → HTML
+  is byte-complete. You generally only touch it to add an *option* that changes rendering (Tier 2).
+- **Dependency categories** (participant shapes/colors; add `CLICK_HOUSE`/`SPANNER`/`BIGTABLE` here):
+  `…/core/constants/DependencyCategories.java`.
+
+### Build / test / prove (the gate — verified commands)
+
+```bash
+# Full suite (the gate — must stay green):
+c:\Code\Kronikol4J\gradlew.bat -p c:\Code\Kronikol4J test
+# or the whole build incl. compile of every module:
+./gradlew build
+
+# Golden capture loop (when a feature's OUTPUT is observable in the report/diagram):
+#  1. Add/extend a CaptureXxx(...) case in parity-harness/dotnet-capture/Program.cs (fixed GUIDs/times so
+#     fixtures are reproducible — see the existing cases).
+#  2. Capture from the REAL .NET:
+dotnet run --project c:\Code\Kronikol4J\parity-harness\dotnet-capture -c Release
+#     → fixtures are written under parity-harness/dotnet-capture/fixtures/
+#  3. Copy the new fixture into the test resources (…-report or …-diagram)/src/test/resources/parity/.
+#     Keep SCRATCH fixtures gitignored; only commit the golden you assert against.
+#  4. Assert byte-equality from Java (GoldenHtmlParityTest for HTML, or a focused *.puml/json test for
+#     diagram/data). gzip payloads (puml-data, data-flame-z) are asserted DECODED, not byte-raw (plan §6.4).
+
+# Playwright UI check (offline; real render of the generated HTML):
+./gradlew :kronikol4j-report:generatePlaywrightFixture
+cd playwright && npx playwright test
+```
+
+Capture-side behavior is provable end-to-end: drive a real dependency from a Java test, capture the .NET
+equivalent, assert the rendered report matches. For pure logic with no rendered output (e.g. an operation
+classifier's `GET → Get` mapping), a plain TDD unit test is the proof; add a golden only if it changes
+rendered bytes.
+
+### How to know what's already done
+
+1. Run the suite (above) — green = the current committed surface works.
+2. Read `CHANGELOG.md` (newest entry = last milestone) and `git log --oneline -20`.
+3. The report/diagram **output rendering is byte-complete** — do not re-audit it; treat any "add X to the
+   report" as a possibly *new* .NET feature, not a missed gap.
+4. This file's checkboxes are the work ledger. `[ ]` = open. Update them as you land items.
+
+### How to pick & execute the next item
+
+1. Pick the top unchecked item per **Suggested sequencing** (end of this file). Cross-cutting infra first.
+2. Open the cited `.NET` file(s) under `c:\Code\Kronikol\src\Kronikol` — that is the behavioral spec. Read
+   the actual logic (fields, branches, defaults), not just the class name.
+3. Locate the Java target module/file (each item names the module; `kronikol4j-<area>/src/main/java/io/
+   kronikol/<area>/…`). Confirm whether it's MISSING (new file) or PARTIAL (extend).
+4. **TDD (repo rule, non-negotiable):** red → green → refactor. Failing test first — a golden when output is
+   observable, else a unit test. Implement the minimum to pass. Add edge-case tests. Fix any bug you find
+   along the way (repo rule) and add the missing coverage.
+5. Keep the full suite + Playwright green. Update this file's checkbox, add a `CHANGELOG.md` entry, and a
+   wiki page/section for any user-facing feature. Commit a green checkpoint per feature. Version-bump all
+   packages + tag `v{x.y.z}` at milestones (see [CLAUDE.md](../CLAUDE.md) "Versioning & Release").
+
+### Definition of done (per item)
+
+- [ ] Behavior matches the cited .NET source (verified by reading it, not assumed from the name).
+- [ ] Proven by a test: golden (byte-parity, captured from real .NET) where output is observable, else a
+  unit test covering the mapping/branches + edge cases.
+- [ ] Honors the cross-cutting contracts where relevant: verbosity levels, `TrackDuringSetup/Action` phase
+  filtering, identity resolution via Seam B, the `RequestResponseLogger.log` sink.
+- [ ] Full `gradlew test` + Playwright green.
+- [ ] Checkbox ticked here · `CHANGELOG.md` updated · wiki updated (if user-facing) · green commit.
+
+### Anatomy of a work item — worked example: "Redis operation classification" (Tier 1)
+
+1. **Read the spec.** `.NET RedisOperationClassifier.cs` maps 25+ command names → typed operations
+   (`GET → Get`, `SETEX → Set`, `HGET → HashGet`, …) and detects GET hit/miss from the response; the
+   operation + endpoint/db/key feed the diagram URI + note.
+2. **Find the Java target.** `kronikol4j-redis/src/main/java/io/kronikol/redis/RedisTracking.java` — today a
+   bare recorder with a fixed `redis://cache/` URI and no classification (PARTIAL).
+3. **Red.** Add `RedisOperationClassifierTest` asserting the command→operation table + hit/miss detection
+   (pure logic → unit test). It fails (class doesn't exist).
+4. **Green.** Add `RedisOperationClassifier`, wire it into `RedisTracking` so the `RequestResponseLog` it
+   builds carries the classified operation + a `redis://<endpoint>/<db>?key=…` URI.
+5. **Prove the rendered effect.** Because the operation now changes the diagram note/URI, capture a .NET
+   golden of a report containing a Redis interaction (add a `CaptureXxx` case in `Program.cs`), copy it to
+   `kronikol4j-report/src/test/resources/parity/`, and assert the Java report matches byte-for-byte.
+6. **Edge cases + done.** Unknown command → fallback; hit vs miss; verbosity levels (depends on the
+   cross-cutting verbosity infra — do that first). Tick the checkbox, CHANGELOG, wiki, commit.
+
+---
+
 ## The reframe — what is already DONE vs what remains
 
 **DONE (do not re-litigate):** the report/diagram **OUTPUT rendering**. Given a set of
