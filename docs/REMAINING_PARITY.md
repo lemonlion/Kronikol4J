@@ -372,8 +372,16 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `GrpcStatusMapping`, and labels via the classifier. Proven by `GrpcStatusMappingTest` +
   `GrpcOperationClassifierTest`. **Remaining:** Protobuf→JSON message rendering (currently the protobuf
   `toString`), verbosity wiring on the interceptor options, and a golden proof.
-- [ ] **Elasticsearch** (`kronikol4j-elasticsearch`) — SDK callback hook; operation classification;
+- [~] **Elasticsearch** (`kronikol4j-elasticsearch`) — SDK callback hook; operation classification;
   verbosity. *(.NET `ElasticsearchTrackingCallbackHandler`.)*
+  **Classifier done:** `ElasticsearchOperationClassifier` (+ `ElasticsearchOperation`,
+  `ElasticsearchOperationInfo`) ports the full .NET classifier — HTTP method + URL-path → one of 24
+  operations (document CRUD by id, `_doc`/`_update`/`_search`/`_count`/`_bulk`/`_mapping`/`_refresh`,
+  index create/delete/exists, `_cluster/health`, `_cat`, `_msearch`, `_reindex`, `_index_template`,
+  scroll), with index/document-id extraction, directional-arrow diagram labels, and the
+  `elasticsearch:///index` URI builder. Pure logic (no ES SDK dep). Proven by
+  `ElasticsearchOperationClassifierTest` (6 cases). **Remaining:** the ES Java client callback/transport hook
+  that feeds the classifier + emits the log pair, verbosity wiring, and a golden proof.
 - [ ] **AWS** (`kronikol4j-aws`) — real `ExecutionInterceptor` (AWS SDK v2) for S3/DynamoDB/SQS/SNS;
   per-service classifiers + verbosity + phase. *(.NET ships a `DelegatingHandler` per service.)*
 - [ ] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,

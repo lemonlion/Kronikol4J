@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 Elasticsearch (classifier)
+- **`ElasticsearchOperationClassifier`** (`kronikol4j-elasticsearch`, + `ElasticsearchOperation`,
+  `ElasticsearchOperationInfo`) — Java port of the .NET classifier: maps an HTTP method + URL path to one of
+  24 operations (document CRUD by id, `_doc`/`_update`/`_search`/`_count`/`_bulk`/`_mapping`/`_refresh`,
+  index create/delete/exists, `_cluster/health`, `_cat`, `_msearch`, `_reindex`, `_index_template`, scroll),
+  extracting the index + document id. Provides directional-arrow diagram labels (`Index → books`,
+  `Search → books`, …) and the `elasticsearch:///index` URI builder. Pure logic (no ES SDK dependency).
+  Proven by `ElasticsearchOperationClassifierTest`. The ES client callback hook follows.
+
 ### Added — Tier-1 gRPC (streaming + status mapping + traceparent)
 - **`GrpcOperationClassifier` + `GrpcOperation`** (`kronikol4j-grpc`) — classify a gRPC `MethodType` (unary /
   server- / client- / duplex-streaming) and build the diagram label, giving streaming calls distinct
