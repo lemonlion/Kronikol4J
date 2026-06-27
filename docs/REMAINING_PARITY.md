@@ -407,9 +407,16 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   parity.) Proven by `AwsServiceRouterTest` (5 cases). **Remaining:** the AWS SDK v2 `ExecutionInterceptor`
   that maps the SDK request `Context` → the router → emits the log pair, verbosity/phase wiring, and a golden
   proof.
-- [ ] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,
+- [~] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,
   `autoCorrelateWrites`, change-feed key extractor), Blob, Service Bus. *(.NET `CosmosTrackingMessageHandler`
   etc.)*
+  **Cosmos classifier done:** `CosmosOperationClassifier` (+ `CosmosOperation`, `CosmosOperationInfo`) ports
+  the .NET classifier — HTTP method + the `/dbs/…/colls/…/docs/…` resource path + the
+  `x-ms-documentdb-isquery`/`-is-upsert` header flags → one of 11 operations (Create/Read/Replace/Patch/Delete/
+  Upsert/Query/List/ExecStoredProc/Batch), with db/collection/document-id extraction and query-text extraction
+  for queries. Pure logic (no Cosmos SDK dep). Proven by `CosmosOperationClassifierTest` (5 cases).
+  **Remaining:** the Blob + Service Bus classifiers, the Azure SDK pipeline policies that feed them + emit the
+  log pair, `autoCorrelateWrites`/change-feed key extractor, and a golden proof.
 - [ ] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
   classifiers + verbosity. *(.NET ships handlers + interceptors per service.)*
 

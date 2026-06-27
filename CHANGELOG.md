@@ -7,6 +7,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 Azure (Cosmos classifier)
+- **`CosmosOperationClassifier`** (`kronikol4j-azure`, + `CosmosOperation`, `CosmosOperationInfo`) — Java port
+  of the .NET Cosmos DB classifier: maps the HTTP method + the `/dbs/…/colls/…/docs/…` resource path + the
+  `x-ms-documentdb-isquery` / `-is-upsert` header flags to one of 11 operations (Create/Read/Replace/Patch/
+  Delete/Upsert/Query/List/ExecStoredProc/Batch), extracting database/collection/document-id and the query
+  text for queries. Pure logic (no Cosmos SDK dependency). Proven by `CosmosOperationClassifierTest`. The
+  Blob/Service Bus classifiers and the Azure SDK pipeline policies follow.
+
 ### Added — Tier-1 AWS (SQS classifier)
 - **`SqsOperationClassifier`** (`kronikol4j-aws`, + `SqsOperation`, `SqsOperationInfo`) — Java port of the
   .NET SQS classifier: derives the operation from the `X-Amz-Target` header (JSON protocol), falling back to
