@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **`TrackingTraceContext`** (`kronikol4j-core` + `kronikol4j-opentelemetry`) — ports the .NET
+  `TrackingTraceContext` (the write counterpart to `OtelBridge`). Core `TrackingTraceContext` is the zero-dep
+  ambient part: `currentTraceId()` + `beginTrace()` → an `AutoCloseable` `TraceScope` that restores the
+  previous id on close (nesting). `OtelTraceContext.createParentContext()` (opentelemetry module) builds a
+  sampled remote parent `SpanContext` from the current trace UUID, or invalid when no scope is active. Proven
+  by `TrackingTraceContextTest` + `OtelTraceContextTest`.
 - **`TrackingDiagramOverride`** (`kronikol4j-core`) — ports the .NET `DefaultTrackingDiagramOverride`:
   `startOverride`/`endOverride`/`insertPlantUml`/`insertTestDelimiter` inject custom PlantUML fragments, and
   `startAction`/`startSetup` mark the Setup→Action boundary (the action-start marker + ambient phase change),

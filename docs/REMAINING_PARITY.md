@@ -797,9 +797,20 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `Track.testIdResolver` static hook; closure-value resolution + `AssertionExpressionFormatter` (readable
   "Order status should be equivalent to 'Confirmed'" text). *(C#-reflection-specific parts — closure-field
   inspection — may be a documented boundary; decide per item. `thatAsync` is N/A in Java.)*
-- [ ] **`TrackingTraceContext`** (`beginTrace`/`createParentContext`) — creates a new ambient trace id and
+- [x] **`TrackingTraceContext`** (`beginTrace`/`createParentContext`) — creates a new ambient trace id and
   builds a parent span context for the proxy's `ActivitySource` (the *write* counterpart to the read-only
   `OtelBridge`). Pairs with the `TrackingProxy` span-lifecycle work. *(.NET `Tracking/TrackingTraceContext.cs`.)*
+  **Done, split across the dependency boundary:** the ambient part is `io.kronikol.core.tracking.
+  TrackingTraceContext` (zero-dep) — `currentTraceId()` + `beginTrace()` returning an `AutoCloseable`
+  `TraceScope` (with `traceId()`) that restores the previous id on close, so traces nest (the .NET
+  `BeginTrace`/`BeginTrace(out)` overloads collapse into the scope's accessor). The OTel part is
+  `io.kronikol.opentelemetry.OtelTraceContext.createParentContext()` (kept in the opentelemetry module so core
+  stays zero-dependency) — builds a sampled **remote** parent `SpanContext` whose 32-hex trace id derives from
+  the current trace UUID (with a fresh random span id), or `SpanContext.getInvalid()` when no scope is active
+  (the .NET `default(ActivityContext)`); complements the read-only `OtelBridge`. Proven by
+  `TrackingTraceContextTest` (push/restore nesting, currentTraceId) + `OtelTraceContextTest` (invalid-when-no-
+  trace, valid sampled-remote parent with UUID-derived trace id + valid span id). The proxy span-lifecycle
+  consumer is the OTel-coupled InternalFlow-capture follow-up.
 - [x] **`TestTrackingServerBridge.getCurrentTestInfo()`** — expose the server-side "read test identity from
   the current request" logic as a public API (today it's internal to `KronikolServletFilter`).
   **Done:** `io.kronikol.servlet.TestTrackingServerBridge` (public) ports the .NET
