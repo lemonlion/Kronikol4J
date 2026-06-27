@@ -9,6 +9,7 @@ description = "Kronikol4J gRPC adapter — a ClientInterceptor that records gRPC
 dependencies {
     api(project(":kronikol4j-core"))
     compileOnly("io.grpc:grpc-api:1.68.0")
+    testImplementation("io.grpc:grpc-api:1.68.0")
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
 }

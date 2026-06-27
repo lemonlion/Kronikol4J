@@ -9,7 +9,10 @@ import io.grpc.ForwardingClientCallListener;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
+import io.kronikol.core.support.IdGenerator;
 import io.kronikol.core.tracking.StatusCode;
+import io.kronikol.core.tracking.TrackingVerbosity;
+import io.kronikol.core.tracking.W3CTraceparent;
 import io.kronikol.grpc.GrpcTracking.GrpcTrackingOptions;
 
 /**
@@ -36,6 +39,10 @@ public final class KronikolClientInterceptor implements ClientInterceptor {
         MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
 
         String fullMethodName = method.getFullMethodName();
+        // Classify the call type so streaming calls get distinct labels (server-/client-/duplex-stream).
+        GrpcOperation operation = GrpcOperationClassifier.classify(method.getType());
+        String methodLabel = GrpcOperationClassifier.getDiagramLabel(
+            operation, GrpcTracking.methodName(fullMethodName), fullMethodName, TrackingVerbosity.DETAILED);
 
         return new ForwardingClientCall.SimpleForwardingClientCall<>(next.newCall(method, callOptions)) {
             private String requestSummary;
@@ -48,6 +55,10 @@ public final class KronikolClientInterceptor implements ClientInterceptor {
 
             @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
+                // Inject a W3C traceparent so a downstream tracked service joins the trace.
+                W3CTraceparent traceparent = W3CTraceparent.generate(IdGenerator.random());
+                headers.put(TRACEPARENT, traceparent.header());
+
                 Listener<RespT> tracking =
                     new ForwardingClientCallListener.SimpleForwardingClientCallListener<>(responseListener) {
                         private String responseSummary;
@@ -60,10 +71,9 @@ public final class KronikolClientInterceptor implements ClientInterceptor {
 
                         @Override
                         public void onClose(Status status, Metadata trailers) {
-                            StatusCode code = status.isOk()
-                                ? StatusCode.of("OK")
-                                : StatusCode.of(status.getCode().name());
-                            GrpcTracking.record(options, fullMethodName, requestSummary, responseSummary, code);
+                            StatusCode code = GrpcStatusMapping.toHttpStatus(status.getCode());
+                            GrpcTracking.record(options, fullMethodName, methodLabel,
+                                requestSummary, responseSummary, code);
                             super.onClose(status, trailers);
                         }
                     };
@@ -71,4 +81,8 @@ public final class KronikolClientInterceptor implements ClientInterceptor {
             }
         };
     }
+
+    /** Metadata key for the W3C {@code traceparent} header. */
+    private static final Metadata.Key<String> TRACEPARENT =
+        Metadata.Key.of("traceparent", Metadata.ASCII_STRING_MARSHALLER);
 }

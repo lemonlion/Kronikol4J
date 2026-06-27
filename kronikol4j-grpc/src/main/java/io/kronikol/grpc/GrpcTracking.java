@@ -26,9 +26,18 @@ public final class GrpcTracking {
      */
     public static void record(GrpcTrackingOptions options, String fullMethodName,
                               String request, String response, StatusCode status) {
+        record(options, fullMethodName, methodName(fullMethodName), request, response, status);
+    }
+
+    /**
+     * Records a gRPC call with an explicit method label (e.g. {@code "Subscribe (server-stream)"} from
+     * {@link GrpcOperationClassifier}), so streaming call types are distinguished in the diagram.
+     */
+    public static void record(GrpcTrackingOptions options, String fullMethodName, String methodLabel,
+                              String request, String response, StatusCode status) {
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
-            DependencyCategories.GRPC, Method.of(methodName(fullMethodName)), GRPC_URI,
+            DependencyCategories.GRPC, Method.of(methodLabel), GRPC_URI,
             request, status, response);
     }
 

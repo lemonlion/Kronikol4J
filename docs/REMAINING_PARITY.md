@@ -360,9 +360,18 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   integrating `PendingRequestResponseLogs`); `ActivitySource`/OTel span lifecycle for InternalFlow span
   production (`InternalFlowSpanStore.complete(...)`); configurable `uriScheme` (hardcoded `proxy://local/`)
   and `activitySourceName`; `TrackingSafeSerializer` options. *(.NET `TrackingProxy.cs:25,53-116`.)*
-- [ ] **gRPC** (`kronikol4j-grpc`) — extend beyond unary to **server-streaming, client-streaming, duplex**;
+- [~] **gRPC** (`kronikol4j-grpc`) — extend beyond unary to **server-streaming, client-streaming, duplex**;
   Protobuf→JSON; `traceparent` injection; gRPC-status→HTTP-status mapping; verbosity. *(.NET
   `GrpcTrackingInterceptor.cs` overrides 5 call types; Java handles 1.)*
+  **Done:** the Java `ClientInterceptor` is generic over all four call types (gRPC's `ClientCall` abstraction
+  is uniform, so the existing send/receive hooks already cover streaming structurally). Added
+  `GrpcOperationClassifier` (+ `GrpcOperation`) — classifies the `MethodType` and labels streaming calls
+  (`Subscribe (server-stream)` / `(client-stream)` / `(duplex-stream)`); `GrpcStatusMapping` — the
+  gRPC-status→HTTP-status port (NOT_FOUND→404, PERMISSION_DENIED→403, UNAUTHENTICATED→401, …, default 500).
+  The interceptor now injects a W3C `traceparent` (reusing `W3CTraceparent`), maps the close status via
+  `GrpcStatusMapping`, and labels via the classifier. Proven by `GrpcStatusMappingTest` +
+  `GrpcOperationClassifierTest`. **Remaining:** Protobuf→JSON message rendering (currently the protobuf
+  `toString`), verbosity wiring on the interceptor options, and a golden proof.
 - [ ] **Elasticsearch** (`kronikol4j-elasticsearch`) — SDK callback hook; operation classification;
   verbosity. *(.NET `ElasticsearchTrackingCallbackHandler`.)*
 - [ ] **AWS** (`kronikol4j-aws`) — real `ExecutionInterceptor` (AWS SDK v2) for S3/DynamoDB/SQS/SNS;

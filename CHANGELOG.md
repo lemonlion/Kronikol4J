@@ -7,6 +7,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 gRPC (streaming + status mapping + traceparent)
+- **`GrpcOperationClassifier` + `GrpcOperation`** (`kronikol4j-grpc`) — classify a gRPC `MethodType` (unary /
+  server- / client- / duplex-streaming) and build the diagram label, giving streaming calls distinct
+  `(server-stream)` / `(client-stream)` / `(duplex-stream)` labels. Java port of the .NET classifier.
+- **`GrpcStatusMapping`** (`kronikol4j-grpc`) — maps a gRPC `Status.Code` to the HTTP status shown on the
+  response arrow (NOT_FOUND→404, PERMISSION_DENIED→403, UNAUTHENTICATED→401, INVALID_ARGUMENT→400,
+  DEADLINE_EXCEEDED/CANCELLED→408, ALREADY_EXISTS→409, RESOURCE_EXHAUSTED→429, UNAVAILABLE→503,
+  UNIMPLEMENTED→501, default 500), the .NET `MapGrpcStatusToHttp` port.
+- **`KronikolClientInterceptor`** now injects a W3C `traceparent` header, maps the close status via
+  `GrpcStatusMapping`, and labels calls via the classifier (so streaming call types are distinguished). The
+  interceptor was already generic over all four call types. Proven by `GrpcStatusMappingTest` +
+  `GrpcOperationClassifierTest`.
+
 ### Added — Tier-1 messaging (injectable tracker)
 - **`MessageTracker`** (`kronikol4j-messaging`, + `MessageTrackerOptions`) — an injectable (non-static)
   message/event tracker holding per-instance options, the Java port of the .NET `MessageTracker`. Exposes the
