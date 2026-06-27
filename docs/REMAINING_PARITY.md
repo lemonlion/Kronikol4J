@@ -766,9 +766,23 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   weaver (Gradle/Maven bytecode/AST pass that injects the start/complete calls from the annotations — the
   Tier-5 build-tooling item); and async (`CompletableFuture`) step wrappers. (`TabularParameterData`
   tabular-parameter capture in `buildParameters` is now wired — see the `ITabularParameterData` item.)
-- [ ] **TabularAttributes** — `@Inputs`/`@Outputs`/`@HeadOut`/`@HeadIn` annotations + `TabularResolver` +
+- [x] **TabularAttributes** — `@Inputs`/`@Outputs`/`@HeadOut`/`@HeadIn` annotations + `TabularResolver` +
   `TabularDeserializer` + typed `TabularInputs<T>`/`TabularOutputs<T>` + `TabularVerificationException`.
   (Java has only the render-side data model `TabularParameterValue`.) *(.NET `TabularAttributes/`.)*
+  **Done:** new `io.kronikol.report.tabular` package with all named pieces — `@Inputs`/`@Outputs` (repeatable),
+  `@HeadIn`/`@HeadOut`; `TabularDeserializer` (records via canonical ctor, beans via no-arg ctor + setters/
+  public fields; `sanitizeName` = drop-spaces/`&`→`And`/lower; `convertValue` string→enum/primitive/
+  BigInteger/BigDecimal); `TabularInputs<T>` and `TabularOutputs<T>` (both `List<T>` + `TabularParameterData`
+  — so they render as tabular step params; inputs emit per-row `Row N` diagram delimiters on iteration;
+  outputs do position-based `recordActualResult`/`verify` → Matching/Surplus/Missing with per-cell
+  Success/Failure, `AutoCloseable` auto-verify); `TabularResolver.resolve(Method, headInColumns)` reading the
+  annotations + the parameter's generic element type; and `TabularVerificationException`. **Java adaptation
+  (documented):** Java annotations can't carry arbitrary boxed values, so the row annotations are `String[]`
+  and `TabularDeserializer.convertValue` parses each cell to its property type (the .NET attributes take
+  `object?[]`). Proven by `TabularAttributesTest` (12 cases: record deserialization + enum/int conversion,
+  sanitizeName, inputs columns/rows + row delimiters, outputs verify pass/mismatch/surplus/missing + close
+  auto-verify + pre-verify NotProvided, resolver inputs/outputs from annotations) + wiki page. Per-framework
+  `@HeadIn` auto-wiring (calling `TabularResolver`) lands with each test-framework adapter.
 - [ ] **Specifications report** — the separate `Specifications.html` + `Specifications.yaml` outputs and
   their options (`generateSpecificationsReport`, `specificationsTitle`, filenames, `showStepNumbers`, …).
   Java only emits `TestRunReport.html`.

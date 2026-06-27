@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **TabularAttributes** (`kronikol4j-report`, `io.kronikol.report.tabular`) — declare a test's input/expected
+  rows as `@Inputs`/`@Outputs`/`@HeadIn`/`@HeadOut` annotations (repeatable; `String[]` cells since Java
+  annotations can't carry boxed values). `TabularDeserializer` builds typed records/beans (string→enum/
+  primitive/BigDecimal conversion); `TabularInputs<T>`/`TabularOutputs<T>` are `List<T>` + `TabularParameterData`
+  carriers (inputs emit per-row `Row N` delimiters; outputs do position-based verify → Matching/Surplus/Missing,
+  throwing `TabularVerificationException`, `AutoCloseable` auto-verify); `TabularResolver` builds them from a
+  method's annotations. Proven by `TabularAttributesTest` (12 cases); wiki page added.
 - **`TabularParameterData`** (`kronikol4j-report`, the .NET `ITabularParameterData` — Java drops the `I`) —
   the interface for supplying tabular data as a step parameter (`getColumns`/`getRows`/`isLinkedOutput`), wired
   into `StepCollector.buildParameters` so a tabular value renders as a `TABULAR` step parameter. Proven by
