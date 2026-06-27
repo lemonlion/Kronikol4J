@@ -256,9 +256,14 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   the `IdGenerator` seam; stamps the test-identity + `TRACE_ID` headers and injects a W3C `traceparent`
   (new reusable `io.kronikol.core.tracking.W3CTraceparent`) when absent. Proven by
   `KronikolOkHttpInterceptorTest` (MockWebServer end-to-end: capture, header injection, excluded-host skip,
-  no-test-context skip, summarised verbosity, traceparent passthrough). **Remaining:** JDK
-  `java.net.http.HttpClient` adapter, Spring `WebClient`/Reactor adapter, and arbitrary `headersToForward`
-  propagation from an incoming request context (servlet-coupled) — each in a following iteration.
+  no-test-context skip, summarised verbosity, traceparent passthrough).
+  **JDK `HttpClient` done:** `TrackingHttpClient` — an `HttpClient` decorator (no external dep) wrapping a
+  real client; rebuilds each request with identity/trace headers + traceparent, tees the request body through
+  a capturing `BodyPublisher` (honest body capture despite the write-only publisher model), captures
+  string/byte response bodies, and records the pair for both `send` and both `sendAsync` overloads. Shares
+  one `HttpTrackingConfig` with the OkHttp adapter (generalised from `OkHttpTrackingOptions`). Proven by
+  `TrackingHttpClientTest` (sync + async + tee body + gating). **Remaining:** Spring `WebClient`/Reactor
+  adapter, and arbitrary `headersToForward` propagation from an incoming request context (servlet-coupled).
 - [ ] **SQL / JDBC** (`kronikol4j-jdbc`) — wrap `DataSource`/`Connection`/`Statement`/`ResultSet`; multi-
   dialect `UnifiedSqlClassifier` (table extraction, CTE stripping, upsert variants, stored-proc detection);
   response capture (`TrackingDbDataReader` → row count / columns / rows); per-driver `DependencyCategory`;

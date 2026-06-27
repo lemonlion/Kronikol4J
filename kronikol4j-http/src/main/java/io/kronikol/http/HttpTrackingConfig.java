@@ -11,11 +11,12 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 /**
- * Configuration for {@link KronikolOkHttpInterceptor}. Wires the shared capture infrastructure
- * (service-name resolution, excluded hosts, phase filtering, verbosity, the id seam) into the OkHttp
- * client adapter. Built via {@link #builder()}.
+ * Shared configuration for the HTTP client adapters ({@link KronikolOkHttpInterceptor} and
+ * {@link TrackingHttpClient}). Wires the cross-cutting capture infrastructure — service-name resolution,
+ * excluded hosts, phase filtering, verbosity, the id seam — into whichever client adapter consumes it.
+ * Built via {@link #builder()}.
  */
-public final class OkHttpTrackingOptions {
+public final class HttpTrackingConfig {
 
     private final String fixedServiceName;
     private final String clientName;
@@ -31,7 +32,7 @@ public final class OkHttpTrackingOptions {
     private final TrackingVerbosity verbosity;
     private final IdGenerator ids;
 
-    private OkHttpTrackingOptions(Builder b) {
+    private HttpTrackingConfig(Builder b) {
         this.fixedServiceName = b.fixedServiceName;
         this.clientName = b.clientName;
         this.clientNamesToServiceNames = b.clientNamesToServiceNames;
@@ -62,7 +63,7 @@ public final class OkHttpTrackingOptions {
     public IdGenerator ids() { return ids; }
 
     /** A minimal configuration that resolves participant names from {@code portsToServiceNames}/host. */
-    public static OkHttpTrackingOptions defaults() {
+    public static HttpTrackingConfig defaults() {
         return builder().build();
     }
 
@@ -112,8 +113,8 @@ public final class OkHttpTrackingOptions {
         }
         public Builder ids(IdGenerator v) { this.ids = v == null ? IdGenerator.random() : v; return this; }
 
-        public OkHttpTrackingOptions build() {
-            return new OkHttpTrackingOptions(this);
+        public HttpTrackingConfig build() {
+            return new HttpTrackingConfig(this);
         }
     }
 }

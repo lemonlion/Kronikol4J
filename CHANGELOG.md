@@ -14,8 +14,16 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   (`ServiceNameResolver`), excluded-host skipping, phase-aware suppression, verbosity-gated body capture, and
   the `IdGenerator` seam. Stamps the test-identity + `TRACE_ID` headers and injects a W3C `traceparent` when
   absent so a downstream tracked service joins the trace. Configured via `OkHttpTrackingOptions` (builder).
-  Proven by `KronikolOkHttpInterceptorTest` (MockWebServer end-to-end). JDK `HttpClient` + Spring `WebClient`
-  adapters follow.
+  Proven by `KronikolOkHttpInterceptorTest` (MockWebServer end-to-end). Spring `WebClient` adapter follows.
+- **`TrackingHttpClient`** (`kronikol4j-http`) — a `java.net.http.HttpClient` decorator (no external
+  dependency) that auto-captures every exchange made through it, for `send` and both `sendAsync` overloads.
+  Rebuilds each request with the identity/trace headers + W3C `traceparent`, tees the request body through a
+  capturing `BodyPublisher` (honest body capture despite the write-only publisher model), resolves the
+  participant name, and captures string/byte response bodies. Configured via the shared `HttpTrackingConfig`.
+  Proven by `TrackingHttpClientTest` (sync, async, tee'd body, excluded-host/no-context/summarised gating).
+- **`HttpTrackingConfig`** (`kronikol4j-http`) — shared builder-based configuration for both HTTP client
+  adapters (generalised from the OkHttp-only options), wiring service-name resolution, excluded hosts, phase
+  filtering, verbosity and the id seam.
 - **`W3CTraceparent`** (`kronikol4j-core`) — reusable W3C Trace Context `traceparent` (version 00) value +
   `generate(IdGenerator)`, shared by the HTTP adapter (and the forthcoming gRPC adapter).
 

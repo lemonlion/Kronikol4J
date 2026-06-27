@@ -41,10 +41,10 @@ public final class KronikolOkHttpInterceptor implements Interceptor {
     /** Cap on response bytes peeked for note content — avoids buffering huge payloads into memory. */
     private static final long MAX_PEEK_BYTES = 1_000_000L;
 
-    private final OkHttpTrackingOptions options;
+    private final HttpTrackingConfig options;
     private final ServiceNameResolver resolver;
 
-    public KronikolOkHttpInterceptor(OkHttpTrackingOptions options) {
+    public KronikolOkHttpInterceptor(HttpTrackingConfig options) {
         this.options = options;
         this.resolver = ServiceNameResolver.builder()
             .fixedName(options.fixedServiceName())
