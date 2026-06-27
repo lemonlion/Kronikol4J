@@ -824,8 +824,18 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
 - [ ] **`ITabularParameterData`** — the interface for supplying tabular data as a *step parameter* (distinct
   from the TabularAttributes declaration feature; consumed by step tracking). *(.NET
   `Tracking/Tabular/ITabularParameterData.cs`.)*
-- [ ] **`TrackingHttpMessageHandlerBuilderFilter` analog** — auto-inject tracking into every framework-
+- [x] **`TrackingHttpMessageHandlerBuilderFilter` analog** — auto-inject tracking into every framework-
   created HTTP client (Spring Boot starter currently covers only `RestTemplate`).
+  **Done:** the Spring Boot starter's `KronikolAutoConfiguration` now auto-injects tracking into all three
+  framework-created HTTP clients — the Java analog of .NET's `IHttpMessageHandlerBuilderFilter`: the existing
+  `RestTemplateCustomizer` plus a new `RestClientCustomizer` (reuses the same
+  `KronikolRestTemplateInterceptor`, which is a `ClientHttpRequestInterceptor`, on every `RestClient.Builder`)
+  and a `WebClientCustomizer` (adds `KronikolWebClientFilter` to every `WebClient.Builder`). Each bean is
+  `@ConditionalOnClass`-guarded so it activates only when that client is on the user's classpath (added
+  spring-webflux as `compileOnly`). Proven by `KronikolAutoConfigurationTest` (all three customizer beans
+  registered by default; the RestClient/WebClient customizers actually add our interceptor/filter to a built
+  builder). **Note:** .NET's lower-level `IHttpMessageHandlerBuilderFilter` hooks `IHttpClientFactory`; the
+  idiomatic Spring equivalent is these per-builder customizers (Spring Boot has no single handler-builder seam).
 - [x] **`UnmatchedClientNameRegistry`** — diagnostic registry of unresolved client names (feeds the
   diagnostic report).
   **Done:** `io.kronikol.core.tracking.UnmatchedClientNameRegistry` ports the .NET registry — thread-safe

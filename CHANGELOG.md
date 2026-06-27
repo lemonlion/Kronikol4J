@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **HTTP-client auto-injection** (`kronikol4j-spring-boot-starter`) — the `IHttpMessageHandlerBuilderFilter`
+  analog: the starter now auto-injects tracking into every framework-created HTTP client, not just
+  `RestTemplate`. Added a `RestClientCustomizer` (reuses the `ClientHttpRequestInterceptor`-based
+  `KronikolRestTemplateInterceptor` on each `RestClient.Builder`) and a `WebClientCustomizer` (adds
+  `KronikolWebClientFilter` to each `WebClient.Builder`), each `@ConditionalOnClass`-guarded. Proven by
+  `KronikolAutoConfigurationTest`.
 - **`TrackingTraceContext`** (`kronikol4j-core` + `kronikol4j-opentelemetry`) — ports the .NET
   `TrackingTraceContext` (the write counterpart to `OtelBridge`). Core `TrackingTraceContext` is the zero-dep
   ambient part: `currentTraceId()` + `beginTrace()` → an `AutoCloseable` `TraceScope` that restores the

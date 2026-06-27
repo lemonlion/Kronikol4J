@@ -12,10 +12,13 @@ dependencies {
     compileOnly("org.springframework.boot:spring-boot-autoconfigure:3.3.5")
     compileOnly("org.springframework.boot:spring-boot:3.3.5")
     compileOnly("org.springframework:spring-web:6.1.14")
+    // For the WebClient auto-injection customizer (reactive client); the user brings webflux.
+    compileOnly("org.springframework:spring-webflux:6.1.14")
     compileOnly("jakarta.servlet:jakarta.servlet-api:6.0.0")
 
     testImplementation("org.springframework.boot:spring-boot-autoconfigure:3.3.5")
     testImplementation("org.springframework.boot:spring-boot:3.3.5")
     testImplementation("org.springframework:spring-web:6.1.14")
+    testImplementation("org.springframework:spring-webflux:6.1.14")
     testImplementation("jakarta.servlet:jakarta.servlet-api:6.0.0")
 }

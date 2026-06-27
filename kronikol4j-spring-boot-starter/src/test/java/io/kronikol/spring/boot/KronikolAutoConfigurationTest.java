@@ -4,9 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Properties;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.boot.web.client.RestTemplateCustomizer;
+import org.springframework.boot.web.reactive.function.client.WebClientCustomizer;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.env.PropertiesPropertySource;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
 class KronikolAutoConfigurationTest {
 
@@ -19,6 +23,31 @@ class KronikolAutoConfigurationTest {
             assertThat(ctx.getBean(KronikolProperties.class)).isNotNull();
             assertThat(ctx.containsBean("kronikolServletFilter")).isTrue();
             assertThat(ctx.getBean(RestTemplateCustomizer.class)).isNotNull();
+            // auto-injection extends to the other framework-created clients (RestClient + reactive WebClient)
+            assertThat(ctx.getBean(RestClientCustomizer.class)).isNotNull();
+            assertThat(ctx.getBean(WebClientCustomizer.class)).isNotNull();
+        }
+    }
+
+    @Test
+    void customizersActuallyTrackTheBuiltClients() {
+        try (var ctx = new AnnotationConfigApplicationContext()) {
+            ctx.register(KronikolAutoConfiguration.class);
+            ctx.refresh();
+
+            // RestClient: the customizer adds our request interceptor
+            RestClient.Builder restClient = RestClient.builder();
+            ctx.getBean(RestClientCustomizer.class).customize(restClient);
+            restClient.requestInterceptors(interceptors ->
+                assertThat(interceptors).anySatisfy(i ->
+                    assertThat(i).isInstanceOf(io.kronikol.spring.KronikolRestTemplateInterceptor.class)));
+
+            // WebClient: the customizer adds our exchange filter
+            WebClient.Builder webClient = WebClient.builder();
+            ctx.getBean(WebClientCustomizer.class).customize(webClient);
+            webClient.filters(filters ->
+                assertThat(filters).anySatisfy(f ->
+                    assertThat(f).isInstanceOf(io.kronikol.spring.KronikolWebClientFilter.class)));
         }
     }
 
