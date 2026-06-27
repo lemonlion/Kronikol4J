@@ -8,6 +8,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-2 options
+- **`ScenarioTitleResolver`** + **`StringCasing`** (`kronikol4j-core`, `io.kronikol.core.naming`) — Java port
+  of the .NET title-resolution helpers, placed in core (the zero-dep home matching .NET's `Kronikol`
+  namespace) so every test-framework adapter can call them. `ScenarioTitleResolver` exposes all four public
+  methods: `resolveScenarioTitle` (BDDfy class-name→humanized-method detection), `appendTestParameters`
+  (bracketed param append with 200-char truncation), `formatFeatureName` (Titleize), and
+  `formatScenarioDisplayName` (FQ-name strip → PascalCase split → sentence-case + params). `StringCasing`
+  ports `Titleize` (Humanizer) with a locale-independent title-caser that preserves acronyms. The report
+  module's private `Humanize` copy was deleted and `ParameterGrouper`/`DotNetHtmlReportRenderer` repointed at
+  the shared core classes — HTML goldens stay byte-identical. Proven by `StringCasingTest` (5) +
+  `ScenarioTitleResolverTest` (14) + the unchanged report goldens.
 - **`ComponentDiagramOptions`** (`kronikol4j-report`, new `io.kronikol.report.component` package) — Java port
   of the .NET options record for C4-style component-diagram generation (all 13 fields: `fileName`,
   `embedInTestRunReport`, `title`, `plantUmlTheme`, `participantFilter`, `relationshipLabelFormatter`,

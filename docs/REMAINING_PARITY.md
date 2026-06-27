@@ -492,10 +492,22 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
 - [ ] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*
-- [ ] **`ScenarioTitleResolver`** — `formatScenarioDisplayName` (PascalCase splitting), `formatFeatureName`,
+- [x] **`ScenarioTitleResolver`** — `formatScenarioDisplayName` (PascalCase splitting), `formatFeatureName`,
   `appendTestParameters`, `resolveScenarioTitle` (BDDfy-style). Java uses the framework `getDisplayName()`
   directly, which is fine for JUnit/parameterized but diverges for BDD-style sources. *(.NET
   `ScenarioTitleResolver.cs`.)*
+  **Done:** ported to `kronikol4j-core` (the zero-dep home matching .NET's core `Kronikol` namespace, so every
+  test-framework adapter can call it) as `io.kronikol.core.naming.ScenarioTitleResolver` — all four public
+  methods: `resolveScenarioTitle` (BDDfy class-name→humanized-method detection), `appendTestParameters`
+  (`[p: "v"]` bracket append with 200-char truncation + `…`), `formatFeatureName` (`Titleize`), and
+  `formatScenarioDisplayName` (FQ-name strip → PascalCase split → sentence-case + params). Also ported
+  .NET `StringCasing.Titleize` (Humanizer) as the new public `io.kronikol.core.naming.StringCasing`
+  (locale-independent `toTitleCase` preserving acronyms). **De-duplicated:** the report module previously held
+  a private copy of this logic (`Humanize`, golden-proven); deleted it and repointed `ParameterGrouper` +
+  `DotNetHtmlReportRenderer` at the core classes — the HTML goldens stay byte-identical, confirming behavioural
+  parity. Proven by `StringCasingTest` (5 cases) + `ScenarioTitleResolverTest` (14 cases) + the unchanged
+  report goldens. **Remaining:** per-adapter wiring (BDD/Cucumber test-info builders calling
+  `resolveScenarioTitle`/`appendTestParameters`) lands with each framework adapter that needs it.
 - [ ] **HTML customization wiring** — `HtmlCustomization` (CSS/favicon/logo/step-numbers) exists as a model
   but is **not passed through `ReportFinalizer`** → users can't set it. Wire it + expose via system props.
 - [ ] **CI publish options** — `writeCiSummary`, `maxCiSummaryDiagrams`, `publishCiArtifacts`,

@@ -1,5 +1,6 @@
 package io.kronikol.report;
 
+import io.kronikol.core.naming.StringCasing;
 import io.kronikol.report.html.HtmlEscaper;
 import io.kronikol.report.flow.InternalFlowPopupInput;
 import io.kronikol.report.flow.InternalFlowRenderer;
@@ -1267,7 +1268,7 @@ public final class DotNetHtmlReportRenderer {
             body.append("<tr>");
             for (String name : group.parameterNames()) {
                 body.append("<th class=\"sub-header\">")
-                    .append(HtmlEscaper.encode(titleize ? Humanize.titleize(name) : name)).append("</th>");
+                    .append(HtmlEscaper.encode(titleize ? StringCasing.titleize(name) : name)).append("</th>");
             }
             body.append("</tr>");
         } else {
@@ -1513,7 +1514,7 @@ public final class DotNetHtmlReportRenderer {
         body.append("<tr>");
         for (String name : flatNames) {
             body.append("<th class=\"sub-header\">")
-                .append(HtmlEscaper.encode(titleize ? Humanize.titleize(name) : name)).append("</th>");
+                .append(HtmlEscaper.encode(titleize ? StringCasing.titleize(name) : name)).append("</th>");
         }
         body.append("</tr></thead><tbody>");
 

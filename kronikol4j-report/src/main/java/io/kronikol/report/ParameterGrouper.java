@@ -1,5 +1,6 @@
 package io.kronikol.report;
 
+import io.kronikol.core.naming.ScenarioTitleResolver;
 import io.kronikol.report.model.Scenario;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -64,7 +65,7 @@ final class ParameterGrouper {
         for (Map.Entry<String, List<Scenario>> e : byOutline.entrySet()) {
             List<Scenario> members = e.getValue();
             if (members.size() >= 2 || hasParameters(members)) {
-                groups.add(buildGroup(Humanize.formatScenarioDisplayName(e.getKey()), members, maxColumns,
+                groups.add(buildGroup(ScenarioTitleResolver.formatScenarioDisplayName(e.getKey()), members, maxColumns,
                     diagramByTestId));
             }
             for (Scenario m : members) {

@@ -1,4 +1,4 @@
-package io.kronikol.report;
+package io.kronikol.core.naming;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,61 +7,28 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Port of the .NET {@code StringCasing.Titleize} (Humanizer) and
- * {@code ScenarioTitleResolver.FormatScenarioDisplayName} used to render parameterized-group headers
- * and the group display name. Kept byte-faithful to the .NET output (verified by the golden tests).
+ * String casing utilities for formatting scenario and feature display names. Java port of the .NET
+ * {@code StringCasing} (itself ported from Humanizer under the MIT License). Lives in {@code kronikol4j-core}
+ * — the zero-dependency home matching .NET's core {@code Kronikol} namespace — so every test-framework
+ * adapter ({@link ScenarioTitleResolver}) and the report module share one implementation.
+ *
+ * <p>Parity note: .NET uses {@code CultureInfo.CurrentCulture.TextInfo.ToTitleCase}; this hand-rolled
+ * {@link #toTitleCase} reproduces the observable behaviour (capitalise each whitespace-delimited word,
+ * lower the rest, leave all-uppercase acronyms untouched) without depending on the host locale.
  */
-final class Humanize {
+public final class StringCasing {
 
+    // From Humanizer's StringHumanizeExtensions.
     private static final Pattern PASCAL_CASE_WORD_PARTS = Pattern.compile(
         "(\\p{Lu}?\\p{Ll}+|[0-9]+\\p{Ll}*|\\p{Lu}+(?=\\p{Lu}|[0-9]|\\b)|\\p{Lo}+)[,;]?");
-    private static final Pattern LOWER_TO_UPPER = Pattern.compile("(\\p{Ll})(\\p{Lu})");
-    private static final Pattern UPPER_SEQUENCE = Pattern.compile("(\\p{Lu}+)(\\p{Lu}\\p{Ll})");
-    private static final Pattern MULTIPLE_SPACES = Pattern.compile("\\s+");
 
-    private static final int MAX_PARAMETER_LENGTH = 200;
-
-    private Humanize() {
+    private StringCasing() {
     }
 
     /** Equivalent to Humanizer's {@code Titleize()} (Humanize + ToTitleCase). */
-    static String titleize(String input) {
+    public static String titleize(String input) {
         String humanized = humanize(input);
         return humanized.isEmpty() ? input : toTitleCase(humanized);
-    }
-
-    /** Port of {@code ScenarioTitleResolver.FormatScenarioDisplayName}. */
-    static String formatScenarioDisplayName(String testDisplayName) {
-        String methodPath;
-        String parameters = null;
-
-        int parenIndex = testDisplayName.indexOf('(');
-        if (parenIndex >= 0) {
-            methodPath = testDisplayName.substring(0, parenIndex);
-            String paramContent = trimEnd(testDisplayName.substring(parenIndex + 1), ')');
-            if (!paramContent.isEmpty()) {
-                parameters = paramContent.length() > MAX_PARAMETER_LENGTH
-                    ? paramContent.substring(0, MAX_PARAMETER_LENGTH) + "…"
-                    : paramContent;
-            }
-        } else {
-            methodPath = testDisplayName;
-        }
-
-        int lastDot = methodPath.lastIndexOf('.');
-        String methodName = lastDot >= 0 ? methodPath.substring(lastDot + 1) : methodPath;
-
-        String humanized = splitPascalCase(methodName).replace("_", " ");
-        humanized = MULTIPLE_SPACES.matcher(humanized).replaceAll(" ").strip();
-        humanized = Character.toUpperCase(humanized.charAt(0)) + humanized.substring(1).toLowerCase(Locale.ROOT);
-
-        return parameters != null ? humanized + " [" + parameters + "]" : humanized;
-    }
-
-    private static String splitPascalCase(String input) {
-        String result = LOWER_TO_UPPER.matcher(input).replaceAll("$1 $2");
-        result = UPPER_SEQUENCE.matcher(result).replaceAll("$1 $2");
-        return result;
     }
 
     private static String humanize(String input) {
@@ -138,13 +105,5 @@ final class Humanize {
             }
         }
         return true;
-    }
-
-    private static String trimEnd(String s, char ch) {
-        int end = s.length();
-        while (end > 0 && s.charAt(end - 1) == ch) {
-            end--;
-        }
-        return s.substring(0, end);
     }
 }
