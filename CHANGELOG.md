@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-3 integration modules
+- **`kronikol4j-clickhouse`** (new module) — ClickHouse tracking. `ClickHouseTracking.wrap(dataSource)`
+  delegates to the JDBC `TrackingDataSource` with ClickHouse defaults (service `"ClickHouse"`, the new
+  `DependencyCategories.CLICK_HOUSE` category → database shape, `clickhouse` URI scheme). No ClickHouse driver
+  dependency — works on any ClickHouse JDBC `DataSource` via the shared dynamic-proxy plumbing + the
+  dialect-aware `UnifiedSqlClassifier`. Also added `CLICK_HOUSE`/`SPANNER`/`BIGTABLE` category constants.
+  Proven by `ClickHouseTrackingTest`; wiki row added.
 - **`kronikol4j-hibernate`** (new module) — the ORM/JPA integration point (Java analog of the .NET EF Core
   `SqlTrackingInterceptor`). `KronikolStatementInspector` implements Hibernate's `StatementInspector`:
   each issued SQL statement is classified via the shared `UnifiedSqlClassifier` and recorded as a tracked

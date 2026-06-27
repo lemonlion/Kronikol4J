@@ -39,4 +39,5 @@ include(
     "kronikol4j-elasticsearch",
     "kronikol4j-spock",
     "kronikol4j-hibernate",
+    "kronikol4j-clickhouse",
 )

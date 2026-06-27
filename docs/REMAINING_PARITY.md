@@ -627,8 +627,20 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   row count — full two-phase capture **with** row counts / result-set summaries is delivered by wrapping the
   JPA `DataSource` with the existing JDBC `TrackingDataSource` (documented in the wiki); a dedicated
   Spring-Data auto-registration helper + a golden-rendered proof are the follow-ups.
-- [ ] **ClickHouse** — `TrackingClickHouseConnection/Command/Transaction`; `CLICK_HOUSE` category. (Shared
+- [x] **ClickHouse** — `TrackingClickHouseConnection/Command/Transaction`; `CLICK_HOUSE` category. (Shared
   classifier already understands ClickHouse syntax.)
+  **Done:** new `kronikol4j-clickhouse` module with `ClickHouseTracking` — `wrap(DataSource[, options])`
+  delegates to the JDBC `TrackingDataSource` with ClickHouse defaults (service name `"ClickHouse"`, the new
+  `DependencyCategories.CLICK_HOUSE` category → `database` shape, `clickhouse` URI scheme), plus
+  `options()`/`defaultOptions()` factories. Because Java's JDBC layer is uniform and `TrackingDataSource`
+  already proxies any `Connection`/`Statement`/`ResultSet` (full two-phase + result capture), no
+  ClickHouse-driver-specific connection/command/transaction subclasses are needed — the module has **no**
+  ClickHouse dependency and works on any ClickHouse JDBC `DataSource`; the shared `UnifiedSqlClassifier`
+  already handles ClickHouse syntax (`OPTIMIZE`/`RENAME`/`ATTACH`/`DETACH`/lightweight `ALTER … UPDATE/DELETE`).
+  Added the `CLICK_HOUSE`/`SPANNER`/`BIGTABLE` category constants to `DependencyCategories` (the palette
+  already maps all three to the database shape). Proven by `ClickHouseTrackingTest` (ClickHouse defaults,
+  end-to-end H2 capture with the `clickhouse://` URI + `ClickHouse` category + rendered database participant)
+  + wiki row.
 - [ ] **Spanner** — connection/command/transaction wrappers + async stream reader; `SPANNER` category.
 - [ ] **Bigtable** — `BigtableTracker` + options + classifier; `BIGTABLE` category.
 - [ ] **Azure EventHubs** — producer/consumer client wrappers.
