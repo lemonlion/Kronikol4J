@@ -18,7 +18,15 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   (service/caller, verbosity + setup/action overrides, phase toggles, `uriScheme`, `logSqlText`,
   `logParameters`, `logResponseContent`, `excludedOperations`, `maxResponseRows`, `maxValueDisplayLength`,
   `responseDetail`), a Java port of .NET `SqlTrackingOptionsBase`. Proven by `SqlInteractionRecorderTest`.
-  The `DataSource`/`Connection`/`Statement` proxy plumbing and `ResultSet` response capture follow.
+- **`TrackingDataSource`** (`kronikol4j-jdbc`) — a `DataSource` decorator that auto-captures SQL executions.
+  `TrackingDataSource.wrap(realDs, options)` returns connections that proxy `Statement`/`PreparedStatement`/
+  `CallableStatement` (via dynamic `java.lang.reflect.Proxy`, avoiding hundreds of hand-written delegates),
+  recording `executeQuery`/`executeUpdate`/`executeLargeUpdate` through `SqlInteractionRecorder`. The query
+  `ResultSet` is itself proxied (`ResultSetInvocationHandler`) to count rows and emit the response summary
+  (`"N rows [Col1, Col2]"`, via `SqlResultSummary`) when exhausted or closed — the `TrackingDbDataReader`
+  analog. Proven end-to-end against in-memory H2 (`TrackingDataSourceTest`) + `SqlResultSummaryTest`.
+  `FULL_ROWS` cell JSON, untyped `execute(...)`/batch tracking, and a golden-rendered proof are tracked
+  follow-ups.
 
 ### Added — Tier-1 HTTP (OkHttp)
 - **`KronikolOkHttpInterceptor`** (`kronikol4j-http`) — a real `okhttp3.Interceptor` (okhttp `compileOnly`)

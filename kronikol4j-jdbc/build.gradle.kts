@@ -10,4 +10,6 @@ dependencies {
     api(project(":kronikol4j-core"))
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
+    // In-memory database for end-to-end DataSource-wrapping tests (the JDBC API itself is in the JDK).
+    testImplementation("com.h2database:h2:2.2.224")
 }

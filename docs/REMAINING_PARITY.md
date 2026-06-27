@@ -281,8 +281,16 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   variants — all via the already-built `UnifiedSqlClassifier`/`PhaseConfiguration`/`PhaseVariantExtensions`.
   Backed by `SqlTrackingOptions` (+ `SqlResponseDetail`), which also satisfies most of the Tier-2
   `SqlTrackingOptionsBase` item. Proven by `SqlInteractionRecorderTest` (7 cases across all verbosity levels).
-  **Remaining:** the `DataSource`/`Connection`/`Statement` proxy plumbing that auto-captures executions and
-  the `ResultSet` row/column response capture (`TrackingDbDataReader`), then a golden-rendered proof.
+  **Auto-capture plumbing done:** `TrackingDataSource.wrap(ds, options)` returns a `DataSource` whose
+  connections proxy (dynamic `java.lang.reflect.Proxy`, not hand-written delegates) `Statement`/
+  `PreparedStatement`/`CallableStatement` — recording `executeQuery`/`executeUpdate`/`executeLargeUpdate` via
+  the recorder, with `ResultSet` response capture (`ResultSetInvocationHandler` counts rows and emits
+  `"N rows [Col1, Col2]"` on exhaustion/close, the `TrackingDbDataReader` analog). Response formatting in
+  `SqlResultSummary` (ROW_COUNT_ONLY + ROW_COUNT_AND_COLUMNS, 20-column truncation). Proven end-to-end
+  against in-memory **H2** (`TrackingDataSourceTest`: insert→row count, select→rows+columns, prepared
+  statements) + `SqlResultSummaryTest`. **Remaining (tracked follow-ups):** `FULL_ROWS` cell-level JSON
+  capture; untyped `execute(...)`/`executeBatch()` tracking; a golden-rendered proof; per-driver
+  `DependencyCategory` defaults; the ClickHouse/Spanner/Bigtable modules consume this same plumbing.
 - [ ] **Redis** (`kronikol4j-redis`) — Lettuce/Jedis command hook; `RedisOperationClassifier` (25+
   commands); GET hit/miss; endpoint/db/key in URI; verbosity. *(.NET `RedisTracking*`.)*
 - [ ] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
