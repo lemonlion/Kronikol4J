@@ -21,8 +21,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   cross-service event-driven correlation enabler that was previously impossible in Java.
   `TrackingKafkaProducer.wrap(...)` dynamic-proxies a `Producer` (kafka-clients `compileOnly`): each `send`
   stamps the record headers from the current test identity and records the send via
-  `MessageTracker.trackSendMessage`. Proven by `TrackingKafkaProducerTest` (MockProducer, no broker). The
-  consumer wrapper follows.
+  `MessageTracker.trackSendMessage`. Proven by `TrackingKafkaProducerTest` (MockProducer, no broker).
+- **`TrackingKafkaConsumer`** (`kronikol4j-messaging`) — the receiving side of cross-service correlation.
+  `wrap(...)` dynamic-proxies a `Consumer`: on `poll`, each record carrying the identity headers is read, a
+  `TestIdentityScope` is opened for that test, and the delivery is recorded via
+  `MessageTracker.trackConsumeEvent`. Together with `TrackingKafkaProducer` this completes the loop —
+  producer stamps the headers, consumer reads them and attributes the consume event to the originating test.
+  Proven by `TrackingKafkaConsumerTest` (MockConsumer, no broker).
 
 ### Added — Tier-1 MongoDB (classifier)
 - **`MongoDbOperationClassifier`** (`kronikol4j-mongodb`, + `MongoDbOperation`, `MongoDbOperationInfo`) —

@@ -348,9 +348,14 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   match `TrackingHeaders.MESSAGE_TEST_NAME/ID` for .NET↔Java interop). `TrackingKafkaProducer.wrap(...)`
   dynamic-proxies a `Producer` (kafka-clients `compileOnly`): each `send` stamps the record headers from the
   current identity and tracks the send via `MessageTracker.trackSendMessage`. Proven by
-  `TrackingKafkaProducerTest` (MockProducer, no broker). **Remaining:** the consumer wrapper (read headers →
-  establish identity → `trackConsumeEvent`), Subscribe/Commit/Flush/etc op tracking,
-  `isCurrentRequestFromMyHost()`, `ITrackingComponent` self-registration, and a golden proof.
+  `TrackingKafkaProducerTest` (MockProducer, no broker).
+  **Kafka consumer done:** `TrackingKafkaConsumer.wrap(...)` dynamic-proxies a `Consumer`: on `poll`, each
+  record carrying the identity headers is read, a `TestIdentityScope` is opened for that test, and the
+  delivery is recorded via `MessageTracker.trackConsumeEvent` (note-on-right + `"Ack"`). This closes the
+  cross-service correlation loop (producer stamps → consumer reads → attribution). Proven by
+  `TrackingKafkaConsumerTest` (MockConsumer, no broker: header-attributed consume, untracked-without-headers,
+  records still returned, no scope leakage). **Remaining:** Subscribe/Commit/Flush/Unsubscribe/Assign op
+  tracking, `isCurrentRequestFromMyHost()`, `ITrackingComponent` self-registration, and a golden proof.
 - [ ] **`TrackingProxy` enhancements** (`kronikol4j-proxy`) — `TrackingLogMode` (Immediate **+ Deferred**,
   integrating `PendingRequestResponseLogs`); `ActivitySource`/OTel span lifecycle for InternalFlow span
   production (`InternalFlowSpanStore.complete(...)`); configurable `uriScheme` (hardcoded `proxy://local/`)
