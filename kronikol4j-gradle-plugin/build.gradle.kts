@@ -23,6 +23,9 @@ gradlePlugin {
 
 dependencies {
     implementation(project(":kronikol4j-cli"))
+    // For the ReportOptions.*_PROPERTY system-property key constants. These are compile-time string
+    // constants (inlined into the plugin's constant pool), so compileOnly is sufficient — no runtime dep.
+    compileOnly(project(":kronikol4j-report"))
 }
 
 tasks.withType<JavaCompile>().configureEach {

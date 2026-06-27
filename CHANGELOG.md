@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-2 options
+- **Gradle plugin rich options** (`kronikol4j-gradle-plugin`) — the `kronikol { }` extension now surfaces the
+  full `ReportOptions` configuration surface as typed Gradle properties (diagram colours/theme/setup-styling,
+  note/header controls, `dataFormats`/`generateSchema`, HTML customization, and the CI summary/artifact
+  options) instead of only `-D` flags. `KronikolPlugin` forwards each value the user sets to the matching
+  `-Dkronikol.*` system property on every `Test` task (lists joined with `,`, maps as `k=v`), read by the
+  forked JVM's `ReportOptions.fromSystemProperties()`; unset properties keep the report default. Proven by
+  `KronikolPluginTest`.
 - **CI publish options + machinery** (`kronikol4j-report`, `io.kronikol.report.ci`) — ported `CiEnvironment`
   (+ `detect()` reading `GITHUB_ACTIONS`/`TF_BUILD`), `CiSummaryWriter` (GitHub `$GITHUB_STEP_SUMMARY` / Azure
   `##vso[task.uploadsummary]`), and `CiArtifactPublisher` (GitHub `$GITHUB_OUTPUT` `reports-path`/retention /

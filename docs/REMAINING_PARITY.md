@@ -591,8 +591,22 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `CiPublishTest` (detection, both writer platforms + no-op paths, both publisher platforms + missing-output/
   missing-file paths, options defaults/normalisation, `ReportOptions` carry + system-property round-trip) and
   `ReportFinalizerTest` (end-to-end `CiSummary.md` emission + default-off + system-property path).
-- [ ] **Gradle plugin rich options** — surface `ReportOptions` (colors, formats, schema, …) through the
+- [x] **Gradle plugin rich options** — surface `ReportOptions` (colors, formats, schema, …) through the
   `kronikol {}` extension instead of only `-D` system properties.
+  **Done:** `KronikolExtension` now exposes the full `ReportOptions` configuration surface as typed Gradle
+  properties — diagram styling (`arrowColors`, `participantColors`, `plantUmlTheme`, `separateSetup`,
+  `highlightSetup`, `setupHighlightColor`, `excludedHeaders`, `excludeAllHeaders`, `focusEmphasis`,
+  `focusDeEmphasis`, `graphQlBodyFormat`, `internalFlowTracking`, `truncateNotesAfterLines`,
+  `dependencyColors`, `serviceTypeOverrides`), report data (`dataFormats`, `generateSchema`), HTML
+  customization (`customCss`, `customStyleSheet`, `customFaviconBase64`, `customLogoHtml`, `showStepNumbers`,
+  `generateBlankOnFailedTests`), and CI summary/artifacts (`writeCiSummary`, `maxCiSummaryDiagrams`,
+  `publishCiArtifacts`, `ciArtifactName`, `ciArtifactRetentionDays`). `KronikolPlugin` forwards each value
+  the user actually sets to the matching `-Dkronikol.*` system property on every `Test` task (joining
+  lists with `,` and maps as `k=v,k=v`), where the forked JVM's `ReportOptions.fromSystemProperties()` reads
+  it; unset properties are left untouched so the report keeps its default. Keys come from the
+  `ReportOptions.*_PROPERTY` compile-time constants (`compileOnly` dep → inlined, no runtime dependency).
+  Proven by `KronikolPluginTest` (configured values forwarded across all groups + the unset-properties-not-
+  forwarded path, asserted against the literal key strings as an independent cross-check).
 
 ---
 
