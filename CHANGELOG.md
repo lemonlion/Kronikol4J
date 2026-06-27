@@ -8,6 +8,10 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **`TabularParameterData`** (`kronikol4j-report`, the .NET `ITabularParameterData` — Java drops the `I`) —
+  the interface for supplying tabular data as a step parameter (`getColumns`/`getRows`/`isLinkedOutput`), wired
+  into `StepCollector.buildParameters` so a tabular value renders as a `TABULAR` step parameter. Proven by
+  `StepCollectorTest`.
 - **Step tracking runtime** (`kronikol4j-report`, `io.kronikol.report.step`) — `StepCollector` ports the .NET
   runtime: `startStep`/`completeStep`/`bypassStep` (+ ambient-id overloads), nested sub-steps, keyword
   sequencing (repeated → `And`, `ButWhen` → `But`), the `whenTriggersAction` Setup/Action phase transition,

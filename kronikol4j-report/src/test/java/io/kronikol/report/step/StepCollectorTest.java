@@ -9,6 +9,7 @@ import io.kronikol.core.tracking.RequestResponseLogger;
 import io.kronikol.core.tracking.TestPhase;
 import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.ScenarioStep;
+import io.kronikol.report.model.StepParameter;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -148,6 +149,34 @@ class StepCollectorTest {
         assertThat(step.parameters()).hasSize(1);
         assertThat(step.parameters().get(0).name()).isEqualTo("id");
         assertThat(step.parameters().get(0).inlineValue().value()).isEqualTo("42");
+    }
+
+    @Test
+    void tabularParameterDataBecomesATabularStepParameter() {
+        StepCollector.options(StepCollector.options().withShowStepDelimiters(false));
+        var columns = List.of(new io.kronikol.report.model.TabularParameterValue.TabularColumn("id", true));
+        var rows = List.of(new io.kronikol.report.model.TabularParameterValue.TabularRow(
+            io.kronikol.report.model.TableRowType.MATCHING,
+            List.of(new io.kronikol.report.model.TabularParameterValue.TabularCell("1", null,
+                io.kronikol.report.model.VerificationStatus.NOT_APPLICABLE))));
+        TabularParameterData table = new TabularParameterData() {
+            public List<io.kronikol.report.model.TabularParameterValue.TabularColumn> getColumns() {
+                return columns;
+            }
+
+            public List<io.kronikol.report.model.TabularParameterValue.TabularRow> getRows() {
+                return rows;
+            }
+        };
+
+        StepCollector.startStep(TID, "Given", "rows", new String[] {"data"}, new Object[] {table});
+        StepCollector.completeStep(TID, true, null);
+
+        StepParameter param = StepCollector.getSteps(TID).get(0).parameters().get(0);
+        assertThat(param.kind()).isEqualTo(StepParameter.Kind.TABULAR);
+        assertThat(param.tabularValue().columns()).extracting(
+            io.kronikol.report.model.TabularParameterValue.TabularColumn::name).containsExactly("id");
+        assertThat(param.tabularValue().rows()).hasSize(1);
     }
 
     @Test

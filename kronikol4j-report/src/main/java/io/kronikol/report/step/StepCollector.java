@@ -11,6 +11,7 @@ import io.kronikol.report.model.FileAttachment;
 import io.kronikol.report.model.InlineParameterValue;
 import io.kronikol.report.model.ScenarioStep;
 import io.kronikol.report.model.StepParameter;
+import io.kronikol.report.model.TabularParameterValue;
 import io.kronikol.report.model.VerificationStatus;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -288,10 +289,14 @@ public final class StepCollector {
         int count = Math.min(paramNames.length, paramValues.length);
         List<StepParameter> result = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            // Inline-only for now; ITabularParameterData handling lands with that Tier-4 item.
-            String value = paramValues[i] == null ? "null" : String.valueOf(paramValues[i]);
-            result.add(StepParameter.inline(paramNames[i],
-                new InlineParameterValue(value, null, VerificationStatus.NOT_APPLICABLE)));
+            if (paramValues[i] instanceof TabularParameterData tabular) {
+                result.add(StepParameter.tabular(paramNames[i], new TabularParameterValue(
+                    tabular.getColumns(), tabular.getRows(), tabular.isLinkedOutput())));
+            } else {
+                String value = paramValues[i] == null ? "null" : String.valueOf(paramValues[i]);
+                result.add(StepParameter.inline(paramNames[i],
+                    new InlineParameterValue(value, null, VerificationStatus.NOT_APPLICABLE)));
+            }
         }
         return result;
     }

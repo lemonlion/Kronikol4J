@@ -764,8 +764,8 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `kronikol4j-report` (it produces the report `ScenarioStep` model) using core seams for identity/phase/
   delimiters. Proven by `StepCollectorTest` (12 cases) + wiki page. **Remaining (`[~]`):** the build-time step
   weaver (Gradle/Maven bytecode/AST pass that injects the start/complete calls from the annotations — the
-  Tier-5 build-tooling item); `ITabularParameterData` tabular-parameter capture in `buildParameters`
-  (currently inline-only — lands with that Tier-4 item); and async (`CompletableFuture`) step wrappers.
+  Tier-5 build-tooling item); and async (`CompletableFuture`) step wrappers. (`TabularParameterData`
+  tabular-parameter capture in `buildParameters` is now wired — see the `ITabularParameterData` item.)
 - [ ] **TabularAttributes** — `@Inputs`/`@Outputs`/`@HeadOut`/`@HeadIn` annotations + `TabularResolver` +
   `TabularDeserializer` + typed `TabularInputs<T>`/`TabularOutputs<T>` + `TabularVerificationException`.
   (Java has only the render-side data model `TabularParameterValue`.) *(.NET `TabularAttributes/`.)*
@@ -846,9 +846,16 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   (matching .NET's `IsNullOrEmpty` semantics — stricter than the filter's null-only check). Proven by
   `TestTrackingServerBridgeTest` (request + header-lookup reads, absent headers, blank name/id, null
   request/lookup).
-- [ ] **`ITabularParameterData`** — the interface for supplying tabular data as a *step parameter* (distinct
+- [x] **`ITabularParameterData`** — the interface for supplying tabular data as a *step parameter* (distinct
   from the TabularAttributes declaration feature; consumed by step tracking). *(.NET
   `Tracking/Tabular/ITabularParameterData.cs`.)*
+  **Done:** `io.kronikol.report.step.TabularParameterData` (the Java name drops the `I` prefix) ports the
+  interface — `getColumns()`/`getRows()` (the report-model `TabularColumn`/`TabularRow`) + a default
+  `isLinkedOutput()`. Wired into `StepCollector.buildParameters`: a step parameter value that is a
+  `TabularParameterData` now becomes a `TABULAR` `StepParameter` (`TabularParameterValue(columns, rows,
+  isLinkedOutput)`) instead of an inline value — completing the previously-deferred tabular-param branch of
+  the Step-tracking item. Proven by the new `StepCollectorTest` tabular case. The `TabularInputs<T>`/
+  `TabularOutputs<T>` carriers that implement it land with the Tier-4 TabularAttributes item.
 - [x] **`TrackingHttpMessageHandlerBuilderFilter` analog** — auto-inject tracking into every framework-
   created HTTP client (Spring Boot starter currently covers only `RestTemplate`).
   **Done:** the Spring Boot starter's `KronikolAutoConfiguration` now auto-injects tracking into all three
