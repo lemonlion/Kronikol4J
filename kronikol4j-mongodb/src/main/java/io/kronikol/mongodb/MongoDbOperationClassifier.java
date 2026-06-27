@@ -134,7 +134,7 @@ public final class MongoDbOperationClassifier {
         if (command.containsKey("filter") && command.get("filter").isDocument()) {
             BsonDocument filter = command.get("filter").asDocument();
             if (filter.size() == 1 && filter.containsKey("_id")) {
-                return filter.get("_id").toString();
+                return plainValue(filter.get("_id"));
             }
         }
         if (operation == MongoDbOperation.DELETE && command.containsKey("deletes")
@@ -145,12 +145,39 @@ public final class MongoDbOperationClassifier {
                 if (single.containsKey("q") && single.get("q").isDocument()) {
                     BsonDocument q = single.get("q").asDocument();
                     if (q.size() == 1 && q.containsKey("_id")) {
-                        return q.get("_id").toString();
+                        return plainValue(q.get("_id"));
                     }
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * The natural string of a BSON scalar, matching .NET {@code BsonValue.ToString()} (e.g. a string id
+     * yields its raw value, an ObjectId its hex) rather than Java's {@code BsonString{value='…'}} debug form.
+     * This keeps the extracted document id — and the correlation key built from it — identical across runtimes.
+     */
+    private static String plainValue(BsonValue v) {
+        if (v.isString()) {
+            return v.asString().getValue();
+        }
+        if (v.isInt32()) {
+            return Integer.toString(v.asInt32().getValue());
+        }
+        if (v.isInt64()) {
+            return Long.toString(v.asInt64().getValue());
+        }
+        if (v.isObjectId()) {
+            return v.asObjectId().getValue().toHexString();
+        }
+        if (v.isDouble()) {
+            return Double.toString(v.asDouble().getValue());
+        }
+        if (v.isBoolean()) {
+            return Boolean.toString(v.asBoolean().getValue());
+        }
+        return v.toString();
     }
 
     private static String extractPipelineStages(MongoDbOperation operation, BsonDocument command) {

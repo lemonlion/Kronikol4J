@@ -318,8 +318,16 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   detection (`aggregate` + `$changeStream` → Watch), collection/filter/document-id extraction, insert document
   count, pipeline-stage names, GridFS detection, and `getDiagramLabel` with directional arrows (`←`/`↔`/`→`),
   `(×N)` count + pipeline-stage + `(GridFS)` annotations. Proven by `MongoDbOperationClassifierTest` (8
-  cases). **Remaining:** register a driver `CommandListener` for two-phase correlation (the auto-capture
-  plumbing), `autoCorrelateWrites`, `ignoredCommands`, response document preview, and a golden-rendered proof.
+  cases). **Auto-capture done:** `MongoInteractionRecorder` (two-phase, keyed on the driver request id) +
+  `KronikolMongoCommandListener` (a `com.mongodb.event.CommandListener`, mongodb-driver-core `compileOnly`) +
+  `MongoDbTrackingOptions`. Ports `OnCommandStarted`/`Succeeded`/`Failed`: request/response pair, `mongodb:///db/coll`
+  URI, `ignoredCommands` (handshake/heartbeat defaults) + `getMore` + `excludedOperations` filtering, response
+  metadata (`n=`/`nModified=`/`nUpserted=`) + cursor `firstBatch` document preview, failure→500, and
+  `autoCorrelateWrites` seeding `TestCorrelationStore` for insert/update/find-and-modify by `_id`. Proven by
+  `MongoInteractionRecorderTest` (5 cases). **Bug fixed:** document-id extraction used Java's
+  `BsonValue.toString()` debug form (`BsonString{value='…'}`); now emits the .NET-equivalent natural value so
+  the correlation key matches across runtimes. **Remaining:** document-preview JSON byte-parity (golden) +
+  change-stream end-to-end proof.
 - [ ] **Kafka / messaging** (`kronikol4j-messaging`) — **producer/consumer wrappers that stamp + read
   `kronikol-test-name`/`kronikol-test-id` in Kafka message headers** (this is what enables cross-service
   event-driven correlation — currently impossible in Java); Subscribe/Commit/Flush/Unsubscribe/Assign op

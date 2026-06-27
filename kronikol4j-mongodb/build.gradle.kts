@@ -7,9 +7,11 @@ description = "Kronikol4J MongoDB tracker — records Mongo operations as tracke
 
 dependencies {
     api(project(":kronikol4j-core"))
-    // BSON command documents the classifier inspects (the user brings the Mongo driver).
+    // BSON command documents + the driver CommandListener/events (the user brings the Mongo driver).
     compileOnly("org.mongodb:bson:5.1.4")
+    compileOnly("org.mongodb:mongodb-driver-core:5.1.4")
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
     testImplementation("org.mongodb:bson:5.1.4")
+    testImplementation("org.mongodb:mongodb-driver-core:5.1.4")
 }

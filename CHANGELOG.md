@@ -13,8 +13,19 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   with change-stream detection (`aggregate` + `$changeStream` → Watch), collection/filter/document-id
   extraction, insert document count, aggregation pipeline-stage names, and GridFS detection; `getDiagramLabel`
   builds directional-arrow labels (`←` read / `↔` find-and-modify / `→` write) with `(×N)` / pipeline-stage /
-  `(GridFS)` annotations. Proven by `MongoDbOperationClassifierTest`. The driver `CommandListener` auto-capture
-  plumbing follows.
+  `(GridFS)` annotations. Proven by `MongoDbOperationClassifierTest`.
+- **`MongoInteractionRecorder` + `KronikolMongoCommandListener`** (`kronikol4j-mongodb`, + `MongoDbTrackingOptions`)
+  — auto-captures Mongo commands via a `com.mongodb.event.CommandListener` (mongodb-driver-core `compileOnly`).
+  Two-phase, keyed on the driver request id: started→request, succeeded→response (OK) with metadata
+  (`n=`/`nModified=`/`nUpserted=`) + cursor `firstBatch` document preview, failed→response (500). Honors
+  `ignoredCommands` (handshake/heartbeat defaults), `getMore` suppression, `excludedOperations`, phase
+  filtering, and `autoCorrelateWrites` (seeds `TestCorrelationStore` for insert/update/find-and-modify by
+  `_id`). Proven by `MongoInteractionRecorderTest`.
+
+### Fixed
+- **Mongo document-id extraction** (`MongoDbOperationClassifier`) — used Java's `BsonValue.toString()` debug
+  form (`BsonString{value='…'}`) where .NET yields the natural value; now emits the natural string (raw value /
+  ObjectId hex) so the auto-correlation key is identical across runtimes.
 
 ### Added — Tier-1 Redis (classifier)
 - **`RedisOperationClassifier`** (`kronikol4j-redis`, + `RedisOperation`, `RedisCacheResult`,
