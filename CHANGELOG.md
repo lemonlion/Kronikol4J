@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-3 integration modules
+- **Azure Storage Queues classifier** (`kronikol4j-azure`) — `StorageQueueOperationClassifier` (+ operation /
+  info) ports the .NET classifier: the `/{queue}/messages[/{messageId}]` path + `comp`/`peekonly` query flags
+  + (method, hasMessages, hasMessageId) matrix → 11 operations, with directional-arrow Detailed labels. Pure
+  logic, placed alongside the existing Blob/Cosmos/ServiceBus Azure classifiers. Proven by
+  `StorageQueueOperationClassifierTest`. (The `StorageQueueTrackingMessageHandler` HTTP-handler analog + golden
+  are the follow-up.)
 - **`kronikol4j-eventhubs`** (new module) — Azure Event Hubs tracking (classifier + options + recorder, the
   .NET `EventHubsTracker` analog). `EventHubsOperationClassifier` maps SDK method names to operations (incl.
   the `SendAsync`+count>1 → `SendBatch` split) and labels them across Raw/Detailed/Summarised (directional

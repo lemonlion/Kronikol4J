@@ -677,7 +677,19 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   rendered queue participant) + wiki row. **Remaining (`[~]`):** the `TrackingEventHubProducerClient`/
   `TrackingEventHubConsumerClient` SDK wrappers that auto-feed the recorder from real send/read calls, and a
   golden-rendered proof — the SDK-auto-capture follow-up tracked across the cloud/messaging adapters.
-- [ ] **Azure Storage Queues** — message-handler analog.
+- [~] **Azure Storage Queues** — message-handler analog.
+  **Done:** added the Storage Queues classifier to `kronikol4j-azure` (where the HTTP-path Azure classifiers
+  Blob/Cosmos/ServiceBus already live — Java groups one module per cloud) — `StorageQueueOperation`
+  (+ PascalCase `displayName()`), `StorageQueueOperationInfo` (queue + messageId), and
+  `StorageQueueOperationClassifier`, a full port of the .NET classifier: the
+  `/{queue}/messages[/{messageId}]` path regex + `comp=list`/`comp=metadata`/`peekonly=true` query flags +
+  the (method, hasMessages, hasMessageId) decision matrix → 11 operations (send/receive/peek/delete/update/
+  clear messages, create/delete queue, get-properties/set-metadata, list-queues), with directional-arrow
+  Detailed labels. Pure logic (no Azure SDK dependency). Proven by `StorageQueueOperationClassifierTest`
+  (message + queue + account operations, Other fallbacks, labels). **Remaining (`[~]`):** the
+  `StorageQueueTrackingMessageHandler` HTTP `DelegatingHandler` analog (an interceptor on the Queue REST
+  client) that feeds the classifier + emits the log pair, and a golden-rendered proof — the same SDK-auto-
+  capture follow-up tracked across the cloud adapters.
 - [ ] **AWS EventBridge** — interceptor.
 - [ ] **MassTransit analog** — bus observer hooks (Java equivalent: Spring `ApplicationEvent`s / Axon — see
   PORT_PLAN Appendix B open question).
