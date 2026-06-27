@@ -418,9 +418,14 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   **Blob classifier done:** `BlobOperationClassifier` (+ `BlobOperation`, `BlobOperationInfo`) — HTTP method +
   `/{container}/{blob}` path + `restype`/`comp` query params → 14 operations (blob CRUD, container
   create/delete/list, metadata, copy, put-block/-list, lease), with container/blob extraction. Proven by
-  `BlobOperationClassifierTest` (4 cases). **Remaining:** the Service Bus classifier, the Azure SDK pipeline
-  policies that feed them + emit the log pair, `autoCorrelateWrites`/change-feed key extractor, and a golden
-  proof.
+  `BlobOperationClassifierTest` (4 cases). **Service Bus classifier done:** `ServiceBusOperationClassifier`
+  (+ `ServiceBusOperation`, `ServiceBusOperationInfo`) — SDK method name → one of 17 operations
+  (Send/SendBatch/Schedule/Receive/Peek/Complete/Abandon/DeadLetter/Defer/locks/session-state/processing),
+  entity-path + batch message-count extraction, and directional-arrow Detailed labels (`Send (×3) → q`,
+  `Receive ← q`) with Summarised batch collapsing. Proven by `ServiceBusOperationClassifierTest` (4 cases).
+  **All three Azure service classifiers (Cosmos, Blob, Service Bus) are now done. Remaining:** the Azure SDK
+  pipeline policies that feed them + emit the log pair, `autoCorrelateWrites`/change-feed key extractor, and a
+  golden proof.
 - [ ] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
   classifiers + verbosity. *(.NET ships handlers + interceptors per service.)*
 

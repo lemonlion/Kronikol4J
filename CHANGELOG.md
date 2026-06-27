@@ -17,7 +17,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   the .NET Blob Storage classifier: HTTP method + `/{container}/{blob}` path + `restype`/`comp` query params →
   14 operations (blob upload/download/delete/get-properties, container create/delete/list, set/get metadata,
   copy, put-block, put-block-list, lease), with container + blob extraction. Pure logic. Proven by
-  `BlobOperationClassifierTest`. The Service Bus classifier and the Azure SDK pipeline policies follow.
+  `BlobOperationClassifierTest`.
+- **`ServiceBusOperationClassifier`** (`kronikol4j-azure`, + `ServiceBusOperation`, `ServiceBusOperationInfo`)
+  — Java port of the .NET Service Bus classifier: SDK method name (e.g. `SendMessagesAsync`) → one of 17
+  operations, with entity-path + batch message-count extraction and directional-arrow Detailed labels
+  (`Send (×3) → q`, `Receive ← q`, `Peek ← q`) that collapse to plain `Send`/`Receive` when Summarised. Pure
+  logic. Proven by `ServiceBusOperationClassifierTest`. This completes all three Azure service classifiers
+  (Cosmos, Blob, Service Bus); the Azure SDK pipeline policies follow.
 
 ### Added — Tier-1 AWS (SQS classifier)
 - **`SqsOperationClassifier`** (`kronikol4j-aws`, + `SqsOperation`, `SqsOperationInfo`) — Java port of the
