@@ -44,4 +44,5 @@ include(
     "kronikol4j-bigtable",
     "kronikol4j-eventhubs",
     "kronikol4j-eventbus",
+    "kronikol4j-maven-plugin",
 )

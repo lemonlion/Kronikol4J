@@ -7,6 +7,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-5 tooling
+- **`kronikol4j-maven-plugin`** (new module) — the Maven mirror of the Gradle plugin: a `kronikol4j:report`
+  goal (bound to `verify`) that merges forked-JVM report fragments into one HTML report via the same
+  `MergeCommand` engine. Hand-authored `plugin.xml` descriptor (version-filtered by `processResources`);
+  forked JVMs emit fragments when `kronikol.run.dir` is set on Surefire/Failsafe. Proven by
+  `KronikolReportMojoTest`; wiki page added.
+
 ### Added — Tier-4 features
 - **InternalFlow span capture** (`kronikol4j-report` + `kronikol4j-opentelemetry`) — closes the "nothing
   captures spans" gap (rendering was already done). `InternalFlowSpanStore` (thread-safe, span-id-deduped),

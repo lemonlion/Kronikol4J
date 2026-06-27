@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-authored Maven plugin descriptor (Gradle builds this module, so maven-plugin-plugin does not
+     generate it). The @version@ token is replaced with the build version by processResources. -->
+<plugin>
+  <name>Kronikol4J Maven Plugin</name>
+  <description>Merges Kronikol4J test report fragments into one HTML report.</description>
+  <groupId>io.github.lemonlion</groupId>
+  <artifactId>kronikol4j-maven-plugin</artifactId>
+  <version>@version@</version>
+  <goalPrefix>kronikol4j</goalPrefix>
+  <isolatedRealm>false</isolatedRealm>
+  <inheritedByDefault>true</inheritedByDefault>
+  <mojos>
+    <mojo>
+      <goal>report</goal>
+      <description>Merges the report fragments emitted by forked test JVMs into one HTML report.</description>
+      <requiresDependencyResolution>none</requiresDependencyResolution>
+      <requiresProject>true</requiresProject>
+      <threadSafe>true</threadSafe>
+      <phase>verify</phase>
+      <implementation>io.kronikol.maven.KronikolReportMojo</implementation>
+      <language>java</language>
+      <instantiationStrategy>per-lookup</instantiationStrategy>
+      <executionStrategy>once-per-session</executionStrategy>
+      <parameters>
+        <parameter>
+          <name>fragmentsDir</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Directory the forked test JVMs wrote their fragments to.</description>
+        </parameter>
+        <parameter>
+          <name>outputHtml</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Where the merged HTML report is written.</description>
+        </parameter>
+        <parameter>
+          <name>title</name>
+          <type>java.lang.String</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>The report title.</description>
+        </parameter>
+      </parameters>
+      <configuration>
+        <fragmentsDir implementation="java.io.File"
+                      default-value="${project.build.directory}/kronikol-fragments">${kronikol.fragmentsDir}</fragmentsDir>
+        <outputHtml implementation="java.io.File"
+                    default-value="${project.build.directory}/kronikol-report/TestRunReport.html">${kronikol.outputHtml}</outputHtml>
+        <title implementation="java.lang.String" default-value="Test Run Report">${kronikol.title}</title>
+      </configuration>
+    </mojo>
+  </mojos>
+</plugin>

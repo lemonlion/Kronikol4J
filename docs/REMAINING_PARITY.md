@@ -931,8 +931,18 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
 
 ## Tier 5 — Tooling & onboarding
 
-- [ ] **Maven plugin** — a Mojo mirroring `kronikol4j-gradle-plugin` (fork dir + merge task). Maven users
+- [x] **Maven plugin** — a Mojo mirroring `kronikol4j-gradle-plugin` (fork dir + merge task). Maven users
   currently have only the CLI.
+  **Done:** new `kronikol4j-maven-plugin` module with `KronikolReportMojo` (goal `kronikol4j:report`, bound to
+  the `verify` phase) — merges the report fragments emitted by forked test JVMs into one HTML report by
+  delegating to the same `MergeCommand` engine as the CLI (and the Gradle task), with `fragmentsDir`/
+  `outputHtml`/`title` parameters; it creates the output directory before merging and treats the
+  no-fragments exit code as a no-op. Because Gradle builds this module (no `maven-plugin-plugin`), the Maven
+  descriptor `META-INF/maven/plugin.xml` is hand-authored, with its `@version@` token filtered to the build
+  version by `processResources`. Forked JVMs emit fragments when `kronikol.run.dir` is set via Surefire/
+  Failsafe `systemPropertyVariables` (documented in the wiki + Mojo javadoc — the Maven analog of the Gradle
+  plugin auto-setting it on `Test` tasks). Proven by `KronikolReportMojoTest` (end-to-end merge of a real
+  fragment → HTML, missing/empty fragments-dir no-op, descriptor packaged + version-filtered) + wiki page.
 - [ ] **Project templates / archetypes** — the `dotnet new kronikol-*` analog (Maven archetype / `gradle
   init` skeleton) for each test-framework combo.
 - [ ] **Build-time weaving auto-wiring** — the assertion/step weavers as Gradle/Maven tasks, so users don't
