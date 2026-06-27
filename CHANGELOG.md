@@ -7,6 +7,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-1 Redis (classifier)
+- **`RedisOperationClassifier`** (`kronikol4j-redis`, + `RedisOperation`, `RedisCacheResult`,
+  `RedisOperationInfo`) — Java port of the .NET Redis classifier. Maps 40+ command names to 17 typed
+  operations (GET/SET/INCR/DECR/DEL/EXISTS/EXPIRE/hash/list/set/PUBLISH families), detects GET/HGET cache
+  hit/miss from whether a value was returned, carries the key + database number, and builds the diagram label
+  (`"Get (Hit)"` / `"Get (Miss)"`, Raw→null). Proven by `RedisOperationClassifierTest`. The Lettuce/Jedis
+  command-hook auto-capture plumbing follows.
+
 ### Added — Tier-1 JDBC (log-builder core)
 - **`SqlInteractionRecorder`** (`kronikol4j-jdbc`) — the parity-faithful SQL request/response log builder,
   porting .NET `SqlDiagnosticTracker.LogRequest`/`LogResponse`. Two-phase (returns a `Correlation` token from

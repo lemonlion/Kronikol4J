@@ -291,8 +291,15 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   statements) + `SqlResultSummaryTest`. **Remaining (tracked follow-ups):** `FULL_ROWS` cell-level JSON
   capture; untyped `execute(...)`/`executeBatch()` tracking; a golden-rendered proof; per-driver
   `DependencyCategory` defaults; the ClickHouse/Spanner/Bigtable modules consume this same plumbing.
-- [ ] **Redis** (`kronikol4j-redis`) — Lettuce/Jedis command hook; `RedisOperationClassifier` (25+
+- [~] **Redis** (`kronikol4j-redis`) — Lettuce/Jedis command hook; `RedisOperationClassifier` (25+
   commands); GET hit/miss; endpoint/db/key in URI; verbosity. *(.NET `RedisTracking*`.)*
+  **Classifier done:** `RedisOperationClassifier` (+ `RedisOperation`, `RedisCacheResult`,
+  `RedisOperationInfo`) ports the full .NET classifier — the command→operation table (GET/SET/INCR/DECR/DEL/
+  EXISTS/EXPIRE/hash/list/set/PUBLISH families, 40+ command names), GET/HGET hit/miss detection from whether a
+  value was returned, key + database number, and `getDiagramLabel` (`"Get (Hit)"` / `"Get (Miss)"` /
+  Raw→null). Proven by `RedisOperationClassifierTest`. **Remaining:** the Lettuce/Jedis command-hook plumbing
+  that feeds the classifier and builds the `redis://<endpoint>/<db>?key=…` URI + emits the log pair (the
+  auto-capture wrapper), plus verbosity wiring + a golden-rendered proof.
 - [ ] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
   analog) for true two-phase correlation; operation classification; filter extraction; response document
   preview; `autoCorrelateWrites`; `ignoredCommands`; change-stream support. *(.NET
