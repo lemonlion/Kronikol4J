@@ -14,7 +14,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   (`ServiceNameResolver`), excluded-host skipping, phase-aware suppression, verbosity-gated body capture, and
   the `IdGenerator` seam. Stamps the test-identity + `TRACE_ID` headers and injects a W3C `traceparent` when
   absent so a downstream tracked service joins the trace. Configured via `OkHttpTrackingOptions` (builder).
-  Proven by `KronikolOkHttpInterceptorTest` (MockWebServer end-to-end). Spring `WebClient` adapter follows.
+  Proven by `KronikolOkHttpInterceptorTest` (MockWebServer end-to-end).
+- **`KronikolWebClientFilter`** (`kronikol4j-spring`) — a Spring `ExchangeFilterFunction` (spring-webflux
+  `compileOnly`) that auto-captures each reactive `WebClient` exchange, the third HTTP client adapter. Gating,
+  identity/trace + W3C `traceparent` injection, service-name resolution, and response-body capture by
+  buffering and re-supplying the body so the caller's subscriber still reads it. Proven by
+  `KronikolWebClientFilterTest` (JDK connector + MockWebServer). WebClient *request*-body capture (write-only
+  reactive inserter) is a known follow-up requiring connector-level interception.
 - **`TrackingHttpClient`** (`kronikol4j-http`) — a `java.net.http.HttpClient` decorator (no external
   dependency) that auto-captures every exchange made through it, for `send` and both `sendAsync` overloads.
   Rebuilds each request with the identity/trace headers + W3C `traceparent`, tees the request body through a

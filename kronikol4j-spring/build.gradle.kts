@@ -9,8 +9,12 @@ description = "Kronikol4J Spring integration (plan §7) — a RestTemplate Clien
 dependencies {
     api(project(":kronikol4j-http"))
     compileOnly("org.springframework:spring-web:6.1.14")
+    // WebClient + ExchangeFilterFunction live in spring-webflux (reactive); reactor-core comes transitively.
+    compileOnly("org.springframework:spring-webflux:6.1.14")
     testImplementation("org.springframework:spring-web:6.1.14")
+    testImplementation("org.springframework:spring-webflux:6.1.14")
     testImplementation("org.springframework:spring-test:6.1.14")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
 }

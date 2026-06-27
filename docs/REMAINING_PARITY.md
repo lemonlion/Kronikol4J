@@ -262,8 +262,14 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   a capturing `BodyPublisher` (honest body capture despite the write-only publisher model), captures
   string/byte response bodies, and records the pair for both `send` and both `sendAsync` overloads. Shares
   one `HttpTrackingConfig` with the OkHttp adapter (generalised from `OkHttpTrackingOptions`). Proven by
-  `TrackingHttpClientTest` (sync + async + tee body + gating). **Remaining:** Spring `WebClient`/Reactor
-  adapter, and arbitrary `headersToForward` propagation from an incoming request context (servlet-coupled).
+  `TrackingHttpClientTest` (sync + async + tee body + gating).
+  **Spring `WebClient` done:** `KronikolWebClientFilter` (an `ExchangeFilterFunction`, spring-webflux
+  `compileOnly`) — gating, identity/trace + traceparent injection, service-name resolution, and response-body
+  capture via buffer-and-re-supply (the caller still reads the body). Proven by `KronikolWebClientFilterTest`
+  (JDK connector + MockWebServer). **Remaining (2 small bits):** (a) WebClient *request*-body capture — its
+  body is a write-only reactive `BodyInserter`, readable only at the `ClientHttpConnector` layer (OkHttp/JDK
+  capture both bodies); (b) arbitrary `headersToForward` propagation from an incoming request context
+  (servlet-coupled; overlaps the Tier-2 `TestTrackingMessageHandlerOptions` item).
 - [ ] **SQL / JDBC** (`kronikol4j-jdbc`) — wrap `DataSource`/`Connection`/`Statement`/`ResultSet`; multi-
   dialect `UnifiedSqlClassifier` (table extraction, CTE stripping, upsert variants, stored-proc detection);
   response capture (`TrackingDbDataReader` → row count / columns / rows); per-driver `DependencyCategory`;
