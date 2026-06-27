@@ -246,10 +246,19 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
 Today these expose `record(...)`/`publish(...)` you call by hand. .NET ships SDK hooks that capture
 automatically. Each needs: the real wire adapter + operation classification + verbosity + phase-awareness.
 
-- [ ] **HTTP** (`kronikol4j-http`, `-spring`) — add real client adapters: **OkHttp interceptor**, **JDK
+- [~] **HTTP** (`kronikol4j-http`, `-spring`) — add real client adapters: **OkHttp interceptor**, **JDK
   `java.net.http.HttpClient`**, **Spring `WebClient`/Reactor**. Add service-name resolution chain,
   `ExcludedHosts`, W3C `traceparent` injection, header forwarding, phase filtering. *(.NET
   `TestTrackingMessageHandler.cs`; Java `HttpExchangeRecorder.java` is a bare recorder.)*
+  **OkHttp done:** `KronikolOkHttpInterceptor` (+ `OkHttpTrackingOptions`) — a real `okhttp3.Interceptor`
+  (okhttp `compileOnly`) auto-capturing each exchange. Wires in the shared infra: `ServiceNameResolver`
+  (per-request port), `ExcludedHosts`, phase filtering (`shouldTrack`), `TrackingVerbosity` (body capture),
+  the `IdGenerator` seam; stamps the test-identity + `TRACE_ID` headers and injects a W3C `traceparent`
+  (new reusable `io.kronikol.core.tracking.W3CTraceparent`) when absent. Proven by
+  `KronikolOkHttpInterceptorTest` (MockWebServer end-to-end: capture, header injection, excluded-host skip,
+  no-test-context skip, summarised verbosity, traceparent passthrough). **Remaining:** JDK
+  `java.net.http.HttpClient` adapter, Spring `WebClient`/Reactor adapter, and arbitrary `headersToForward`
+  propagation from an incoming request context (servlet-coupled) — each in a following iteration.
 - [ ] **SQL / JDBC** (`kronikol4j-jdbc`) — wrap `DataSource`/`Connection`/`Statement`/`ResultSet`; multi-
   dialect `UnifiedSqlClassifier` (table extraction, CTE stripping, upsert variants, stored-proc detection);
   response capture (`TrackingDbDataReader` → row count / columns / rows); per-driver `DependencyCategory`;

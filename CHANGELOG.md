@@ -5,7 +5,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 ## [0.1.25] — unreleased
 
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
-Tier-1 tracker depends on).
+Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
+
+### Added — Tier-1 HTTP (OkHttp)
+- **`KronikolOkHttpInterceptor`** (`kronikol4j-http`) — a real `okhttp3.Interceptor` (okhttp `compileOnly`)
+  that auto-captures each outgoing HTTP exchange as a tracked request/response pair, the Java analog of the
+  .NET `TestTrackingMessageHandler`. Wires in the shared infra: per-request service-name resolution
+  (`ServiceNameResolver`), excluded-host skipping, phase-aware suppression, verbosity-gated body capture, and
+  the `IdGenerator` seam. Stamps the test-identity + `TRACE_ID` headers and injects a W3C `traceparent` when
+  absent so a downstream tracked service joins the trace. Configured via `OkHttpTrackingOptions` (builder).
+  Proven by `KronikolOkHttpInterceptorTest` (MockWebServer end-to-end). JDK `HttpClient` + Spring `WebClient`
+  adapters follow.
+- **`W3CTraceparent`** (`kronikol4j-core`) — reusable W3C Trace Context `traceparent` (version 00) value +
+  `generate(IdGenerator)`, shared by the HTTP adapter (and the forthcoming gRPC adapter).
 
 ### Added
 - **`TrackingVerbosity`** (`kronikol4j-core`) — the shared verbosity scale unifying the two
