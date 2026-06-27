@@ -7,6 +7,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-4 features
+- **`UnmatchedClientNameRegistry`** (`kronikol4j-core`) — ports the .NET diagnostic registry of HTTP
+  `clientName` values that matched no `clientNamesToServiceNames` key: thread-safe `record`/`getRecordedNames`
+  (count-descending, ties stable) / `clear`, fed via the `ServiceNameResolver.onUnmatchedClientName` seam.
+  The `DiagnosticReportGenerator` now renders the previously-deferred "⚠ Unmatched HTTP Client Names" section
+  (conditional on a non-empty registry, so the byte-for-byte golden is unaffected). Proven by
+  `UnmatchedClientNameRegistryTest` + the diagnostic-report tests.
+
 ### Added — Tier-3 integration modules
 - **Dapper analog (JDBC verbosity + classifier proof)** (`kronikol4j-jdbc`) — confirmed the Dapper analog is
   fully covered by `TrackingDataSource` + the shared `UnifiedSqlClassifier` + `SqlTrackingOptions` verbosity

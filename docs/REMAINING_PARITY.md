@@ -782,8 +782,17 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `Tracking/Tabular/ITabularParameterData.cs`.)*
 - [ ] **`TrackingHttpMessageHandlerBuilderFilter` analog** — auto-inject tracking into every framework-
   created HTTP client (Spring Boot starter currently covers only `RestTemplate`).
-- [ ] **`UnmatchedClientNameRegistry`** — diagnostic registry of unresolved client names (feeds the
+- [x] **`UnmatchedClientNameRegistry`** — diagnostic registry of unresolved client names (feeds the
   diagnostic report).
+  **Done:** `io.kronikol.core.tracking.UnmatchedClientNameRegistry` ports the .NET registry — thread-safe
+  `record(clientName)` (counts), `getRecordedNames()` (ordered by count descending, ties stable by insertion
+  order to match .NET's stable `OrderByDescending`), and `clear()`. Wired to the existing
+  `ServiceNameResolver.onUnmatchedClientName` seam (an adapter passes `UnmatchedClientNameRegistry::record`).
+  Now that the portable registry exists, the `DiagnosticReportGenerator` renders the previously-deferred
+  "⚠ Unmatched HTTP Client Names" section (the warning table + fix guidance), conditional on a non-empty
+  registry so the byte-for-byte golden (empty registry) is unaffected. Proven by
+  `UnmatchedClientNameRegistryTest` (record/count/ordering/ties/clear/null + the `ServiceNameResolver` wiring)
+  and the diagnostic-report tests (section renders with entries, omitted when empty, golden still byte-equal).
 
 ---
 

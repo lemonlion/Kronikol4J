@@ -28,6 +28,13 @@ import org.junit.jupiter.api.Test;
  */
 class DiagnosticReportGeneratorTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    @org.junit.jupiter.api.AfterEach
+    void resetRegistry() {
+        // The unmatched-client-names section reads a process-wide registry; keep tests isolated.
+        io.kronikol.core.tracking.UnmatchedClientNameRegistry.clear();
+    }
+
     @Test
     void buildHtml_deterministicSections_isByteForByteIdenticalToDotNet() {
         List<RequestResponseLog> logs = List.of(
@@ -57,6 +64,30 @@ class DiagnosticReportGeneratorTest {
             logs, List.of(checkout, lookup), DiagnosticConfig.dotNetDefaults());
 
         assertThat(html).isEqualTo(readFixture("diagnostic-report.html"));
+    }
+
+    @Test
+    void buildHtml_rendersUnmatchedClientNamesSectionWhenRegistryNonEmpty() {
+        io.kronikol.core.tracking.UnmatchedClientNameRegistry.record("OrdersHttpClient");
+        io.kronikol.core.tracking.UnmatchedClientNameRegistry.record("OrdersHttpClient");
+        io.kronikol.core.tracking.UnmatchedClientNameRegistry.record("PaymentsHttpClient");
+
+        String html = DiagnosticReportGenerator.buildHtml(
+            List.of(), List.of(), DiagnosticConfig.dotNetDefaults());
+
+        assertThat(html)
+            .contains("⚠ Unmatched HTTP Client Names")
+            .contains("<tr><td>OrdersHttpClient</td><td>2</td></tr>")   // higher count first
+            .contains("<tr><td>PaymentsHttpClient</td><td>1</td></tr>");
+        // ordering: the count-2 client appears before the count-1 client
+        assertThat(html.indexOf("OrdersHttpClient")).isLessThan(html.indexOf("PaymentsHttpClient"));
+    }
+
+    @Test
+    void buildHtml_omitsUnmatchedClientNamesSectionWhenRegistryEmpty() {
+        String html = DiagnosticReportGenerator.buildHtml(
+            List.of(), List.of(), DiagnosticConfig.dotNetDefaults());
+        assertThat(html).doesNotContain("Unmatched HTTP Client Names");
     }
 
     private static RequestResponseLog log(String testName, String testId, Method method, String uri,
