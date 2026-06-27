@@ -775,8 +775,16 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
 - [ ] **`TrackingTraceContext`** (`beginTrace`/`createParentContext`) — creates a new ambient trace id and
   builds a parent span context for the proxy's `ActivitySource` (the *write* counterpart to the read-only
   `OtelBridge`). Pairs with the `TrackingProxy` span-lifecycle work. *(.NET `Tracking/TrackingTraceContext.cs`.)*
-- [ ] **`TestTrackingServerBridge.getCurrentTestInfo()`** — expose the server-side "read test identity from
+- [x] **`TestTrackingServerBridge.getCurrentTestInfo()`** — expose the server-side "read test identity from
   the current request" logic as a public API (today it's internal to `KronikolServletFilter`).
+  **Done:** `io.kronikol.servlet.TestTrackingServerBridge` (public) ports the .NET
+  `TestTrackingServerBridge.GetCurrentTestInfo` — `getCurrentTestInfo(HttpServletRequest)` and a
+  source-agnostic `getCurrentTestInfo(UnaryOperator<String> headerLookup)` overload read the
+  `kronikol-current-test-name`/`-id` headers (reusing the internal `ServletIdentity` extractor) and return
+  the `TestInfo`, or {@code null} when there is no request/lookup or the headers are absent <em>or blank</em>
+  (matching .NET's `IsNullOrEmpty` semantics — stricter than the filter's null-only check). Proven by
+  `TestTrackingServerBridgeTest` (request + header-lookup reads, absent headers, blank name/id, null
+  request/lookup).
 - [ ] **`ITabularParameterData`** — the interface for supplying tabular data as a *step parameter* (distinct
   from the TabularAttributes declaration feature; consumed by step tracking). *(.NET
   `Tracking/Tabular/ITabularParameterData.cs`.)*

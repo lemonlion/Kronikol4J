@@ -8,6 +8,11 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **`TestTrackingServerBridge`** (`kronikol4j-servlet`) — public server-side API to read the current test
+  identity from request headers (the .NET `TestTrackingServerBridge.GetCurrentTestInfo` analog, previously
+  only internal to the filter): `getCurrentTestInfo(HttpServletRequest)` + a source-agnostic
+  `getCurrentTestInfo(UnaryOperator<String>)` overload, returning `null` for absent or blank name/id.
+  Proven by `TestTrackingServerBridgeTest`.
 - **`UnmatchedClientNameRegistry`** (`kronikol4j-core`) — ports the .NET diagnostic registry of HTTP
   `clientName` values that matched no `clientNamesToServiceNames` key: thread-safe `record`/`getRecordedNames`
   (count-descending, ties stable) / `clear`, fed via the `ServiceNameResolver.onUnmatchedClientName` seam.
