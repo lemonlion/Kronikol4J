@@ -297,9 +297,14 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `RedisOperationInfo`) ports the full .NET classifier — the command→operation table (GET/SET/INCR/DECR/DEL/
   EXISTS/EXPIRE/hash/list/set/PUBLISH families, 40+ command names), GET/HGET hit/miss detection from whether a
   value was returned, key + database number, and `getDiagramLabel` (`"Get (Hit)"` / `"Get (Miss)"` /
-  Raw→null). Proven by `RedisOperationClassifierTest`. **Remaining:** the Lettuce/Jedis command-hook plumbing
-  that feeds the classifier and builds the `redis://<endpoint>/<db>?key=…` URI + emits the log pair (the
-  auto-capture wrapper), plus verbosity wiring + a golden-rendered proof.
+  Raw→null). Proven by `RedisOperationClassifierTest`.
+  **Log-builder core done:** `RedisInteractionRecorder` (+ `RedisTrackerOptions`) ports .NET `RedisTracker`'s
+  `LogRedisRequest`/`LogRedisResponse` with full parity — two-phase correlation, the request label omitting
+  hit/miss (only the response carries `(Hit)`/`(Miss)`), the verbosity-driven `redis://endpoint/db/key` (Raw)
+  vs `redis://db<n>/key` (Detailed) vs `redis://db<n>/` (Summarised) URI matrix, Summarised/Other skip, phase
+  suppression and unknown-phase variants. Proven by `RedisInteractionRecorderTest` (6 cases). **Remaining:**
+  the Lettuce/Jedis command-hook plumbing that feeds the recorder (dynamic-proxy over the commands interface,
+  like the JDBC `DataSource`), plus a golden-rendered proof.
 - [ ] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
   analog) for true two-phase correlation; operation classification; filter extraction; response document
   preview; `autoCorrelateWrites`; `ignoredCommands`; change-stream support. *(.NET

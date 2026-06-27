@@ -12,8 +12,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   `RedisOperationInfo`) — Java port of the .NET Redis classifier. Maps 40+ command names to 17 typed
   operations (GET/SET/INCR/DECR/DEL/EXISTS/EXPIRE/hash/list/set/PUBLISH families), detects GET/HGET cache
   hit/miss from whether a value was returned, carries the key + database number, and builds the diagram label
-  (`"Get (Hit)"` / `"Get (Miss)"`, Raw→null). Proven by `RedisOperationClassifierTest`. The Lettuce/Jedis
-  command-hook auto-capture plumbing follows.
+  (`"Get (Hit)"` / `"Get (Miss)"`, Raw→null). Proven by `RedisOperationClassifierTest`.
+- **`RedisInteractionRecorder`** (`kronikol4j-redis`, + `RedisTrackerOptions`) — the two-phase Redis log
+  builder, porting .NET `RedisTracker.LogRedisRequest`/`LogRedisResponse`. The request label omits hit/miss
+  (only known at response time); the response label includes it. Verbosity-driven `redis://` URI matrix
+  (`redis://endpoint/db/key` raw, `redis://db<n>/key` detailed, `redis://db<n>/` summarised), Summarised/Other
+  skip, phase suppression, unknown-phase variants. Proven by `RedisInteractionRecorderTest`. The Lettuce/Jedis
+  command-hook plumbing follows.
 
 ### Added — Tier-1 JDBC (log-builder core)
 - **`SqlInteractionRecorder`** (`kronikol4j-jdbc`) — the parity-faithful SQL request/response log builder,
