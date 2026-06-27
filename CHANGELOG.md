@@ -8,6 +8,13 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-4 features
+- **Specifications report** (`kronikol4j-report`, `io.kronikol.report.spec`) — the living-documentation view,
+  emitted separately from `TestRunReport`. `SpecificationsData` generates the text-only feature/scenario/step
+  data in YAML/JSON/XML (`.NET`-identical ordering + `SanitiseForYml`); `SpecificationsReport.write` emits
+  `Specifications.html` (the standard report re-rendered with step numbers + blank-on-failure via
+  `HtmlCustomization`) + `Specifications.<ext>`; `SpecificationsOptions` carries the title/filenames/format/
+  toggles. Proven by `SpecificationsReportTest`; wiki page added. (Auto-firing from the end-of-run path is the
+  report-control-flags follow-up.)
 - **TabularAttributes** (`kronikol4j-report`, `io.kronikol.report.tabular`) — declare a test's input/expected
   rows as `@Inputs`/`@Outputs`/`@HeadIn`/`@HeadOut` annotations (repeatable; `String[]` cells since Java
   annotations can't carry boxed values). `TabularDeserializer` builds typed records/beans (string→enum/

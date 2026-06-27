@@ -541,6 +541,11 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
 - [ ] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*
+  **Unblocked (2026-06-28):** the Specifications report now exists with its own `SpecificationsOptions.
+  dataFormat` (independent of `ReportOptions.dataFormats`), so the two report types already take separate
+  formats. What remains for this item is the *config-surface tidy-up* — exposing `testRunReportDataFormat`
+  (singular, default JSON) alongside the existing `dataFormats` set on `ReportOptions`, to mirror .NET's two
+  scalar options — best done with the report-control-flags wiring pass.
 - [x] **`ScenarioTitleResolver`** — `formatScenarioDisplayName` (PascalCase splitting), `formatFeatureName`,
   `appendTestParameters`, `resolveScenarioTitle` (BDDfy-style). Java uses the framework `getDisplayName()`
   directly, which is fine for JUnit/parameterized but diverges for BDD-style sources. *(.NET
@@ -783,9 +788,21 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   sanitizeName, inputs columns/rows + row delimiters, outputs verify pass/mismatch/surplus/missing + close
   auto-verify + pre-verify NotProvided, resolver inputs/outputs from annotations) + wiki page. Per-framework
   `@HeadIn` auto-wiring (calling `TabularResolver`) lands with each test-framework adapter.
-- [ ] **Specifications report** — the separate `Specifications.html` + `Specifications.yaml` outputs and
+- [x] **Specifications report** — the separate `Specifications.html` + `Specifications.yaml` outputs and
   their options (`generateSpecificationsReport`, `specificationsTitle`, filenames, `showStepNumbers`, …).
   Java only emits `TestRunReport.html`.
+  **Done:** new `io.kronikol.report.spec` package — `SpecificationsData` generates the text-only
+  living-documentation data in YAML/JSON/XML (features ordered by name, scenarios happy-path-first then name,
+  steps as `<keyword> <text>` with nested sub-steps, `.NET`-identical `SanitiseForYml` escaping), a faithful
+  port of the .NET `GenerateSpecifications{Yaml,Json,Xml}`. `SpecificationsReport.renderHtml`/`write` emit
+  `Specifications.html` (the standard report re-rendered via the existing renderer + `HtmlCustomization` with
+  step numbers, the specifications stylesheet, and blank-on-failure — exactly how .NET reuses
+  `GenerateHtmlReport`) plus `Specifications.<ext>`. `SpecificationsOptions` carries the named options
+  (`title`/`htmlFileName`/`dataFileName`/`dataFormat`/`showStepNumbers`/`generateReport`/`generateData`/
+  `customStyleSheet`). Proven by `SpecificationsReportTest` (YAML/JSON/XML ordering + structure + sanitise,
+  end-to-end `write` of html+data, toggle + format honouring) + wiki page. **Note:** auto-invocation from the
+  default end-of-run path (the `generateSpecificationsReport` toggle in `ReportFinalizer`) lands with the
+  deferred Tier-2 report-control-flags wiring; a byte-golden capture against real .NET is the usual follow-up.
 - [ ] **InternalFlow CAPTURE side** — `ActivityListener` (subscribe to OTel `ActivitySource`s, excluding the
   AppInsights-conflict set) + `SpanStore` + `SpanCollector` (granularity filtering) + `ActivitySourceDiscovery`
   + DI/eager-start registration. The *rendering* is done; nothing currently captures spans. Plus the ~12
