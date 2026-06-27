@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Tier-3 integration modules
+- **`kronikol4j-hibernate`** (new module) — the ORM/JPA integration point (Java analog of the .NET EF Core
+  `SqlTrackingInterceptor`). `KronikolStatementInspector` implements Hibernate's `StatementInspector`:
+  each issued SQL statement is classified via the shared `UnifiedSqlClassifier` and recorded as a tracked
+  `database` request/response pair through the reused JDBC `SqlInteractionRecorder` (matching verbosity,
+  phase, excluded-operations, identity, the URI matrix), then returned unchanged. Hibernate is `compileOnly`.
+  For full row-count capture, wrap the JPA `DataSource` with the JDBC `TrackingDataSource`. Proven by
+  `KronikolStatementInspectorTest`; wiki page added.
+
 ### Added — Tier-2 options
 - **Gradle plugin rich options** (`kronikol4j-gradle-plugin`) — the `kronikol { }` extension now surfaces the
   full `ReportOptions` configuration surface as typed Gradle properties (diagram colours/theme/setup-styling,

@@ -38,4 +38,5 @@ include(
     "kronikol4j-cassandra",
     "kronikol4j-elasticsearch",
     "kronikol4j-spock",
+    "kronikol4j-hibernate",
 )

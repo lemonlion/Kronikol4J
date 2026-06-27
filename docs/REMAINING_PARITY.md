@@ -612,9 +612,21 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
 
 ## Tier 3 — Missing integration modules (no Java code at all)
 
-- [ ] **ORM / EF-Core analog** — Hibernate `StatementInspector` (+ JPA/Spring Data hook). This is the
+- [~] **ORM / EF-Core analog** — Hibernate `StatementInspector` (+ JPA/Spring Data hook). This is the
   primary integration point for ORM users and is entirely absent. *(.NET `Extensions.EfCore.Relational`
   `SqlTrackingInterceptor : DbCommandInterceptor`.)* **Highest-value missing module.**
+  **Done:** new `kronikol4j-hibernate` module with `KronikolStatementInspector implements
+  org.hibernate.resource.jdbc.spi.StatementInspector` (hibernate-core `compileOnly`). On each `inspect(sql)`
+  it classifies the statement via the shared `UnifiedSqlClassifier` and emits a request/response pair through
+  the **reused** JDBC `SqlInteractionRecorder` (so verbosity, phase filtering, excluded operations, identity
+  resolution, the `sql://host/db/table` URI matrix and phase-variants all match the raw-JDBC adapter), then
+  returns the SQL unchanged. Registered via Hibernate's `statement_inspector` setting. Proven by
+  `KronikolStatementInspectorTest` (classified request/response pair + shared correlation, rendered database
+  interaction, no-identity skip, null/blank pass-through) + wiki page. **Remaining (`[~]`):**
+  `StatementInspector` is a SQL-text hook with no execution-completion callback, so the response carries no
+  row count — full two-phase capture **with** row counts / result-set summaries is delivered by wrapping the
+  JPA `DataSource` with the existing JDBC `TrackingDataSource` (documented in the wiki); a dedicated
+  Spring-Data auto-registration helper + a golden-rendered proof are the follow-ups.
 - [ ] **ClickHouse** — `TrackingClickHouseConnection/Command/Transaction`; `CLICK_HOUSE` category. (Shared
   classifier already understands ClickHouse syntax.)
 - [ ] **Spanner** — connection/command/transaction wrappers + async stream reader; `SPANNER` category.
