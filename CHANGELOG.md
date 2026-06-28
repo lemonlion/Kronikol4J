@@ -7,6 +7,18 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-3 MassTransit analog (Spring ApplicationEvent binding, item [x])
+- **`KronikolEventBusListener`** (`kronikol4j-eventbus`) — a Spring `ApplicationListener<ApplicationEvent>`
+  (Spring `compileOnly`) that binds the `EventBusInteractionRecorder` to Spring's in-process event bus, the
+  Java analog of the .NET MassTransit `TrackingPublishObserver`. It observes every event the application-event
+  multicaster delivers, unwraps `PayloadApplicationEvent` to the user payload, skips Spring framework
+  lifecycle events (`org.springframework.*`, overridable via a `Predicate`), and records each as a `Publish`.
+  Spring `publishEvent` is pure broadcast, so publish-side is the faithful single binding (the recorder's
+  Send/Consume(+Fault) paths stay available for transports that distinguish them). This closes the MassTransit
+  analog: the recorder previously had no real-event feed. Proven by `KronikolEventBusListenerTest` against a
+  real `GenericApplicationContext`. The event/queue rendering is already golden-proven (`event.puml`) and the
+  label/URI is classifier logic unit-proven vs .NET; an Axon binding is optional (no .NET counterpart).
+
 ### Added — Tier-5 tooling
 - **Project starters** (`templates/`) — the `dotnet new kronikol-*` analog: copyable starter skeletons
   `kronikol4j-junit5-gradle` and `kronikol4j-junit5-maven` (JUnit 5 + the Kronikol4J integration + a

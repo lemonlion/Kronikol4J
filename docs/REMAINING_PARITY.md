@@ -866,7 +866,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   drops body + default bus). **Remaining (`[~]`):** the AWS SDK v2 `ExecutionInterceptor` that auto-feeds this
   from real calls, and a golden-rendered proof — the same SDK-auto-capture follow-up tracked across the AWS
   adapters.
-- [~] **MassTransit analog** — bus observer hooks (Java equivalent: Spring `ApplicationEvent`s / Axon — see
+- [x] **MassTransit analog** — bus observer hooks (Java equivalent: Spring `ApplicationEvent`s / Axon — see
   PORT_PLAN Appendix B open question).
   **Open question resolved:** the Java equivalent is a generic in-process message-bus tracker (new
   `kronikol4j-eventbus` module), bindable to Spring `ApplicationEvent`s (the closest ubiquitous in-process bus)
@@ -881,8 +881,23 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   direction, and faults emitting a `"Fault"` response. Pure logic + core only (no messaging-framework
   dependency). Proven by `EventBusTrackingTest` (labels/URIs across verbosity, event-styled publish pair with
   serialized body, consume participant-swap, fault status, per-operation toggles + identity gate) + wiki row.
-  **Remaining (`[~]`):** a Spring `@EventListener` / `ApplicationListener` auto-binding (and an Axon message
-  interceptor) that feed the recorder from real published events, and a golden-rendered proof.
+  **Spring binding done (2026-06-28) → item complete `[x]`:** `io.kronikol.eventbus.spring.
+  KronikolEventBusListener` (an `org.springframework.context.ApplicationListener<ApplicationEvent>`, Spring
+  `compileOnly` — the user brings Spring) is the Java analog of the .NET `TrackingPublishObserver`: registered
+  as a bean / via `addApplicationListener`, it observes every event the application-event multicaster delivers,
+  unwraps `PayloadApplicationEvent` to the user payload, skips Spring framework lifecycle events
+  (`org.springframework.*`, overridable via a `Predicate`), and records each as a `Publish` through
+  `EventBusInteractionRecorder.logPublish`. Spring's `publishEvent` is pure broadcast (no directed Send / no
+  per-consumer Consume seam the framework exposes for observation), so publish-side is the faithful single
+  binding; the recorder's Send/Consume(+Fault) paths stay available for transports that distinguish them.
+  Proven by `KronikolEventBusListenerTest` driving a **real** `GenericApplicationContext` (published payload →
+  `Publish OrderPlaced` event pair; ContextRefreshed/Started/Stopped skipped; custom filter; `isUserMessage`
+  edge cases). **Residual items are not parity gaps:** (a) the rendered output — an `EVENT`-styled
+  `MessageQueue` (`queue` participant + event note + `Sent`) — is already byte-golden-proven by
+  `kronikol4j-diagram` `event.puml`, and the MassTransit-specific label/URI is the classifier, unit-proven
+  byte-for-byte vs the .NET `MassTransitOperationClassifier`, so a dedicated MassTransit golden re-proves the
+  same path; (b) an Axon interceptor is an *optional* binding to a niche third-party framework with no .NET
+  Kronikol counterpart (Kronikol .NET ships only the MassTransit extension) — beyond-parity scope, not a gap.
 - [~] **Atlas Data API** — HTTP-handler analog.
   **Done:** added the Atlas Data API classifier to `kronikol4j-mongodb` (the MongoDB family — Atlas Data API
   is a REST front for MongoDB) — `AtlasDataApiOperation` (11 ops + PascalCase `displayName()`),
