@@ -74,6 +74,11 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Added — Tier-1 Cassandra (verbosity wiring)
+- **Recorder verbosity** (`kronikol4j-cassandra`) — `CassandraTrackingOptions` gained a `TrackingVerbosity`
+  (default Detailed, `withVerbosity(...)`); at Summarised the recorder drops the CQL statement payload while
+  keeping the table identity. Proven by `CassandraTrackingTest`.
+
 ### Added — Tier-1 GCP (verbosity wiring)
 - **Recorder verbosity** (`kronikol4j-gcp`) — `GcpTrackingOptions` gained a `TrackingVerbosity` (default
   Detailed, `withVerbosity(...)`); at Summarised the recorders drop the payload (the BigQuery query, the

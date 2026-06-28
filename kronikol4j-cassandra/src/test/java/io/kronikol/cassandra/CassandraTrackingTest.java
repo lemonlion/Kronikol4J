@@ -35,4 +35,15 @@ class CassandraTrackingTest {
             .contains("database \"OrderStore\" as orderStore")
             .contains("test -[#E74C3C]> orderStore: SELECT: /");
     }
+
+    @Test
+    void summarisedVerbosityOmitsCqlStatementButKeepsTable() {
+        var options = CassandraTrackingOptions.forKeyspace("OrderStore")
+            .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        CassandraTracking.record(options, "select", "shop.orders",
+            "SELECT * FROM shop.orders WHERE id = 42", "1 row");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs.get(0).content()).isEqualTo("shop.orders: "); // table kept, statement dropped
+    }
 }
