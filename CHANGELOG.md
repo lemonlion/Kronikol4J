@@ -98,6 +98,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
+### Added — Tier-1 AWS (per-phase verbosity)
+- **`Setup/ActionVerbosity` overrides** (`kronikol4j-aws`) — `AwsTrackingOptions` gained `setupVerbosity`/
+  `actionVerbosity` (`withSetupVerbosity/ActionVerbosity`); the recorders resolve the effective level for the
+  current phase via `PhaseConfiguration.effectiveVerbosity(...)` (the .NET `SetupVerbosity`/`ActionVerbosity`
+  analog). Proven by `AwsTrackingTest`. The other adapters' per-phase-verbosity wiring follows.
+
 ### Added — Tier-1 TrackingProxy (phase suppression)
 - **`TrackingProxy` phase suppression** (`kronikol4j-proxy`) — `ProxyOptions` gained `trackDuringSetup`/
   `trackDuringAction` (default true); `TrackingProxy.invoke` now passes calls through untracked in a suppressed

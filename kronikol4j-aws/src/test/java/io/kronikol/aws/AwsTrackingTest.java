@@ -82,6 +82,31 @@ class AwsTrackingTest {
     }
 
     @Test
+    void perPhaseVerbosityOverrideAppliesInThatPhase() {
+        // Base Detailed, but Setup-phase override = Summarised → the Setup-phase record drops the item.
+        var options = AwsTrackingOptions.forService("OrdersTable")
+            .withSetupVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.SETUP);
+        try {
+            AwsTracking.dynamoDb(options, "PutItem", "orders", "{\"id\":1}");
+            assertThat(RequestResponseLogger.getAllLogs().get(0).content()).isEqualTo("orders: "); // dropped
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+        RequestResponseLogger.clear();
+
+        // Action phase uses the base Detailed verbosity → item kept.
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);
+        try {
+            AwsTracking.dynamoDb(options, "PutItem", "orders", "{\"id\":1}");
+            assertThat(RequestResponseLogger.getAllLogs().get(0).content()).isEqualTo("orders: {\"id\":1}");
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void summarisedVerbosityOmitsDynamoDbItemPayloadButKeepsTable() {
         var options = AwsTrackingOptions.forService("OrdersTable")
             .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);

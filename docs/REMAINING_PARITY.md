@@ -195,10 +195,13 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   **The `TrackDuringSetup/Action` on/off dimension is now wired into every tracking execution path** (HTTP,
   JDBC/Hibernate, Redis, Mongo, AWS, Azure, GCP, Cassandra, Elasticsearch, gRPC, MessageTracker + Kafka
   wrappers, MessageTracking, Bigtable, EventHubs, EventBus, TrackingProxy). **Remaining (the only thing left
-  before `[x]`):** the second dimension — `Setup/ActionVerbosity` per-phase verbosity overrides. The primitive
-  (`PhaseConfiguration.effectiveVerbosity(default, setup, action)`) exists; adapters currently carry a single
-  `verbosity`, so each would add `setupVerbosity`/`actionVerbosity` options and resolve the effective level
-  per phase. That per-phase-verbosity sweep is the remaining work; this box flips `[x]` once it lands.
+  before `[x]`):** the second dimension — `Setup/ActionVerbosity` per-phase verbosity overrides — wired via
+  `PhaseConfiguration.effectiveVerbosity(default, setup, action)`. **Started (2026-06-28):** AWS done —
+  `AwsTrackingOptions` gained `setupVerbosity`/`actionVerbosity` (`withSetupVerbosity/ActionVerbosity`), and
+  the recorders resolve the effective level per phase. Proven by `AwsTrackingTest` (Setup-override drops the
+  payload while Action keeps it). **Remaining:** apply the same per-phase-verbosity wiring to the other
+  adapters (Azure/GCP/Cassandra/ES/gRPC/messaging/SQL/Redis/Mongo/…); this box flips `[x]` once they all
+  resolve `effectiveVerbosity`.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)
