@@ -29,7 +29,7 @@ public final class AzureTracking {
 
     public static void cosmos(AzureTrackingOptions options, String operation, String container, String document) {
         // Summarised omits the document payload — only the container identity is kept.
-        String payload = options.verbosity().includesPayload() && document != null ? document : "";
+        String payload = effectiveVerbosity(options).includesPayload() && document != null ? document : "";
         record(options, DependencyCategories.COSMOS_DB, operation, COSMOS_URI, container + ": " + payload);
     }
 
@@ -43,7 +43,7 @@ public final class AzureTracking {
         }
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         // Summarised omits the message payload — only the entity identity is kept.
-        String payload = options.verbosity().includesPayload() && message != null ? message : "";
+        String payload = effectiveVerbosity(options).includesPayload() && message != null ? message : "";
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.SERVICE_BUS, Method.of("SEND"), SERVICE_BUS_URI, null,
             "entity: " + entity + "\n" + payload,
@@ -66,10 +66,17 @@ public final class AzureTracking {
         return !PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction());
     }
 
+    /** The verbosity for the current phase: the per-phase override when set, else the base. */
+    private static TrackingVerbosity effectiveVerbosity(AzureTrackingOptions options) {
+        return PhaseConfiguration.effectiveVerbosity(
+            options.verbosity(), options.setupVerbosity(), options.actionVerbosity());
+    }
+
     /** Configuration for Azure tracking. */
     public record AzureTrackingOptions(String serviceName, String callerName,
                                        Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
-                                       boolean trackDuringSetup, boolean trackDuringAction) {
+                                       boolean trackDuringSetup, boolean trackDuringAction,
+                                       TrackingVerbosity setupVerbosity, TrackingVerbosity actionVerbosity) {
 
         public AzureTrackingOptions {
             verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
@@ -77,36 +84,56 @@ public final class AzureTracking {
 
         /** Three-arg shape (default verbosity, both phases tracked) — back-compatible. */
         public AzureTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher) {
-            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true);
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true, null, null);
         }
 
         /** Four-arg shape (both phases tracked) — back-compatible. */
         public AzureTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher,
                                     TrackingVerbosity verbosity) {
-            this(serviceName, callerName, testInfoFetcher, verbosity, true, true);
+            this(serviceName, callerName, testInfoFetcher, verbosity, true, true, null, null);
+        }
+
+        /** Six-arg shape (no per-phase verbosity overrides) — back-compatible. */
+        public AzureTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher,
+                                    TrackingVerbosity verbosity, boolean trackDuringSetup,
+                                    boolean trackDuringAction) {
+            this(serviceName, callerName, testInfoFetcher, verbosity, trackDuringSetup, trackDuringAction,
+                null, null);
         }
 
         public static AzureTrackingOptions forService(String serviceName) {
             return new AzureTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
-                TrackingVerbosity.DEFAULT, true, true);
+                TrackingVerbosity.DEFAULT, true, true, null, null);
         }
 
         /** A copy with the given verbosity (Summarised omits the Cosmos document / Service Bus message). */
         public AzureTrackingOptions withVerbosity(TrackingVerbosity value) {
             return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, value,
-                trackDuringSetup, trackDuringAction);
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
         /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
         public AzureTrackingOptions withTrackDuringSetup(boolean value) {
             return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                value, trackDuringAction);
+                value, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
         /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
         public AzureTrackingOptions withTrackDuringAction(boolean value) {
             return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                trackDuringSetup, value);
+                trackDuringSetup, value, setupVerbosity, actionVerbosity);
+        }
+
+        /** A copy with a Setup-phase verbosity override (the .NET {@code SetupVerbosity}; {@code null} = base). */
+        public AzureTrackingOptions withSetupVerbosity(TrackingVerbosity value) {
+            return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, value, actionVerbosity);
+        }
+
+        /** A copy with an Action-phase verbosity override (the .NET {@code ActionVerbosity}; {@code null} = base). */
+        public AzureTrackingOptions withActionVerbosity(TrackingVerbosity value) {
+            return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, setupVerbosity, value);
         }
     }
 }

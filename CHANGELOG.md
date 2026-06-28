@@ -98,6 +98,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
+### Added — Tier-1 Azure + GCP (per-phase verbosity)
+- **`Setup/ActionVerbosity` overrides** (`kronikol4j-azure`, `kronikol4j-gcp`) — both options records gained
+  `setupVerbosity`/`actionVerbosity` (`withSetupVerbosity/ActionVerbosity`); the recorders resolve the
+  effective level for the current phase via `PhaseConfiguration.effectiveVerbosity(...)`. Proven by
+  `AzureTrackingTest`/`GcpTrackingTest`.
+
 ### Added — Tier-1 AWS (per-phase verbosity)
 - **`Setup/ActionVerbosity` overrides** (`kronikol4j-aws`) — `AwsTrackingOptions` gained `setupVerbosity`/
   `actionVerbosity` (`withSetupVerbosity/ActionVerbosity`); the recorders resolve the effective level for the

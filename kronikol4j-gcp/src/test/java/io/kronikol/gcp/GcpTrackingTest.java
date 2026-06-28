@@ -41,6 +41,19 @@ class GcpTrackingTest {
     }
 
     @Test
+    void setupPhaseVerbosityOverrideDropsBigQueryQuery() {
+        var options = GcpTrackingOptions.forService("Analytics")
+            .withSetupVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.SETUP);
+        try {
+            GcpTracking.bigQuery(options, "query", "sales", "SELECT 1");
+            assertThat(RequestResponseLogger.getAllLogs().get(0).content()).isEqualTo("sales: ");
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void actionPhaseSuppressionSkipsRecording() {
         var options = GcpTrackingOptions.forService("Analytics").withTrackDuringAction(false);
         io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);

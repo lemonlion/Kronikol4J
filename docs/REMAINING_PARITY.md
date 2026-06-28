@@ -199,9 +199,12 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `PhaseConfiguration.effectiveVerbosity(default, setup, action)`. **Started (2026-06-28):** AWS done —
   `AwsTrackingOptions` gained `setupVerbosity`/`actionVerbosity` (`withSetupVerbosity/ActionVerbosity`), and
   the recorders resolve the effective level per phase. Proven by `AwsTrackingTest` (Setup-override drops the
-  payload while Action keeps it). **Remaining:** apply the same per-phase-verbosity wiring to the other
-  adapters (Azure/GCP/Cassandra/ES/gRPC/messaging/SQL/Redis/Mongo/…); this box flips `[x]` once they all
-  resolve `effectiveVerbosity`.
+  payload while Action keeps it). **Azure + GCP done (2026-06-28):** same wiring — `setupVerbosity`/
+  `actionVerbosity` on both options, recorders resolve `effectiveVerbosity`. Proven by
+  `AzureTrackingTest`/`GcpTrackingTest`. **Remaining:** apply the same per-phase-verbosity wiring to the other
+  adapters (Cassandra/ES/gRPC/messaging; SQL/Redis/Mongo's richer recorders already resolve per-phase via
+  their `SqlTrackingVerbosity`/`MessageTrackerVerbosity` paths); this box flips `[x]` once the rest resolve
+  `effectiveVerbosity`.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)

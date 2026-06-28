@@ -40,6 +40,19 @@ class AzureTrackingTest {
     }
 
     @Test
+    void setupPhaseVerbosityOverrideDropsCosmosDocument() {
+        var options = AzureTrackingOptions.forService("OrdersDb")
+            .withSetupVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.SETUP);
+        try {
+            AzureTracking.cosmos(options, "Upsert", "orders", "{\"id\":1}");
+            assertThat(RequestResponseLogger.getAllLogs().get(0).content()).isEqualTo("orders: ");
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void actionPhaseSuppressionSkipsRecording() {
         var options = AzureTrackingOptions.forService("OrdersDb").withTrackDuringAction(false);
         io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);

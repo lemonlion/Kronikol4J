@@ -29,7 +29,7 @@ public final class GcpTracking {
 
     public static void bigQuery(GcpTrackingOptions options, String operation, String dataset, String query) {
         // Summarised omits the query payload — only the dataset identity is kept.
-        String payload = options.verbosity().includesPayload() && query != null ? query : "";
+        String payload = effectiveVerbosity(options).includesPayload() && query != null ? query : "";
         record(options, DependencyCategories.BIG_QUERY, operation, BIGQUERY_URI, dataset + ": " + payload);
     }
 
@@ -43,7 +43,7 @@ public final class GcpTracking {
         }
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         // Summarised omits the message payload — only the topic identity is kept.
-        String payload = options.verbosity().includesPayload() && message != null ? message : "";
+        String payload = effectiveVerbosity(options).includesPayload() && message != null ? message : "";
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.MESSAGE_QUEUE, Method.of("PUBLISH"), PUBSUB_URI, null,
             "topic: " + topic + "\n" + payload,
@@ -66,10 +66,17 @@ public final class GcpTracking {
         return !PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction());
     }
 
+    /** The verbosity for the current phase: the per-phase override when set, else the base. */
+    private static TrackingVerbosity effectiveVerbosity(GcpTrackingOptions options) {
+        return PhaseConfiguration.effectiveVerbosity(
+            options.verbosity(), options.setupVerbosity(), options.actionVerbosity());
+    }
+
     /** Configuration for Google Cloud tracking. */
     public record GcpTrackingOptions(String serviceName, String callerName,
                                      Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
-                                     boolean trackDuringSetup, boolean trackDuringAction) {
+                                     boolean trackDuringSetup, boolean trackDuringAction,
+                                     TrackingVerbosity setupVerbosity, TrackingVerbosity actionVerbosity) {
 
         public GcpTrackingOptions {
             verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
@@ -77,36 +84,56 @@ public final class GcpTracking {
 
         /** Three-arg shape (default verbosity, both phases tracked) — back-compatible. */
         public GcpTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher) {
-            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true);
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true, null, null);
         }
 
         /** Four-arg shape (both phases tracked) — back-compatible. */
         public GcpTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher,
                                   TrackingVerbosity verbosity) {
-            this(serviceName, callerName, testInfoFetcher, verbosity, true, true);
+            this(serviceName, callerName, testInfoFetcher, verbosity, true, true, null, null);
+        }
+
+        /** Six-arg shape (no per-phase verbosity overrides) — back-compatible. */
+        public GcpTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher,
+                                  TrackingVerbosity verbosity, boolean trackDuringSetup,
+                                  boolean trackDuringAction) {
+            this(serviceName, callerName, testInfoFetcher, verbosity, trackDuringSetup, trackDuringAction,
+                null, null);
         }
 
         public static GcpTrackingOptions forService(String serviceName) {
             return new GcpTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
-                TrackingVerbosity.DEFAULT, true, true);
+                TrackingVerbosity.DEFAULT, true, true, null, null);
         }
 
         /** A copy with the given verbosity (Summarised omits the BigQuery query / Pub/Sub message). */
         public GcpTrackingOptions withVerbosity(TrackingVerbosity value) {
             return new GcpTrackingOptions(serviceName, callerName, testInfoFetcher, value,
-                trackDuringSetup, trackDuringAction);
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
         /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
         public GcpTrackingOptions withTrackDuringSetup(boolean value) {
             return new GcpTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                value, trackDuringAction);
+                value, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
         /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
         public GcpTrackingOptions withTrackDuringAction(boolean value) {
             return new GcpTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                trackDuringSetup, value);
+                trackDuringSetup, value, setupVerbosity, actionVerbosity);
+        }
+
+        /** A copy with a Setup-phase verbosity override (the .NET {@code SetupVerbosity}; {@code null} = base). */
+        public GcpTrackingOptions withSetupVerbosity(TrackingVerbosity value) {
+            return new GcpTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, value, actionVerbosity);
+        }
+
+        /** A copy with an Action-phase verbosity override (the .NET {@code ActionVerbosity}; {@code null} = base). */
+        public GcpTrackingOptions withActionVerbosity(TrackingVerbosity value) {
+            return new GcpTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, setupVerbosity, value);
         }
     }
 }
