@@ -29,6 +29,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   forked JVMs emit fragments when `kronikol.run.dir` is set on Surefire/Failsafe. Proven by
   `KronikolReportMojoTest`; wiki page added.
 
+### Added — Tier-6 helpers & wiring fixes
+- **`PhaseConfiguration.resolvePhaseFromStepType(String)`** (`kronikol4j-core`) — exposes the .NET
+  `ResolvePhaseFromStepType` mapping (`Given`/`And`/`But`→Setup, `When`/`Then`→Action, else Unknown) as a
+  stateless, case-insensitive *prefix* match (so `"Given that …"` resolves). Distinct from the Cucumber
+  module's stateful `GherkinPhase.forKeyword` (where `And`/`But` inherit the current phase) — both kept.
+  Proven by `PhaseConfigurationTest`.
+
 ### Added — Tier-4 features
 - **InternalFlow span capture** (`kronikol4j-report` + `kronikol4j-opentelemetry`) — closes the "nothing
   captures spans" gap (rendering was already done). `InternalFlowSpanStore` (thread-safe, span-id-deduped),

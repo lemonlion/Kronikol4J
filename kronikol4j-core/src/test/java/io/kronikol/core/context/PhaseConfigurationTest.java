@@ -39,4 +39,33 @@ class PhaseConfigurationTest {
         TestPhaseContext.set(TestPhase.UNKNOWN);
         assertThat(PhaseConfiguration.effectiveVerbosity("default", "setup", "action")).isEqualTo("default");
     }
+
+    @Test
+    void resolvePhaseFromStepTypeMapsGivenAndButToSetup() {
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("Given")).isEqualTo(TestPhase.SETUP);
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("And")).isEqualTo(TestPhase.SETUP);
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("But")).isEqualTo(TestPhase.SETUP);
+    }
+
+    @Test
+    void resolvePhaseFromStepTypeMapsWhenThenToAction() {
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("When")).isEqualTo(TestPhase.ACTION);
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("Then")).isEqualTo(TestPhase.ACTION);
+    }
+
+    @Test
+    void resolvePhaseFromStepTypeIsCaseInsensitiveAndPrefixMatched() {
+        // .NET uses StartsWith(OrdinalIgnoreCase): "given that ..." and lower/upper all match.
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("given")).isEqualTo(TestPhase.SETUP);
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("GIVEN that the user exists"))
+            .isEqualTo(TestPhase.SETUP);
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("whenever")).isEqualTo(TestPhase.ACTION);
+    }
+
+    @Test
+    void resolvePhaseFromStepTypeReturnsUnknownForNullOrUnmatched() {
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType(null)).isEqualTo(TestPhase.UNKNOWN);
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("")).isEqualTo(TestPhase.UNKNOWN);
+        assertThat(PhaseConfiguration.resolvePhaseFromStepType("Scenario")).isEqualTo(TestPhase.UNKNOWN);
+    }
 }

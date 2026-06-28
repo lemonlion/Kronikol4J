@@ -28,4 +28,26 @@ public final class PhaseConfiguration {
             case UNKNOWN -> defaultVerbosity;
         };
     }
+
+    /**
+     * Maps a BDD step-type string (e.g. {@code "Given"}, {@code "When"}, {@code "Then"}) to a {@link TestPhase}.
+     * {@code Given}/{@code And}/{@code But} → {@link TestPhase#SETUP}; {@code When}/{@code Then} →
+     * {@link TestPhase#ACTION}; anything else (incl. {@code null}) → {@link TestPhase#UNKNOWN}. Matching is a
+     * case-insensitive prefix test (so {@code "Given that …"} still resolves), mirroring the .NET
+     * {@code ResolvePhaseFromStepType}'s {@code StartsWith(OrdinalIgnoreCase)}.
+     */
+    public static TestPhase resolvePhaseFromStepType(String stepType) {
+        if (stepType == null) {
+            return TestPhase.UNKNOWN;
+        }
+        // Invariant casing (parity rule §6.5): uppercase via Locale.ROOT before prefix-matching.
+        String s = stepType.toUpperCase(java.util.Locale.ROOT);
+        if (s.startsWith("GIVEN") || s.startsWith("AND") || s.startsWith("BUT")) {
+            return TestPhase.SETUP;
+        }
+        if (s.startsWith("WHEN") || s.startsWith("THEN")) {
+            return TestPhase.ACTION;
+        }
+        return TestPhase.UNKNOWN;
+    }
 }

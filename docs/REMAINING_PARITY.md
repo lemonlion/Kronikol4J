@@ -995,8 +995,15 @@ fixes. Listed for completeness so nothing is silently dropped.
   no override → skip) and per-override fallback to base verbosity. Proven by `PhaseVariantExtensionsTest`.
 - [ ] **`TestInfoResolver.createHttpFallbackFetcher`** — the static factory producing a combined
   "HTTP-headers-first, then delegate" identity fetcher. *(.NET `TestInfoResolver.cs:86`.)*
-- [ ] **`PhaseConfiguration.resolvePhaseFromStepType`** — expose the Given/And/But→Setup, When/Then→Action
+- [x] **`PhaseConfiguration.resolvePhaseFromStepType`** — expose the Given/And/But→Setup, When/Then→Action
   mapping on `PhaseConfiguration` (the logic exists only inside the Cucumber module's `GherkinPhase`).
+  **Done:** `PhaseConfiguration.resolvePhaseFromStepType(String)` ports the .NET stateless mapping verbatim —
+  `null`→Unknown; case-insensitive *prefix* match (`StartsWith(OrdinalIgnoreCase)` → `toUpperCase(Locale.ROOT)`
+  + `startsWith`, so `"Given that …"` resolves) on `GIVEN`/`AND`/`BUT`→Setup, `WHEN`/`THEN`→Action, else
+  Unknown. This is the .NET `ResolvePhaseFromStepType` analog and is deliberately distinct from the Cucumber
+  module's `GherkinPhase.forKeyword`, which is the *stateful* variant where `And`/`But` inherit the current
+  phase (correct for live Gherkin step streams) — both are kept. Proven by `PhaseConfigurationTest` (4 new
+  cases: Given/And/But→Setup, When/Then→Action, case-insensitive prefix, null/empty/unmatched→Unknown).
 - [ ] **`ProcessingCorrelation` naming/signature parity** — `wrapSync` named alias + the cancellation-signal
   parameter on the batch wrapper (Java's batch wrapper omits it). *(.NET `ProcessingCorrelation.cs:41`.)*
 - [ ] **Wire `DiagnosticReportGenerator` into `ReportFinalizer`** — the diagnostic generator is fully ported
