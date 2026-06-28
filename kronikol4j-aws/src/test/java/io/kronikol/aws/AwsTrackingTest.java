@@ -54,4 +54,26 @@ class AwsTrackingTest {
         assertThat(uml).contains("queue \"OrderQueue\" as orderQueue")
             .contains("test -[#9B59B6]> orderQueue: SEND: /");
     }
+
+    @Test
+    void summarisedVerbosityOmitsDynamoDbItemPayloadButKeepsTable() {
+        var options = AwsTrackingOptions.forService("OrdersTable")
+            .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        AwsTracking.dynamoDb(options, "PutItem", "orders", "{\"id\":1}");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs.get(0).content()).isEqualTo("orders: "); // table kept, item payload dropped
+    }
+
+    @Test
+    void summarisedVerbosityOmitsSqsMessagePayloadButKeepsDestination() {
+        var options = AwsTrackingOptions.forService("OrderQueue")
+            .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        AwsTracking.sqs(options, "orders", "{\"id\":1}");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        // The message payload is dropped, the destination identity kept (on whichever half carries content).
+        assertThat(logs).anySatisfy(l -> assertThat(l.content()).isEqualTo("destination: orders\n"));
+        assertThat(logs).noneSatisfy(l -> assertThat(l.content()).contains("{\"id\":1}"));
+    }
 }

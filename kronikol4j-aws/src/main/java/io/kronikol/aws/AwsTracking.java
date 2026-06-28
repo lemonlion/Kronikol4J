@@ -8,6 +8,7 @@ import io.kronikol.core.tracking.Method;
 import io.kronikol.core.tracking.RequestResponseMetaType;
 import io.kronikol.core.tracking.StatusCode;
 import io.kronikol.core.tracking.TrackingDefaults;
+import io.kronikol.core.tracking.TrackingVerbosity;
 import java.net.URI;
 import java.util.Locale;
 import java.util.function.Supplier;
@@ -39,12 +40,14 @@ public final class AwsTracking {
             StatusCode.of("OK"), null);
     }
 
-    /** Records a DynamoDB operation, e.g. {@code dynamoDb(opts, "PutItem", "orders", "{...}")}. */
+    /** Records a DynamoDB operation, e.g. {@code dynamoDb(opts, "PutItem", "orders", "{...}")}.
+     *  At Summarised verbosity the item payload is omitted (only the table identity is kept). */
     public static void dynamoDb(AwsTrackingOptions options, String operation, String table, String item) {
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        String payload = options.verbosity().includesPayload() && item != null ? item : "";
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.DATABASE, verb(operation), DDB_URI,
-            table + ": " + (item == null ? "" : item), StatusCode.of("OK"), null);
+            table + ": " + payload, StatusCode.of("OK"), null);
     }
 
     /** Records sending a message to an SQS queue (fire-and-forget event). */
@@ -59,7 +62,9 @@ public final class AwsTracking {
 
     private static void event(AwsTrackingOptions options, String verb, String destination, String message) {
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
-        String content = "destination: " + destination + "\n" + (message == null ? "" : message);
+        // Summarised omits the message payload — only the destination identity is kept.
+        String payload = options.verbosity().includesPayload() && message != null ? message : "";
+        String content = "destination: " + destination + "\n" + payload;
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.MESSAGE_QUEUE, Method.of(verb), MSG_URI, null, content,
             StatusCode.of("Sent"), null, RequestResponseMetaType.EVENT);
@@ -71,9 +76,25 @@ public final class AwsTracking {
 
     /** Configuration for AWS tracking. */
     public record AwsTrackingOptions(String serviceName, String callerName,
-                                     Supplier<TestInfo> testInfoFetcher) {
+                                     Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
+
+        public AwsTrackingOptions {
+            verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
+        }
+
+        /** Three-arg shape (default verbosity) — the back-compatible constructor. */
+        public AwsTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher) {
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT);
+        }
+
         public static AwsTrackingOptions forService(String serviceName) {
-            return new AwsTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null);
+            return new AwsTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
+                TrackingVerbosity.DEFAULT);
+        }
+
+        /** A copy with the given verbosity (Summarised omits the DynamoDB item / message payloads). */
+        public AwsTrackingOptions withVerbosity(TrackingVerbosity value) {
+            return new AwsTrackingOptions(serviceName, callerName, testInfoFetcher, value);
         }
     }
 }

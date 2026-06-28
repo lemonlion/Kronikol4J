@@ -74,6 +74,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Added — Tier-1 AWS (verbosity wiring)
+- **Recorder verbosity** (`kronikol4j-aws`) — `AwsTrackingOptions` gained a `TrackingVerbosity` (default
+  Detailed, `withVerbosity(...)`); at Summarised the recorders drop the payload (the DynamoDB item, the
+  SQS/SNS message) while keeping the resource/destination identity. Proven by `AwsTrackingTest`. The AWS SDK v2
+  `ExecutionInterceptor` + a golden proof remain.
+
 ### Added — Tier-1 Elasticsearch (classifier-driven recorder + verbosity)
 - **Classifier-driven `record` + verbosity** (`kronikol4j-elasticsearch`) — added a
   `record(options, httpMethod, URI, body, resultSummary)` overload that classifies the request via

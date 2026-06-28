@@ -451,9 +451,13 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   service from the request host (`sqs.`/`sns.`/`dynamodb.`/`s3`) and dispatches to the matching classifier,
   returning a unified `AwsClassification(service, label, resource)`; `AwsService` carries each service's URI
   scheme + dependency category. (Added the missing `DependencyCategories.DYNAMO_DB = "DynamoDB"` constant for
-  parity.) Proven by `AwsServiceRouterTest` (5 cases). **Remaining:** the AWS SDK v2 `ExecutionInterceptor`
-  that maps the SDK request `Context` → the router → emits the log pair, verbosity/phase wiring, and a golden
-  proof.
+  parity.) Proven by `AwsServiceRouterTest` (5 cases).
+  **Verbosity wiring done (2026-06-28):** `AwsTrackingOptions` gained a `TrackingVerbosity` (default Detailed,
+  `withVerbosity(...)`); the recorders drop the payload at Summarised — the DynamoDB item (keeping the table
+  identity) and the SQS/SNS message (keeping the destination). Proven by `AwsTrackingTest`. **Remaining:** the
+  AWS SDK v2 `ExecutionInterceptor` that maps the SDK request `Context` → the router → emits the pair (with the
+  per-service URIs — SQS/SNS/DynamoDB use `<scheme>:///<resource>`, S3 the host form `s3://<bucket>/<key>`,
+  verified against .NET), phase wiring, and a golden proof.
 - [~] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,
   `autoCorrelateWrites`, change-feed key extractor), Blob, Service Bus. *(.NET `CosmosTrackingMessageHandler`
   etc.)*
