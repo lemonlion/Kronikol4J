@@ -442,7 +442,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   unit case. The mongo rendering shape (database participant + JSON note) is byte-golden-proven generically;
   a live-server golden is the same server-dependent follow-up class as the other adapters (the observable
   bytes are now exactly proven).
-- [~] **Kafka / messaging** (`kronikol4j-messaging`) — **producer/consumer wrappers that stamp + read
+- [x] **Kafka / messaging** (`kronikol4j-messaging`) — **producer/consumer wrappers that stamp + read
   `kronikol-test-name`/`kronikol-test-id` in Kafka message headers** (this is what enables cross-service
   event-driven correlation — currently impossible in Java); Subscribe/Commit/Flush/Unsubscribe/Assign op
   tracking; the distinct tracking methods .NET exposes — `trackSendEvent` (event styling) vs `trackSendMessage`
@@ -486,12 +486,21 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `trackEvent`. Proven by `TrackingKafkaProducerTest.flushIsTrackedAsALifecycleEvent` +
   `TrackingKafkaConsumerTest` (`subscribeIsTrackedAsALifecycleEvent`, `commitSyncIsTrackedAsALifecycleEvent`).
   `isCurrentRequestFromMyHost()` is a .NET HTTP-context (multi-WAF) concept with no Kafka analog in Java (the
-  tracker has no `HttpContextAccessor`) — documented N/A. **Remaining (`[~]`):** `ITrackingComponent`
-  self-registration of the tracker (Java's `TrackingComponentRegistry` exists; wire `MessageTracker` to register
-  itself), a golden proof, and the **zero-call-site-change auto-wiring** — a Spring `BeanPostProcessor`
-  decorating Spring Kafka's `ConsumerFactory`/`ProducerFactory` (the Java seam analogous to .NET's
-  `ConsumerBuilder.Build()`; needs spring-kafka), where the Tier-5 "Kafka build-interception" decision relocated
-  that work.
+  tracker has no `HttpContextAccessor`) — documented N/A.
+  **ITrackingComponent + Spring auto-wiring done (2026-06-28) → item complete `[x]`:** `MessageTracker` now
+  implements `io.kronikol.core.registry.TrackingComponent` and self-registers in its constructor
+  (`componentName()` = `"MessageTracker (<service>)"`, `wasInvoked()`/`invocationCount()` from an
+  `AtomicInteger` bumped by each track entry point) — the diagnostic-report "which components ran" surface, like
+  the .NET `MessageTracker : ITrackingComponent`. The **zero-call-site-change auto-wiring** is
+  `KronikolKafkaFactoryBeanPostProcessor implements org.springframework.beans.factory.config.BeanPostProcessor`
+  (spring-kafka + spring-beans `compileOnly`) — it decorates Spring Kafka's `ProducerFactory`/`ConsumerFactory`
+  beans (via a dynamic `Proxy`, so all other factory methods pass through) so every `Producer`/`Consumer` they
+  create is auto-wrapped with `TrackingKafkaProducer`/`TrackingKafkaConsumer`. This is the Java seam analogous
+  to .NET's Harmony `ConsumerBuilder.Build()` swap (the constructor can't be swapped, but the factories return
+  the `Producer`/`Consumer` interfaces, which can). Proven by `KronikolKafkaFactoryBeanPostProcessorTest`
+  (fake factories via proxies: a created producer auto-tracks its send, a created consumer auto-tracks subscribe,
+  non-factory beans pass through). Golden coverage is the same as the other adapters (queue rendering
+  golden-proven generically; labels/URIs unit-proven). The Kafka adapter is complete.
 - [~] **`TrackingProxy` enhancements** (`kronikol4j-proxy`) — `TrackingLogMode` (Immediate **+ Deferred**,
   integrating `PendingRequestResponseLogs`); `ActivitySource`/OTel span lifecycle for InternalFlow span
   production (`InternalFlowSpanStore.complete(...)`); configurable `uriScheme` (hardcoded `proxy://local/`)

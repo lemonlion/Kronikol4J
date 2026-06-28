@@ -30,17 +30,36 @@ import java.util.UUID;
  * {@link #trackSendMessage} (atomic send pair with a {@code "Sent"} ack), and {@link #trackConsumeEvent}
  * (broker→consumer delivery + ack, note on the right).
  */
-public final class MessageTracker {
+public final class MessageTracker implements io.kronikol.core.registry.TrackingComponent {
 
     private final MessageTrackerOptions options;
+    private final java.util.concurrent.atomic.AtomicInteger invocations =
+        new java.util.concurrent.atomic.AtomicInteger();
 
     public MessageTracker(MessageTrackerOptions options) {
         this.options = options;
+        io.kronikol.core.registry.TrackingComponentRegistry.register(this);
+    }
+
+    @Override
+    public String componentName() {
+        return "MessageTracker (" + options.serviceName() + ")";
+    }
+
+    @Override
+    public boolean wasInvoked() {
+        return invocations.get() > 0;
+    }
+
+    @Override
+    public int invocationCount() {
+        return invocations.get();
     }
 
     /** Logs a request for a message sent to a destination; returns the correlation id (or null if skipped). */
     public UUID trackMessageRequest(String protocol, String destinationName, URI destinationUri,
                                     Object payload, boolean noteOnRight) {
+        invocations.incrementAndGet();
         if (!PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction())) {
             return null;
         }
@@ -113,6 +132,7 @@ public final class MessageTracker {
 
     /** Logs an atomic send pair with a {@code "Sent"} acknowledgement; returns the correlation id or null. */
     public UUID trackSendMessage(String protocol, String destinationName, URI destinationUri, Object payload) {
+        invocations.incrementAndGet();
         if (!PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction())) {
             return null;
         }
@@ -154,6 +174,7 @@ public final class MessageTracker {
      * is the diagram label (from the operation classifier); {@code uri} the {@code kafka://} URI.
      */
     public void trackEvent(String label, URI uri) {
+        invocations.incrementAndGet();
         if (!PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction())) {
             return;
         }

@@ -7,6 +7,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Kafka adapter (item [x])
+- **`KronikolKafkaFactoryBeanPostProcessor`** (`kronikol4j-messaging`) — a Spring `BeanPostProcessor`
+  (spring-kafka + spring-beans `compileOnly`) that decorates Spring Kafka's `ProducerFactory`/`ConsumerFactory`
+  beans (via a dynamic proxy) so every `Producer`/`Consumer` they create is auto-wrapped with the tracking
+  wrappers — zero-call-site-change Kafka tracking, the Java seam analogous to .NET's Harmony
+  `ConsumerBuilder.Build()` swap. **`MessageTracker`** now implements `TrackingComponent` and self-registers
+  (the diagnostic "which components ran" surface). Proven by `KronikolKafkaFactoryBeanPostProcessorTest`. With
+  the header propagation, wrappers, classifier wiring and lifecycle ops, the Kafka adapter is complete
+  (`isCurrentRequestFromMyHost` is documented N/A — a .NET HTTP-context concept).
+
 ### Added — Kafka lifecycle-op tracking (Kafka item progress)
 - **`MessageTracker.trackEvent(label, uri)`** + Kafka wrapper wiring (`kronikol4j-messaging`) — the producer
   now tracks `flush`/`initTransactions`/`beginTransaction`/`commitTransaction`/`abortTransaction`/
