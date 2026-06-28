@@ -7,6 +7,18 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — InternalFlowOptions config surface (InternalFlow item complete)
+- **`InternalFlowOptions`** (`kronikol4j-report`) — the consolidated, .NET-defaulted home for the internal-flow
+  sub-options (the .NET `ReportConfigurationOptions.InternalFlow*` group): `internalFlowTracking`,
+  `diagramStyle`, `spanGranularity`, `noDataBehavior`, `hasDataBehavior`, `showFlameChart`,
+  `flameChartPosition`, `activitySources`, `wholeTestFlowVisualization`. `toPopupInput(...)` and
+  `toWholeTestFlowInput(...)` build the two render inputs the report pipeline consumes, so a span-collecting
+  caller configures one object instead of threading nine loose args. Proven by `InternalFlowOptionsTest`.
+- The .NET options `InternalFlowDisplay`/`InternalFlowTrigger`/`InternalFlowContentStrategy`/
+  `InternalFlowFragmentsFolderName`/`InternalFlowPopupCustomStyleSheet` are **intentionally not ported**: they
+  have no consumer in the .NET source (verified — `window.__iflowConfig` carries only `hasDataBehavior`), so
+  porting them would be config that gates nothing. This completes the InternalFlow capture item.
+
 ### Added — ComponentDiagramOptions wired onto ReportOptions (ComponentDiagramOptions progress)
 - **`ReportOptions.componentDiagram()`** (8th record component, default `ComponentDiagramOptions.defaults()`) +
   **`withComponentDiagramOptions(...)`** — a user's component-diagram `title`, `plantUmlTheme`, `arrowColorMode`,

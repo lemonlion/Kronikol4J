@@ -1242,7 +1242,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `kronikol.spec.*` system properties + the Gradle DSL. Proven by `ReportFinalizerTest` (emitted by default /
   skipped when disabled / system-property read). A byte-golden capture against real .NET remains the usual
   follow-up. **This unblocks the `expectedTestCount` guard** (Tier-2 report-control flags).
-- [~] **InternalFlow CAPTURE side** — `ActivityListener` (subscribe to OTel `ActivitySource`s, excluding the
+- [x] **InternalFlow CAPTURE side** — `ActivityListener` (subscribe to OTel `ActivitySource`s, excluding the
   AppInsights-conflict set) + `SpanStore` + `SpanCollector` (granularity filtering) + `ActivitySourceDiscovery`
   + DI/eager-start registration. The *rendering* is done; nothing currently captures spans. Plus the ~12
   InternalFlow sub-options (`InternalFlowDisplay/Trigger/DiagramStyle/SpanGranularity/...`) and
@@ -1266,10 +1266,22 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   OTel starter, or a manual `AutoConfiguredOpenTelemetrySdk.builder()` (the framework-agnostic Java analog of
   the .NET DI/eager-start registration; better than a Spring-only bean). Opt out with
   `-Dotel.kronikol.internalflow.enabled=false`. Proven by `KronikolAutoConfigurationCustomizerProviderTest`
-  (real autoconfigured SDK: a span lands in `InternalFlowSpanStore`; opt-out flag disables it). **Remaining
-  (`[~]`):** exposing the ~12 InternalFlow sub-options + `WholeTestFlowVisualization` on the report-options
-  surface (the rendering enums already exist — config-surface wiring that lands with the report-control-flags
-  pass).
+  (real autoconfigured SDK: a span lands in `InternalFlowSpanStore`; opt-out flag disables it).
+  **Config surface done (2026-06-28):** `io.kronikol.report.flow.InternalFlowOptions` consolidates every
+  internal-flow option that actually changes rendered output, with the .NET `ReportConfigurationOptions`
+  defaults (`internalFlowTracking`, `diagramStyle`, `spanGranularity`, `noDataBehavior`, `hasDataBehavior`,
+  `showFlameChart`, `flameChartPosition`, `activitySources`, `wholeTestFlowVisualization`), and builds the two
+  render inputs the pipeline consumes — `toPopupInput(perDiagramSegments, totalSpansInStore)` →
+  `InternalFlowPopupInput` and `toWholeTestFlowInput(segments, boundaryMarkers)` → `WholeTestFlowInput` — so a
+  span-collecting caller sets one object instead of threading nine loose args. Proven by `InternalFlowOptionsTest`
+  (defaults vs .NET, both render inputs carry every option, defensive array copy, withers, disabled-tracking
+  inert popup). **Verified .NET dead-config boundary (deliberately NOT ported):** `InternalFlowDisplay`,
+  `InternalFlowTrigger`, `InternalFlowContentStrategy`, `InternalFlowFragmentsFolderName`, and
+  `InternalFlowPopupCustomStyleSheet` have **no consumer** in the .NET source — neither the report-generation
+  pipeline nor the client popup JS reads them (the emitted `window.__iflowConfig` carries only
+  `hasDataBehavior`); porting them as Java options would be config that gates nothing (anti-stub rule), so they
+  are documented here rather than stubbed. This **closes** the InternalFlow item — the capture pipeline,
+  auto-registration, and config surface are all complete; nothing observable remains.
 - [x] **`TrackingDiagramOverride`** — inject arbitrary PlantUML fragments + programmatic phase boundaries
   (`insertPlantUml`/`startOverride`/`endOverride`/`startAction`/`startSetup`).
   **Done:** `io.kronikol.core.tracking.TrackingDiagramOverride` ports the .NET
