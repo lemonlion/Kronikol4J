@@ -25,6 +25,9 @@ CaptureComponentDiagramReport();
 // .NET's actual output (not just the spec). Env-free (pure classification logic).
 CaptureSqlClassification();
 
+// Cross-runtime Redis-classifier parity (cache hit/miss + operation labels). Env-free.
+CaptureRedisClassification();
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1914,6 +1917,39 @@ void CaptureSqlClassification()
     }
     File.WriteAllText(Path.Combine(outDir, "sql-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
     Console.WriteLine($"=== sql-classification.txt ({battery.Length} cases) ===");
+}
+
+void CaptureRedisClassification()
+{
+    // (command, hasResult, key, db) — cache hit vs miss, hashes, counters, multi-key, pub/sub, unknown.
+    var battery = new (string Cmd, bool HasResult, string? Key, int Db)[]
+    {
+        ("GET", true, "user:1", 0),   ("GET", false, "user:2", 0),
+        ("SET", true, "user:1", 0),   ("SETEX", true, "k", 0),
+        ("DEL", true, "k", 0),        ("HGET", true, "h", 0),
+        ("HSET", true, "h", 0),       ("HGETALL", true, "h", 2),
+        ("INCR", true, "c", 0),       ("EXPIRE", true, "k", 0),
+        ("EXISTS", true, "k", 0),     ("MGET", true, "k", 0),
+        ("PING", true, null, 0),      ("SUBSCRIBE", true, "ch", 0),
+        ("BOGUSCMD", true, "x", 0),
+    };
+    string Null(string? s) => s ?? "~null~";
+    string Lbl(Kronikol.Extensions.Redis.RedisOperationInfo op, Kronikol.Extensions.Redis.RedisTrackingVerbosity v)
+        => Null(Kronikol.Extensions.Redis.RedisOperationClassifier.GetDiagramLabel(op, v));
+    var sb = new System.Text.StringBuilder();
+    foreach (var (cmd, hasResult, key, db) in battery)
+    {
+        var info = Kronikol.Extensions.Redis.RedisOperationClassifier.Classify(cmd, hasResult, key, db);
+        sb.Append("cmd=").Append(cmd).Append('\n');
+        sb.Append("hasResult=").Append(hasResult ? "true" : "false").Append('\n');
+        sb.Append("key=").Append(Null(key)).Append('\n');
+        sb.Append("db=").Append(db).Append('\n');
+        sb.Append("detailed=").Append(Lbl(info, Kronikol.Extensions.Redis.RedisTrackingVerbosity.Detailed)).Append('\n');
+        sb.Append("summarised=").Append(Lbl(info, Kronikol.Extensions.Redis.RedisTrackingVerbosity.Summarised)).Append('\n');
+        sb.Append('\n');
+    }
+    File.WriteAllText(Path.Combine(outDir, "redis-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== redis-classification.txt ({battery.Length} cases) ===");
 }
 
 void CaptureComponentDiagramReport()

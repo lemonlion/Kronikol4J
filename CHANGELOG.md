@@ -1825,3 +1825,12 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
 - The golden-file parity harness — needs the determinism/asset-externalization instrumentation added
   to the upstream .NET Kronikol first (plan §6.2, §4.2).
 - Spock adapter; additional DB drivers (Cassandra, Elasticsearch).
+
+### Added — cross-runtime capture-classifier byte-parity (audit follow-up, Layer A)
+- New byte-for-byte parity tests diff the Java capture-side classifiers against the **real .NET** classifiers
+  (goldens captured by driving the actual .NET code in `parity-harness/dotnet-capture` — pure logic, no live
+  service): **SQL** (`SqlClassificationParityTest`, 19 cases: DML/upsert/merge/DDL/CTE/quoted-schema tables/
+  EXEC/stored-proc) and **Redis** (`RedisClassificationParityTest`, 15 cases incl. cache hit/miss). Both pass.
+  This converts the capture-side classification/URI logic from "unit-proven against the spec" to "byte-proven
+  against .NET's actual output." The full drive-a-real-service end-to-end check (Layer B, Testcontainers ↔ the
+  .NET extension) is the next step, pending a running container engine.

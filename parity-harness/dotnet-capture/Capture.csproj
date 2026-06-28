@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Kronikol\src\Kronikol\Kronikol.csproj" />
+    <!-- For cross-runtime classifier parity goldens (pure classification logic; StackExchange.Redis cached). -->
+    <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.Redis\Kronikol.Extensions.Redis.csproj" />
   </ItemGroup>
 
 </Project>
