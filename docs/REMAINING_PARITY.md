@@ -166,7 +166,7 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `includesRawDetail()`). The per-tracker resolution logic already existed as the generic
   `PhaseConfiguration.effectiveVerbosity(...)` / `shouldTrack(...)`; `TrackingVerbosity` composes with it.
   Per-tracker *wiring* lands with each Tier-1 adapter. Proven by `TrackingVerbosityTest`.
-- [~] **Phase-aware tracking suppression** — wire `PhaseConfiguration.shouldTrack()` (already in
+- [x] **Phase-aware tracking suppression** — wire `PhaseConfiguration.shouldTrack()` (already in
   `kronikol4j-core`) into every extension execution path, honoring `TrackDuringSetup` / `TrackDuringAction`
   + `SetupVerbosity` / `ActionVerbosity`. Currently no Java tracker consults phase at all.
   **Primitives complete:** `shouldTrack(...)`, `effectiveVerbosity(...)` (both in `PhaseConfiguration`,
@@ -206,10 +206,15 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   **Verified already per-phase:** the richer `InteractionRecorder`s — SQL/JDBC, Redis, Mongo, Bigtable,
   EventHubs, EventBus — and `MessageTracker` all resolve `effectiveVerbosity(base, setup, action)`. The
   `MessageTracking` facade + `TrackingProxy` have no verbosity dimension (payload always / serializer-based),
-  so per-phase verbosity is N/A there. **Last remaining gap:** HTTP — `HttpTrackingConfig` carries a single
-  `verbosity` + the `trackDuringSetup/Action` toggles but no `setupVerbosity`/`actionVerbosity`, and the
-  OkHttp/JDK/WebClient adapters don't resolve `effectiveVerbosity`. Once HTTP adds the two per-phase overrides
-  and resolves them, **every** path honors both dimensions and this box flips `[x]`.
+  so per-phase verbosity is N/A there. **HTTP done (2026-06-28) → item complete `[x]`:** `HttpTrackingConfig`
+  gained `setupVerbosity`/`actionVerbosity` + an `effectiveVerbosity()` resolver, and the OkHttp/JDK/WebClient
+  adapters now gate body capture on `config.effectiveVerbosity()`. Proven by `HttpTrackingConfigTest`.
+  **Both phase dimensions are now honored across every tracking execution path:** the `TrackDuringSetup/Action`
+  on/off suppression *and* the `Setup/ActionVerbosity` per-phase verbosity overrides — HTTP, JDBC/Hibernate,
+  Redis, Mongo, AWS, Azure, GCP, Cassandra, Elasticsearch, gRPC, MessageTracker (+ Kafka wrappers),
+  MessageTracking, Bigtable, EventHubs, EventBus, TrackingProxy. The primitives
+  (`PhaseConfiguration.shouldTrack`/`effectiveVerbosity` + `PhaseVariantExtensions`) were already in place;
+  this completes the per-adapter wiring.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)

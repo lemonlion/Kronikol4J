@@ -156,7 +156,7 @@ public final class TrackingHttpClient extends HttpClient {
 
         UUID traceId = config.ids().newId();
         UUID requestResponseId = config.ids().newId();
-        boolean withBody = config.verbosity().includesPayload();
+        boolean withBody = config.effectiveVerbosity().includesPayload();
 
         HttpRequest.Builder rb = HttpRequest.newBuilder(uri);
         copyHeaders(request, rb);

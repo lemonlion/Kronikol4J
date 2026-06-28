@@ -91,7 +91,7 @@ public final class KronikolWebClientFilter implements ExchangeFilterFunction {
         String serviceName = resolver.resolve(effectivePort(uri));
         List<Header> requestHeaders = toHeaders(tracked);
         TestPhase phase = TestPhaseContext.current();
-        boolean withBody = config.verbosity().includesPayload();
+        boolean withBody = config.effectiveVerbosity().includesPayload();
 
         // Effectively-final copies for the lambda.
         String traceparentTrace = activityTraceId;

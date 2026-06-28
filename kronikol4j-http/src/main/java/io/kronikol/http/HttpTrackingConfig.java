@@ -1,6 +1,7 @@
 package io.kronikol.http;
 
 import io.kronikol.core.constants.DependencyCategories;
+import io.kronikol.core.context.PhaseConfiguration;
 import io.kronikol.core.context.TestInfo;
 import io.kronikol.core.naming.ExcludedHosts;
 import io.kronikol.core.support.IdGenerator;
@@ -30,6 +31,8 @@ public final class HttpTrackingConfig {
     private final boolean trackDuringAction;
     private final boolean injectTraceparent;
     private final TrackingVerbosity verbosity;
+    private final TrackingVerbosity setupVerbosity;
+    private final TrackingVerbosity actionVerbosity;
     private final IdGenerator ids;
     private final List<String> headersToForward;
     private final Supplier<String> currentStepTypeFetcher;
@@ -48,6 +51,8 @@ public final class HttpTrackingConfig {
         this.trackDuringAction = b.trackDuringAction;
         this.injectTraceparent = b.injectTraceparent;
         this.verbosity = b.verbosity;
+        this.setupVerbosity = b.setupVerbosity;
+        this.actionVerbosity = b.actionVerbosity;
         this.ids = b.ids;
         this.headersToForward = b.headersToForward;
         this.currentStepTypeFetcher = b.currentStepTypeFetcher;
@@ -66,6 +71,18 @@ public final class HttpTrackingConfig {
     public boolean trackDuringAction() { return trackDuringAction; }
     public boolean injectTraceparent() { return injectTraceparent; }
     public TrackingVerbosity verbosity() { return verbosity; }
+
+    /** Setup-phase verbosity override (the .NET {@code SetupVerbosity}); {@code null} = use {@link #verbosity()}. */
+    public TrackingVerbosity setupVerbosity() { return setupVerbosity; }
+
+    /** Action-phase verbosity override (the .NET {@code ActionVerbosity}); {@code null} = use {@link #verbosity()}. */
+    public TrackingVerbosity actionVerbosity() { return actionVerbosity; }
+
+    /** The verbosity for the current phase: the per-phase override when set, else the base {@link #verbosity()}. */
+    public TrackingVerbosity effectiveVerbosity() {
+        return PhaseConfiguration.effectiveVerbosity(verbosity, setupVerbosity, actionVerbosity);
+    }
+
     public IdGenerator ids() { return ids; }
 
     /** HTTP header names to forward from the incoming test/server context to outgoing requests. */
@@ -99,6 +116,8 @@ public final class HttpTrackingConfig {
         private boolean trackDuringAction = true;
         private boolean injectTraceparent = true;
         private TrackingVerbosity verbosity = TrackingVerbosity.DETAILED;
+        private TrackingVerbosity setupVerbosity;
+        private TrackingVerbosity actionVerbosity;
         private IdGenerator ids = IdGenerator.random();
         private List<String> headersToForward = List.of();
         private Supplier<String> currentStepTypeFetcher;
@@ -129,6 +148,10 @@ public final class HttpTrackingConfig {
             this.verbosity = v == null ? TrackingVerbosity.DETAILED : v;
             return this;
         }
+        /** Setup-phase verbosity override ({@code null} = use the base verbosity). */
+        public Builder setupVerbosity(TrackingVerbosity v) { this.setupVerbosity = v; return this; }
+        /** Action-phase verbosity override ({@code null} = use the base verbosity). */
+        public Builder actionVerbosity(TrackingVerbosity v) { this.actionVerbosity = v; return this; }
         public Builder ids(IdGenerator v) { this.ids = v == null ? IdGenerator.random() : v; return this; }
         public Builder headersToForward(List<String> v) {
             this.headersToForward = v == null ? List.of() : List.copyOf(v);

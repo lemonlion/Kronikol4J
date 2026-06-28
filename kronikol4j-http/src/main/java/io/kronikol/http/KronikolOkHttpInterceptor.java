@@ -97,7 +97,7 @@ public final class KronikolOkHttpInterceptor implements Interceptor {
         List<String> requestFocus = io.kronikol.core.tracking.DiagramFocus.consumePendingRequestFocus();
         List<String> responseFocus = io.kronikol.core.tracking.DiagramFocus.consumePendingResponseFocus();
 
-        boolean withBody = options.verbosity().includesPayload();
+        boolean withBody = options.effectiveVerbosity().includesPayload();
         String requestBody = withBody ? readRequestBody(tracked) : null;
         List<Header> requestHeaders = toHeaders(tracked);
         URI uri = tracked.url().uri();

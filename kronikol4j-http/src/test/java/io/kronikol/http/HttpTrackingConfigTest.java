@@ -50,6 +50,33 @@ class HttpTrackingConfigTest {
     }
 
     @Test
+    void effectiveVerbosityResolvesPerPhase() {
+        HttpTrackingConfig c = HttpTrackingConfig.builder()
+            .verbosity(TrackingVerbosity.DETAILED)
+            .setupVerbosity(TrackingVerbosity.SUMMARISED) // override only in the Setup phase
+            .build();
+        assertThat(c.setupVerbosity()).isEqualTo(TrackingVerbosity.SUMMARISED);
+        assertThat(c.actionVerbosity()).isNull();
+
+        // Unknown phase → base verbosity.
+        assertThat(c.effectiveVerbosity()).isEqualTo(TrackingVerbosity.DETAILED);
+
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.SETUP);
+        try {
+            assertThat(c.effectiveVerbosity()).isEqualTo(TrackingVerbosity.SUMMARISED); // Setup override
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);
+        try {
+            assertThat(c.effectiveVerbosity()).isEqualTo(TrackingVerbosity.DETAILED); // no Action override → base
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void nullCollectionsCoalesceToEmptyAndAreDefensivelyCopied() {
         HttpTrackingConfig c = HttpTrackingConfig.builder()
             .headersToForward(null)

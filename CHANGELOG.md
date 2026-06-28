@@ -98,6 +98,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
+### Completed — Phase-aware tracking suppression (cross-cutting item [x])
+- **HTTP per-phase verbosity** (`kronikol4j-http`, `kronikol4j-spring`) — `HttpTrackingConfig` gained
+  `setupVerbosity`/`actionVerbosity` + an `effectiveVerbosity()` resolver; the OkHttp/JDK/WebClient adapters
+  gate body capture on it. Proven by `HttpTrackingConfigTest`. **This completes the cross-cutting Phase-aware
+  tracking suppression item:** every tracking execution path now honors both `TrackDuringSetup/Action`
+  (on/off) and `Setup/ActionVerbosity` (per-phase verbosity).
+
 ### Added — Tier-1 Cassandra + Elasticsearch + gRPC (per-phase verbosity)
 - **`Setup/ActionVerbosity` overrides** (`kronikol4j-cassandra`, `kronikol4j-elasticsearch`, `kronikol4j-grpc`)
   — options records gained `setupVerbosity`/`actionVerbosity`; the recorders/interceptor resolve the effective
