@@ -8,6 +8,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-5 tooling
+- **Build-time weaving auto-wiring** (`kronikol4j-gradle-plugin`) — the assertion agent is now auto-attached
+  to test JVMs (the `-javaagent:` argument no longer has to be passed by hand). Opt in with
+  `kronikol { attachAssertionAgent = true }` (optional `assertionAgentCoordinates` override): the plugin
+  creates a resolvable `kronikolAssertionAgent` configuration that lazily declares the agent dependency only
+  when opted in, and registers a `jvmArgumentProvider` on every `Test` task emitting
+  `-javaagent:<jar> -Dnet.bytebuddy.experimental=true`. Arg logic factored into the pure `AssertionAgentArgs`
+  helper. Proven by `AssertionAgentArgsTest` + `KronikolPluginTest` (`ProjectBuilder` wiring assertions).
+  .NET's compile-time `StepTracking` IL-weave and `AssertionRewriter` Roslyn source-rewrite remain documented
+  C#-IL/source-AST boundaries (the runtime ByteBuddy agent is the IL-weaver analog).
 - **CLI distribution** (`kronikol4j-cli`) — wired the runnable fat-jar (`fatJar` task: Main-Class +
   bundled deps → `kronikol4j-cli-<version>-all.jar`, hooked into `assemble`) and chose **jbang** as the
   one-line-install form (the `dotnet tool install` analog) — added a repo-root `jbang-catalog.json` (resolves

@@ -34,6 +34,15 @@ public interface KronikolExtension {
     /** Report title. */
     Property<String> getTitle();
 
+    // --- build-time weaving ---
+
+    /** Auto-attach the Kronikol4J assertion-tracking agent to test JVMs (no manual {@code -javaagent}).
+     *  Default {@code false} — opt in, as it instruments AssertJ. */
+    Property<Boolean> getAttachAssertionAgent();
+
+    /** Maven coordinates of the assertion agent to attach; defaults to the plugin's own version. */
+    Property<String> getAssertionAgentCoordinates();
+
     // --- diagram styling ---
 
     /** Colour sequence-diagram arrows by dependency type. */

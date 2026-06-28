@@ -3,9 +3,11 @@ package io.kronikol.gradle;
 import io.kronikol.report.ReportOptions;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.Directory;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
@@ -27,8 +29,22 @@ public class KronikolPlugin implements Plugin<Project> {
         KronikolExtension extension = project.getExtensions().create("kronikol", KronikolExtension.class);
         extension.getReportDir().convention(project.getLayout().getBuildDirectory().dir("kronikol-report"));
         extension.getTitle().convention("Test Run Report");
+        extension.getAttachAssertionAgent().convention(false);
 
         Provider<Directory> fragmentsDir = project.getLayout().getBuildDirectory().dir("kronikol-fragments");
+
+        // Build-time weaving auto-wiring: a resolvable configuration holding the assertion agent, populated
+        // (only when opted in) at resolution time so the user can set the flag/coordinates in kronikol { }.
+        Configuration agentConfig = project.getConfigurations().create("kronikolAssertionAgent", c -> {
+            c.setCanBeConsumed(false);
+            c.setCanBeResolved(true);
+            c.setVisible(false);
+            c.setDescription("The Kronikol4J assertion-tracking agent attached to test JVMs.");
+        });
+        agentConfig.getDependencies().addAllLater(project.provider(() ->
+            Boolean.TRUE.equals(extension.getAttachAssertionAgent().getOrElse(false))
+                ? List.of(project.getDependencies().create(agentCoordinates(extension)))
+                : List.of()));
 
         project.getTasks().register("kronikolReport", KronikolReportTask.class, task -> {
             task.setGroup("verification");
@@ -42,7 +58,22 @@ public class KronikolPlugin implements Plugin<Project> {
             test.systemProperty("kronikol.run.dir", fragmentsDir.get().getAsFile().getAbsolutePath());
             test.finalizedBy("kronikolReport");
             forwardReportOptions(extension, test);
+            // Lazily attach the assertion agent (resolved at execution; empty args when not opted in).
+            test.getJvmArgumentProviders().add(() -> AssertionAgentArgs.compute(
+                Boolean.TRUE.equals(extension.getAttachAssertionAgent().getOrElse(false)),
+                agentConfig.getFiles().isEmpty() ? null : agentConfig.getSingleFile()));
         });
+    }
+
+    /** The agent coordinates: the user override, else this plugin's own version. */
+    private static String agentCoordinates(KronikolExtension extension) {
+        String override = extension.getAssertionAgentCoordinates().getOrNull();
+        if (override != null && !override.isBlank()) {
+            return override;
+        }
+        String version = Optional.ofNullable(KronikolPlugin.class.getPackage().getImplementationVersion())
+            .orElse("0.1.25-SNAPSHOT");
+        return "io.github.lemonlion:kronikol4j-assertj-agent:" + version;
     }
 
     /**

@@ -945,13 +945,26 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   fragment → HTML, missing/empty fragments-dir no-op, descriptor packaged + version-filtered) + wiki page.
 - [ ] **Project templates / archetypes** — the `dotnet new kronikol-*` analog (Maven archetype / `gradle
   init` skeleton) for each test-framework combo.
-- [ ] **Build-time weaving auto-wiring** — the assertion/step weavers as Gradle/Maven tasks, so users don't
+- [~] **Build-time weaving auto-wiring** — the assertion/step weavers as Gradle/Maven tasks, so users don't
   need an explicit `-javaagent:` argument (the ByteBuddy agent exists but isn't auto-wired). .NET ships
   three distinct build packages: `Kronikol.StepTracking` (`.targets` that codegen the step attributes + run
   the IL weaver after compile, gated by `<TrackStepsEnabled>`), `Kronikol.AssertionTracking` (Mono.Cecil IL
   weaver + `@TrackAssertions`/`@SuppressAssertionTracking` codegen), and `Kronikol.AssertionRewriter` (a
   Roslyn *source* rewriter running before compile). Decide the Java equivalent for each (AST/bytecode pass)
   or document any as an explicit boundary.
+  **Done:** the Gradle plugin now auto-attaches the assertion agent. New `kronikol { attachAssertionAgent =
+  true; assertionAgentCoordinates = "…" }` opt-in: the plugin creates a resolvable `kronikolAssertionAgent`
+  configuration that (lazily, via `addAllLater` gated on the flag) declares the agent dependency — defaulting
+  to the plugin's own `io.github.lemonlion:kronikol4j-assertj-agent:<version>` — and registers a
+  `jvmArgumentProvider` on every `Test` task that resolves the agent jar and emits `-javaagent:<jar>
+  -Dnet.bytebuddy.experimental=true`. The arg-computation is factored into the pure `AssertionAgentArgs`
+  helper (unit-tested: disabled→none, no-jar→none, enabled→both args) and the wiring is tested via
+  `ProjectBuilder` (`KronikolPluginTest`: dep declared only when opted in, provider registered, default off).
+  **Boundary (`[~]`):** .NET's two *compile-time* rewriters have no auto-wired Java equal — `StepTracking`'s
+  attribute codegen + post-compile IL weave and `AssertionRewriter`'s Roslyn *source* rewrite are the C#-IL /
+  source-AST boundary already documented at the assertion/diagnostic items (the runtime ByteBuddy agent is the
+  IL-weaver analog; closure-value resolution / readable-assertion substitution stays a documented gap). Maven
+  has no equivalent auto-attach task yet (Surefire `argLine` wiring) — tracked under the Maven-plugin item.
 - [ ] **Kafka build-interception package** — `Kronikol.Extensions.Kafka.BuildInterception` (MSBuild
   interception targets that auto-wire Kafka tracking). Decide Gradle/Maven equivalent.
 - [x] **CLI distribution form** — fat-jar is built; decide on `jbang` / `jreleaser` packaging and a

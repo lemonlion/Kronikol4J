@@ -64,6 +64,37 @@ class KronikolPluginTest {
     }
 
     @org.junit.jupiter.api.Test
+    void attachesAssertionAgentWhenOptedIn() {
+        Project project = ProjectBuilder.builder().build();
+        project.getPluginManager().apply("java");
+        project.getPluginManager().apply(KronikolPlugin.class);
+
+        KronikolExtension ext = project.getExtensions().getByType(KronikolExtension.class);
+        ext.getAttachAssertionAgent().set(true);
+
+        Test test = (Test) project.getTasks().getByName("test");
+        // a jvm-argument provider is wired onto the test task for the agent
+        assertThat(test.getJvmArgumentProviders()).isNotEmpty();
+        // the resolvable configuration exists and (opted in) declares the agent dependency
+        var agentConfig = project.getConfigurations().findByName("kronikolAssertionAgent");
+        assertThat(agentConfig).isNotNull();
+        assertThat(agentConfig.getAllDependencies())
+            .anySatisfy(d -> assertThat(d.getName()).isEqualTo("kronikol4j-assertj-agent"));
+    }
+
+    @org.junit.jupiter.api.Test
+    void doesNotAttachAgentByDefault() {
+        Project project = ProjectBuilder.builder().build();
+        project.getPluginManager().apply("java");
+        project.getPluginManager().apply(KronikolPlugin.class);
+
+        project.getTasks().getByName("test"); // realize
+        var agentConfig = project.getConfigurations().findByName("kronikolAssertionAgent");
+        assertThat(agentConfig).isNotNull();
+        assertThat(agentConfig.getAllDependencies()).isEmpty(); // no agent dep unless opted in
+    }
+
+    @org.junit.jupiter.api.Test
     void doesNotForwardUnsetReportOptions() {
         Project project = ProjectBuilder.builder().build();
         project.getPluginManager().apply("java");
