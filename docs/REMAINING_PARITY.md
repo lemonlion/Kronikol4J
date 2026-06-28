@@ -838,10 +838,15 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   the (method, hasMessages, hasMessageId) decision matrix → 11 operations (send/receive/peek/delete/update/
   clear messages, create/delete queue, get-properties/set-metadata, list-queues), with directional-arrow
   Detailed labels. Pure logic (no Azure SDK dependency). Proven by `StorageQueueOperationClassifierTest`
-  (message + queue + account operations, Other fallbacks, labels). **Remaining (`[~]`):** the
-  `StorageQueueTrackingMessageHandler` HTTP `DelegatingHandler` analog (an interceptor on the Queue REST
-  client) that feeds the classifier + emits the log pair, and a golden-rendered proof — the same SDK-auto-
-  capture follow-up tracked across the cloud adapters.
+  (message + queue + account operations, Other fallbacks, labels). Added `AzureTracking.storageQueue(options,
+  httpMethod, requestUri, body, statusCode)` — the reusable recorder core a Queue REST interceptor delegates
+  to: classifies via the classifier, resolves per-phase verbosity (suppression + Summarised body-drop),
+  builds the `storagequeue:///<queue>` URI (raw request URI at Raw), and emits the MessageQueue request/
+  response pair (real status → queue participant). Proven by `AzureTrackingTest.storageQueueSendIsClassified
+  AndRecorded` (Send→orders label, URI, body, status, queue rendering). **Remaining (`[~]`):** the
+  `StorageQueueTrackingMessageHandler` HTTP `DelegatingHandler` analog (a transport interceptor on the Queue
+  REST client) that auto-invokes `storageQueue(...)`, and a golden-rendered proof — the same SDK-auto-capture
+  transport-hook follow-up tracked across the cloud adapters.
 - [~] **AWS EventBridge** — interceptor.
   **Done:** added the EventBridge classifier to `kronikol4j-aws` (alongside the existing SQS/SNS/S3/DynamoDB
   classifiers) — `EventBridgeOperation` (28 ops + PascalCase `displayName()`), `EventBridgeOperationInfo`

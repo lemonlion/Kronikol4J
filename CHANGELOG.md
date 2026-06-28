@@ -106,6 +106,15 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   verbosity. EventBridge could previously be classified but not recorded. Proven by `AwsTrackingTest`. The AWS
   SDK v2 interceptor that auto-feeds it + a golden proof remain.
 
+### Added — Tier-3 Azure Storage Queues (recorder)
+- **`AzureTracking.storageQueue(...)`** (`kronikol4j-azure`) — the classifier-driven Storage Queues recording
+  core (the .NET `StorageQueueTrackingMessageHandler` analog): classifies the REST request from its HTTP
+  method + URI, emits a request/response pair (`MESSAGE_QUEUE`, real status → queue participant) with the
+  classifier's directional-arrow label, the `storagequeue:///<queue>` URI (raw request URI at Raw verbosity),
+  and the body honoured per (per-phase) verbosity. Storage Queues could previously be classified but not
+  recorded. Proven by `AzureTrackingTest`. The Azure Queue REST `DelegatingHandler` transport interceptor
+  that auto-feeds it + a golden proof remain.
+
 ### Completed — Phase-aware tracking suppression (cross-cutting item [x])
 - **HTTP per-phase verbosity** (`kronikol4j-http`, `kronikol4j-spring`) — `HttpTrackingConfig` gained
   `setupVerbosity`/`actionVerbosity` + an `effectiveVerbosity()` resolver; the OkHttp/JDK/WebClient adapters

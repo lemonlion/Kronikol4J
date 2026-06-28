@@ -50,6 +50,37 @@ public final class AzureTracking {
             StatusCode.of("Sent"), null, RequestResponseMetaType.EVENT);
     }
 
+    /**
+     * Records an Azure Storage Queues REST interaction, classifying the request from its HTTP method + URI via
+     * {@link StorageQueueOperationClassifier} — the reusable core an Azure Queue REST interceptor delegates to
+     * (the .NET {@code StorageQueueTrackingMessageHandler} analog). Request/response shape (real
+     * {@code statusCode}), {@code MessageQueue} category → queue participant; diagram label from the classifier;
+     * {@code storagequeue:///<queue>} URI (the raw request URI at Raw verbosity); body honoured per (per-phase)
+     * verbosity.
+     *
+     * @param httpMethod the request method ({@code POST}/{@code GET}/{@code DELETE}/{@code PUT})
+     * @param requestUri the request URI (path drives queue / message-id / operation classification)
+     * @param body       the request body (or a redacted form); dropped at Summarised verbosity
+     * @param statusCode the HTTP response status
+     */
+    public static void storageQueue(AzureTrackingOptions options, String httpMethod, URI requestUri,
+                                    String body, int statusCode) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
+        StorageQueueOperationInfo info = StorageQueueOperationClassifier.classify(httpMethod, requestUri);
+        TrackingVerbosity verbosity = effectiveVerbosity(options);
+        String label = StorageQueueOperationClassifier.getDiagramLabel(info, verbosity);
+        URI uri = verbosity == TrackingVerbosity.RAW ? requestUri
+            : info.queueName() != null ? URI.create("storagequeue:///" + info.queueName())
+            : URI.create("storagequeue:///");
+        String content = verbosity.includesPayload() ? body : null;
+        TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        Interactions.recordPair(who, options.serviceName(), options.callerName(),
+            DependencyCategories.MESSAGE_QUEUE, Method.of(label), uri, content,
+            StatusCode.of(statusCode), null);
+    }
+
     private static void record(AzureTrackingOptions options, String category, String operation,
                                URI uri, String request) {
         if (suppressedByPhase(options)) {

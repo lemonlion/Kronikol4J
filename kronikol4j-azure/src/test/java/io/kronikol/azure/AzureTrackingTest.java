@@ -40,6 +40,23 @@ class AzureTrackingTest {
     }
 
     @Test
+    void storageQueueSendIsClassifiedAndRecorded() {
+        AzureTracking.storageQueue(AzureTrackingOptions.forService("Queues"), "POST",
+            java.net.URI.create("https://acct.queue.core.windows.net/orders/messages"),
+            "<QueueMessage><MessageText>hi</MessageText></QueueMessage>", 201);
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2);
+        assertThat(logs.get(0).method().value()).isEqualTo("Send → orders"); // classifier Detailed label
+        assertThat(logs.get(0).uri().toString()).isEqualTo("storagequeue:///orders");
+        assertThat(logs.get(0).content()).contains("MessageText");
+        assertThat(logs.get(1).statusCode()).isEqualTo(io.kronikol.core.tracking.StatusCode.of(201));
+
+        String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
+        assertThat(uml).contains("queue \"Queues\" as queues"); // MessageQueue → queue participant
+    }
+
+    @Test
     void setupPhaseVerbosityOverrideDropsCosmosDocument() {
         var options = AzureTrackingOptions.forService("OrdersDb")
             .withSetupVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
