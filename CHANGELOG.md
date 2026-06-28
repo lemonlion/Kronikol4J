@@ -74,6 +74,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Added — Tier-1 Azure (verbosity wiring)
+- **Recorder verbosity** (`kronikol4j-azure`) — `AzureTrackingOptions` gained a `TrackingVerbosity` (default
+  Detailed, `withVerbosity(...)`); at Summarised the recorders drop the payload (the Cosmos document, the
+  Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
+  SDK pipeline policies + a golden proof remain.
+
 ### Added — Tier-1 AWS (verbosity wiring)
 - **Recorder verbosity** (`kronikol4j-aws`) — `AwsTrackingOptions` gained a `TrackingVerbosity` (default
   Detailed, `withVerbosity(...)`); at Summarised the recorders drop the payload (the DynamoDB item, the

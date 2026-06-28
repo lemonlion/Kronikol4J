@@ -8,6 +8,7 @@ import io.kronikol.core.tracking.Method;
 import io.kronikol.core.tracking.RequestResponseMetaType;
 import io.kronikol.core.tracking.StatusCode;
 import io.kronikol.core.tracking.TrackingDefaults;
+import io.kronikol.core.tracking.TrackingVerbosity;
 import java.net.URI;
 import java.util.Locale;
 import java.util.function.Supplier;
@@ -26,8 +27,9 @@ public final class AzureTracking {
     }
 
     public static void cosmos(AzureTrackingOptions options, String operation, String container, String document) {
-        record(options, DependencyCategories.COSMOS_DB, operation, COSMOS_URI,
-            container + ": " + (document == null ? "" : document));
+        // Summarised omits the document payload — only the container identity is kept.
+        String payload = options.verbosity().includesPayload() && document != null ? document : "";
+        record(options, DependencyCategories.COSMOS_DB, operation, COSMOS_URI, container + ": " + payload);
     }
 
     public static void blob(AzureTrackingOptions options, String operation, String container, String blob) {
@@ -36,9 +38,11 @@ public final class AzureTracking {
 
     public static void serviceBus(AzureTrackingOptions options, String entity, String message) {
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        // Summarised omits the message payload — only the entity identity is kept.
+        String payload = options.verbosity().includesPayload() && message != null ? message : "";
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.SERVICE_BUS, Method.of("SEND"), SERVICE_BUS_URI, null,
-            "entity: " + entity + "\n" + (message == null ? "" : message),
+            "entity: " + entity + "\n" + payload,
             StatusCode.of("Sent"), null, RequestResponseMetaType.EVENT);
     }
 
@@ -52,9 +56,25 @@ public final class AzureTracking {
 
     /** Configuration for Azure tracking. */
     public record AzureTrackingOptions(String serviceName, String callerName,
-                                       Supplier<TestInfo> testInfoFetcher) {
+                                       Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
+
+        public AzureTrackingOptions {
+            verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
+        }
+
+        /** Three-arg shape (default verbosity) — the back-compatible constructor. */
+        public AzureTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher) {
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT);
+        }
+
         public static AzureTrackingOptions forService(String serviceName) {
-            return new AzureTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null);
+            return new AzureTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
+                TrackingVerbosity.DEFAULT);
+        }
+
+        /** A copy with the given verbosity (Summarised omits the Cosmos document / Service Bus message). */
+        public AzureTrackingOptions withVerbosity(TrackingVerbosity value) {
+            return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, value);
         }
     }
 }

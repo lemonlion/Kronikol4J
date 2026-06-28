@@ -38,4 +38,25 @@ class AzureTrackingTest {
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml).contains("queue \"Bus\" as bus").contains("test -[#9B59B6]> bus: SEND: /");
     }
+
+    @Test
+    void summarisedVerbosityOmitsCosmosDocumentButKeepsContainer() {
+        var options = AzureTrackingOptions.forService("OrdersDb")
+            .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        AzureTracking.cosmos(options, "Upsert", "orders", "{\"id\":1}");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs.get(0).content()).isEqualTo("orders: "); // container kept, document dropped
+    }
+
+    @Test
+    void summarisedVerbosityOmitsServiceBusMessageButKeepsEntity() {
+        var options = AzureTrackingOptions.forService("Bus")
+            .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        AzureTracking.serviceBus(options, "orders", "{\"id\":1}");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).anySatisfy(l -> assertThat(l.content()).isEqualTo("entity: orders\n"));
+        assertThat(logs).noneSatisfy(l -> assertThat(l.content()).contains("{\"id\":1}"));
+    }
 }

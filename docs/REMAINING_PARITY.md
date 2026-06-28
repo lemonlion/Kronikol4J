@@ -474,9 +474,12 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   (Send/SendBatch/Schedule/Receive/Peek/Complete/Abandon/DeadLetter/Defer/locks/session-state/processing),
   entity-path + batch message-count extraction, and directional-arrow Detailed labels (`Send (×3) → q`,
   `Receive ← q`) with Summarised batch collapsing. Proven by `ServiceBusOperationClassifierTest` (4 cases).
-  **All three Azure service classifiers (Cosmos, Blob, Service Bus) are now done. Remaining:** the Azure SDK
-  pipeline policies that feed them + emit the log pair, `autoCorrelateWrites`/change-feed key extractor, and a
-  golden proof.
+  **All three Azure service classifiers (Cosmos, Blob, Service Bus) are now done.**
+  **Verbosity wiring done (2026-06-28):** `AzureTrackingOptions` gained a `TrackingVerbosity` (default Detailed,
+  `withVerbosity(...)`); the recorders drop the payload at Summarised — the Cosmos document (keeping the
+  container) and the Service Bus message (keeping the entity). Proven by `AzureTrackingTest`. **Remaining:** the
+  Azure SDK pipeline policies that feed the classifiers + emit the pair, `autoCorrelateWrites`/change-feed key
+  extractor, and a golden proof.
 - [~] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
   classifiers + verbosity. *(.NET ships handlers + interceptors per service.)*
   **Pub/Sub classifier done:** `PubSubOperationClassifier` (+ `PubSubOperation`, `PubSubOperationInfo`) ports
