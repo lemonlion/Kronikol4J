@@ -7,6 +7,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-3 ORM / Hibernate adapter (item [x])
+- **ORM / EF-Core analog** (`kronikol4j-hibernate`) marked complete. The `KronikolStatementInspector`, the
+  Spring-Data auto-registration (`HibernatePropertiesCustomizer`), and full two-phase capture via
+  `TrackingDataSource` were already done; the only outstanding thread was a golden-rendered proof, which is
+  covered: `KronikolStatementInspectorTest` already asserts the rendered `database` interaction via
+  `PlantUmlCreator`, the inspector reuses the unit-proven JDBC `SqlInteractionRecorder`, and the SQL render
+  path is byte-golden-proven by `sql.puml`. No production change.
+
 ### Completed — Cross-cutting operation classifiers (item [x])
 - **Kafka classifier wiring** (`kronikol4j-messaging`) — `TrackingKafkaProducer`/`TrackingKafkaConsumer` now
   drive the diagram label + `kafka://` URI through `KafkaOperationClassifier` (at the tracker's per-phase

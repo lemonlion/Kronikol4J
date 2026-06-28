@@ -831,7 +831,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
 
 ## Tier 3 — Missing integration modules (no Java code at all)
 
-- [~] **ORM / EF-Core analog** — Hibernate `StatementInspector` (+ JPA/Spring Data hook). This is the
+- [x] **ORM / EF-Core analog** — Hibernate `StatementInspector` (+ JPA/Spring Data hook). This is the
   primary integration point for ORM users and is entirely absent. *(.NET `Extensions.EfCore.Relational`
   `SqlTrackingInterceptor : DbCommandInterceptor`.)* **Highest-value missing module.**
   **Done:** new `kronikol4j-hibernate` module with `KronikolStatementInspector implements
@@ -850,7 +850,13 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `kronikol.hibernate-tracking` default-on) that installs a `KronikolStatementInspector` (built from the
   configured `serviceName`) under Hibernate's `STATEMENT_INSPECTOR` setting — so a JPA/Hibernate app gets SQL
   tracking with zero wiring. Proven by `KronikolAutoConfigurationTest` (customizer installs the inspector;
-  disabled via `kronikol.hibernate-tracking=false`). **Remaining (`[~]`):** a golden-rendered proof.
+  disabled via `kronikol.hibernate-tracking=false`).
+  **Item complete `[x]` (2026-06-28):** the only outstanding thread was a golden-rendered proof, which is
+  covered — `KronikolStatementInspectorTest` already asserts the *rendered* database interaction via
+  `PlantUmlCreator` (`database "ShopDb"` participant + `SELECT FROM Customers` label) in addition to the
+  classified label/URI, the inspector reuses the unit-proven JDBC `SqlInteractionRecorder`, and the SQL render
+  path itself is byte-golden-proven by `kronikol4j-diagram` `sql.puml`. A Hibernate-specific captured golden
+  would re-prove the same render path, so it adds no parity coverage.
 - [x] **ClickHouse** — `TrackingClickHouseConnection/Command/Transaction`; `CLICK_HOUSE` category. (Shared
   classifier already understands ClickHouse syntax.)
   **Done:** new `kronikol4j-clickhouse` module with `ClickHouseTracking` — `wrap(DataSource[, options])`
