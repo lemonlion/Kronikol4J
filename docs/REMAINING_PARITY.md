@@ -544,14 +544,20 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `fixedNameForReceivingService`, `expectedTestCount`, `generateComponentDiagram`, the post/mid-processor
   hooks, `inlineBackgroundSteps`, `lazyLoadDiagramImages`, explicit `generateTestRunReportData`/
   `generateMergeableData`) are still open and land with their owning features.
-- [ ] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
+- [x] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*
-  **Unblocked (2026-06-28):** the Specifications report now exists with its own `SpecificationsOptions.
-  dataFormat` (independent of `ReportOptions.dataFormats`), so the two report types already take separate
-  formats. What remains for this item is the *config-surface tidy-up* — exposing `testRunReportDataFormat`
-  (singular, default JSON) alongside the existing `dataFormats` set on `ReportOptions`, to mirror .NET's two
-  scalar options — best done with the report-control-flags wiring pass.
+  **Done (2026-06-28):** the split was already effectively in place — the Specifications report carries its
+  own `SpecificationsOptions.dataFormat` (default YAML, independent of `ReportOptions.dataFormats`), mirroring
+  .NET's `SpecificationsDataFormat`. This iteration adds the test-run side's .NET-named scalar to
+  `ReportOptions`: `testRunReportDataFormat()` (the scalar view — the first configured format in insertion
+  order, or the .NET default `JSON` when none) + `withTestRunReportDataFormat(ReportDataFormat)` (sets the
+  single emitted format, `null` → none). The existing `dataFormats` **set** stays the source of truth and the
+  superset API (Java generalizes .NET's one-format option to emit several files); the scalar is a thin,
+  documented convenience for .NET-API familiarity. System-property channel is unchanged
+  (`kronikol.report.dataFormats=json` is the single-format form — a separate scalar property would conflict
+  with the set property, so none was added). Proven by `ReportOptionsTest`
+  (`testRunReportDataFormatScalarMirrorsDotNet`). The actual emitted bytes were already golden-proven.
 - [x] **`ScenarioTitleResolver`** — `formatScenarioDisplayName` (PascalCase splitting), `formatFeatureName`,
   `appendTestParameters`, `resolveScenarioTitle` (BDDfy-style). Java uses the framework `getDisplayName()`
   directly, which is fine for JUnit/parameterized but diverges for BDD-style sources. *(.NET

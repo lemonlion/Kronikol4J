@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.kronikol.diagram.plantuml.DiagramOptions;
 import io.kronikol.diagram.plantuml.FocusDeEmphasis;
 import io.kronikol.diagram.plantuml.FocusEmphasis;
+import io.kronikol.report.data.ReportDataFormat;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,21 @@ class ReportOptionsTest {
         assertThat(d.focusEmphasis()).containsExactly(FocusEmphasis.COLORED);
         assertThat(d.focusDeEmphasis()).containsExactly(FocusDeEmphasis.HIDDEN);
         assertThat(opts.arrowColors()).isTrue(); // unrelated options untouched
+    }
+
+    @Test
+    void testRunReportDataFormatScalarMirrorsDotNet() {
+        // .NET's TestRunReportDataFormat defaults to JSON; the Java dataFormats set generalizes it.
+        assertThat(ReportOptions.defaults().testRunReportDataFormat()).isEqualTo(ReportDataFormat.JSON);
+
+        ReportOptions xml = ReportOptions.defaults().withTestRunReportDataFormat(ReportDataFormat.XML);
+        assertThat(xml.testRunReportDataFormat()).isEqualTo(ReportDataFormat.XML);
+        assertThat(xml.dataFormats()).containsExactly(ReportDataFormat.XML); // sets the single emitted format
+
+        // When several formats are configured, the scalar view reports the first (insertion order).
+        ReportOptions multi = ReportOptions.defaults()
+            .withDataFormats(new java.util.LinkedHashSet<>(List.of(ReportDataFormat.YAML, ReportDataFormat.JSON)));
+        assertThat(multi.testRunReportDataFormat()).isEqualTo(ReportDataFormat.YAML);
     }
 
     @Test

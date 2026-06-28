@@ -181,6 +181,17 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return diagram.serviceTypeOverrides();
     }
 
+    /**
+     * The .NET {@code TestRunReportDataFormat} scalar view of {@link #dataFormats()}: the single format the
+     * test-run-report data file is emitted in. Java generalizes .NET's one-format option to a set (emit
+     * several files); this accessor reports the first configured format in insertion order, or the .NET
+     * default ({@link ReportDataFormat#JSON}) when none is configured. {@code dataFormats()} remains the
+     * source of truth and the superset API.
+     */
+    public ReportDataFormat testRunReportDataFormat() {
+        return dataFormats.isEmpty() ? ReportDataFormat.JSON : dataFormats.iterator().next();
+    }
+
     // --- withers ---
     public ReportOptions withDiagram(DiagramOptions value) {
         return new ReportOptions(value, dataFormats, generateSchema, customization, ci, diagnosticMode);
@@ -248,6 +259,15 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
         return new ReportOptions(diagram, formats, generateSchema, customization, ci, diagnosticMode);
+    }
+
+    /**
+     * Sets the single test-run-report data format — the .NET {@code TestRunReportDataFormat} convenience over
+     * {@link #withDataFormats(Set)} (so {@code TestRunReport.<ext>} is emitted in exactly that format). Pass
+     * {@code null} to emit no data file. To emit several formats at once, use {@link #withDataFormats(Set)}.
+     */
+    public ReportOptions withTestRunReportDataFormat(ReportDataFormat format) {
+        return withDataFormats(format == null ? Set.of() : Set.of(format));
     }
 
     /** Enables the {@code TestRunReport.schema.json}/{@code .xsd} schema alongside each data format. */

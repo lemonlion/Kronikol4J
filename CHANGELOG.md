@@ -29,6 +29,14 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   forked JVMs emit fragments when `kronikol.run.dir` is set on Surefire/Failsafe. Proven by
   `KronikolReportMojoTest`; wiki page added.
 
+### Added — Tier-2 options
+- **Per-report-type data formats** (`kronikol4j-report`) — added the .NET-named scalar
+  `ReportOptions.testRunReportDataFormat()` + `withTestRunReportDataFormat(ReportDataFormat)` (the
+  `TestRunReportDataFormat` analog, default JSON) as a thin, documented convenience over the existing
+  `dataFormats` set (which stays the source of truth and emits one file per format). The specifications side
+  already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
+  Proven by `ReportOptionsTest`.
+
 ### Added — Tier-6 helpers & wiring fixes
 - **Diagnostic report wiring** (`kronikol4j-report` + `kronikol4j-runtime` + `kronikol4j-gradle-plugin`) —
   added the `diagnosticMode` toggle to `ReportOptions` (`withDiagnosticMode`, the
