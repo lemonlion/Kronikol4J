@@ -30,6 +30,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   `KronikolReportMojoTest`; wiki page added.
 
 ### Added — Tier-2 options
+- **Report control flags — title + HTML file name** (`kronikol4j-report` + `kronikol4j-runtime` +
+  `kronikol4j-gradle-plugin`) — new nested `ReportControlOptions` on `ReportOptions` carrying
+  `testRunReportTitle` (overrides the finalizer's title; `null` → caller's title) and `htmlReportFileName`
+  (default `TestRunReport`; the HTML file's base name). Threaded through `HtmlReportGenerator.generate` and
+  `ReportFinalizer`, exposed via `kronikol.report.title`/`kronikol.report.htmlFileName` and the Gradle DSL
+  (`testRunReportTitle`/`htmlReportFileName`). The .NET `TestRunReportTitle`/`HtmlTestRunReportFileName`
+  analogs. Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
 - **Per-report-type data formats** (`kronikol4j-report`) — added the .NET-named scalar
   `ReportOptions.testRunReportDataFormat()` + `withTestRunReportDataFormat(ReportDataFormat)` (the
   `TestRunReportDataFormat` analog, default JSON) as a thin, documented convenience over the existing

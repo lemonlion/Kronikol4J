@@ -110,6 +110,8 @@ public class KronikolPlugin implements Plugin<Project> {
         forwardBool(test, ReportOptions.SHOW_STEP_NUMBERS_PROPERTY, ext.getShowStepNumbers());
         forwardBool(test, ReportOptions.BLANK_ON_FAILED_PROPERTY, ext.getGenerateBlankOnFailedTests());
         forwardBool(test, ReportOptions.DIAGNOSTIC_MODE_PROPERTY, ext.getDiagnosticMode());
+        forwardString(test, ReportOptions.REPORT_TITLE_PROPERTY, ext.getTestRunReportTitle());
+        forwardString(test, ReportOptions.HTML_FILE_NAME_PROPERTY, ext.getHtmlReportFileName());
         // CI summary / artifacts
         forwardBool(test, ReportOptions.WRITE_CI_SUMMARY_PROPERTY, ext.getWriteCiSummary());
         forwardInt(test, ReportOptions.MAX_CI_SUMMARY_DIAGRAMS_PROPERTY, ext.getMaxCiSummaryDiagrams());

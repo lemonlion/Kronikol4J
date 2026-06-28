@@ -122,6 +122,13 @@ public interface KronikolExtension {
     /** Write the standalone {@code DiagnosticReport.html} (tracking health/warnings) at end-of-run. */
     Property<Boolean> getDiagnosticMode();
 
+    /** Override the test-run-report title (the .NET {@code TestRunReportTitle}). */
+    Property<String> getTestRunReportTitle();
+
+    /** HTML report file name without extension (the .NET {@code HtmlTestRunReportFileName}, default
+     *  {@code TestRunReport}). */
+    Property<String> getHtmlReportFileName();
+
     // --- CI summary / artifacts ---
 
     /** Write the markdown run summary to the detected CI platform. */

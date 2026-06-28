@@ -34,7 +34,7 @@ import java.util.Set;
  */
 public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats,
                             boolean generateSchema, HtmlCustomization customization, CiPublishOptions ci,
-                            boolean diagnosticMode) {
+                            boolean diagnosticMode, ReportControlOptions control) {
 
     /** System property (boolean) enabling per-dependency-type arrow colours. */
     public static final String ARROW_COLORS_PROPERTY = "kronikol.diagram.arrowColors";
@@ -87,6 +87,10 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     public static final String BLANK_ON_FAILED_PROPERTY = "kronikol.report.generateBlankOnFailedTests";
     /** System property (boolean) writing the standalone {@code DiagnosticReport.html} at end-of-run. */
     public static final String DIAGNOSTIC_MODE_PROPERTY = "kronikol.report.diagnosticMode";
+    /** System property (string) overriding the test-run-report title (the .NET {@code TestRunReportTitle}). */
+    public static final String REPORT_TITLE_PROPERTY = "kronikol.report.title";
+    /** System property (string) for the HTML report file name without extension (default {@code TestRunReport}). */
+    public static final String HTML_FILE_NAME_PROPERTY = "kronikol.report.htmlFileName";
     /** System property (boolean) writing the markdown run summary to the detected CI platform. */
     public static final String WRITE_CI_SUMMARY_PROPERTY = "kronikol.ci.writeCiSummary";
     /** System property (int) capping diagrams in the CI summary (default 10). */
@@ -104,6 +108,14 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
             ? Set.of() : Collections.unmodifiableSet(new LinkedHashSet<>(dataFormats));
         customization = customization == null ? HtmlCustomization.NONE : customization;
         ci = ci == null ? CiPublishOptions.NONE : ci;
+        control = control == null ? ReportControlOptions.DEFAULTS : control;
+    }
+
+    /** Six-arg shape (default report-control flags) — the back-compatible constructor. */
+    public ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats, boolean generateSchema,
+                         HtmlCustomization customization, CiPublishOptions ci, boolean diagnosticMode) {
+        this(diagram, dataFormats, generateSchema, customization, ci, diagnosticMode,
+            ReportControlOptions.DEFAULTS);
     }
 
     /** Three-arg shape (no HTML customization, no CI publishing) — the back-compatible constructor. */
@@ -194,7 +206,7 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     // --- withers ---
     public ReportOptions withDiagram(DiagramOptions value) {
-        return new ReportOptions(value, dataFormats, generateSchema, customization, ci, diagnosticMode);
+        return new ReportOptions(value, dataFormats, generateSchema, customization, ci, diagnosticMode, control);
     }
 
     public ReportOptions withArrowColors(boolean value) {
@@ -258,7 +270,7 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     }
 
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
-        return new ReportOptions(diagram, formats, generateSchema, customization, ci, diagnosticMode);
+        return new ReportOptions(diagram, formats, generateSchema, customization, ci, diagnosticMode, control);
     }
 
     /**
@@ -272,19 +284,19 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     /** Enables the {@code TestRunReport.schema.json}/{@code .xsd} schema alongside each data format. */
     public ReportOptions withGenerateSchema(boolean value) {
-        return new ReportOptions(diagram, dataFormats, value, customization, ci, diagnosticMode);
+        return new ReportOptions(diagram, dataFormats, value, customization, ci, diagnosticMode, control);
     }
 
     /** The HTML customization (CSS/favicon/logo/step-numbers) applied to the generated report. */
     public ReportOptions withHtmlCustomization(HtmlCustomization value) {
         return new ReportOptions(diagram, dataFormats, generateSchema,
-            value == null ? HtmlCustomization.NONE : value, ci, diagnosticMode);
+            value == null ? HtmlCustomization.NONE : value, ci, diagnosticMode, control);
     }
 
     /** The CI summary/artifact-publishing options applied at end-of-run. */
     public ReportOptions withCi(CiPublishOptions value) {
         return new ReportOptions(diagram, dataFormats, generateSchema, customization,
-            value == null ? CiPublishOptions.NONE : value, diagnosticMode);
+            value == null ? CiPublishOptions.NONE : value, diagnosticMode, control);
     }
 
     /**
@@ -293,7 +305,23 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
      * enqueued (the empty-report case). Mirrors .NET {@code ReportConfigurationOptions.DiagnosticMode}.
      */
     public ReportOptions withDiagnosticMode(boolean value) {
-        return new ReportOptions(diagram, dataFormats, generateSchema, customization, ci, value);
+        return new ReportOptions(diagram, dataFormats, generateSchema, customization, ci, value, control);
+    }
+
+    /** The report-control flags (title / HTML file name) applied at end-of-run. */
+    public ReportOptions withControl(ReportControlOptions value) {
+        return new ReportOptions(diagram, dataFormats, generateSchema, customization, ci, diagnosticMode,
+            value == null ? ReportControlOptions.DEFAULTS : value);
+    }
+
+    /** Overrides the report title (the .NET {@code TestRunReportTitle}); {@code null} → caller's title used. */
+    public ReportOptions withTestRunReportTitle(String value) {
+        return withControl(control.withTestRunReportTitle(value));
+    }
+
+    /** Sets the HTML report file name without extension (the .NET {@code HtmlTestRunReportFileName}). */
+    public ReportOptions withHtmlReportFileName(String value) {
+        return withControl(control.withHtmlReportFileName(value));
     }
 
     /**
@@ -325,7 +353,15 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
             boolProperty(GENERATE_SCHEMA_PROPERTY, false),
             customizationFromSystemProperties(),
             ciFromSystemProperties(),
-            boolProperty(DIAGNOSTIC_MODE_PROPERTY, false));
+            boolProperty(DIAGNOSTIC_MODE_PROPERTY, false),
+            controlFromSystemProperties());
+    }
+
+    /** Builds the {@link ReportControlOptions} from system properties (defaulting to the .NET defaults). */
+    public static ReportControlOptions controlFromSystemProperties() {
+        return new ReportControlOptions(
+            stringProperty(REPORT_TITLE_PROPERTY, null),
+            stringProperty(HTML_FILE_NAME_PROPERTY, ReportControlOptions.DEFAULT_HTML_FILE_NAME));
     }
 
     /** Builds the {@link CiPublishOptions} from system properties (all defaulting to the .NET defaults). */

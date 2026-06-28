@@ -222,6 +222,46 @@ class ReportFinalizerTest {
     }
 
     @Test
+    void finalizeUsesConfiguredHtmlFileName(@TempDir Path dir) throws IOException {
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        var report = ReportFinalizer.finalizeRun(dir, "Run",
+            ReportOptions.defaults().withHtmlReportFileName("MyReport"));
+
+        assertThat(dir.resolve("MyReport.html")).exists();
+        assertThat(dir.resolve("TestRunReport.html")).doesNotExist();
+        assertThat(report.htmlFile().getFileName().toString()).isEqualTo("MyReport.html");
+    }
+
+    @Test
+    void finalizeAppliesTitleOverride(@TempDir Path dir) throws IOException {
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        var report = ReportFinalizer.finalizeRun(dir, "Caller Title",
+            ReportOptions.defaults().withTestRunReportTitle("Configured Title"));
+
+        assertThat(Files.readString(report.htmlFile()))
+            .contains("<title>Configured Title</title>")
+            .doesNotContain("<title>Caller Title</title>");
+    }
+
+    @Test
+    void finalizeRunToDefaultReadsTitleAndFileNameSystemProperties(@TempDir Path dir) throws IOException {
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+        System.setProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY, dir.toString());
+        System.setProperty(ReportOptions.REPORT_TITLE_PROPERTY, "Sys Title");
+        System.setProperty(ReportOptions.HTML_FILE_NAME_PROPERTY, "SysReport");
+        try {
+            ReportFinalizer.finalizeRunToDefault("Kronikol4J Test Run");
+            assertThat(Files.readString(dir.resolve("SysReport.html"))).contains("<title>Sys Title</title>");
+        } finally {
+            System.clearProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY);
+            System.clearProperty(ReportOptions.REPORT_TITLE_PROPERTY);
+            System.clearProperty(ReportOptions.HTML_FILE_NAME_PROPERTY);
+        }
+    }
+
+    @Test
     void finalizeWritesDiagnosticReportWhenEnabled(@TempDir Path dir) throws IOException {
         trackCheckout();
         RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));

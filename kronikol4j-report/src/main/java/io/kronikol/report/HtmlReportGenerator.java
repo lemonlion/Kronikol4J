@@ -58,8 +58,9 @@ public final class HtmlReportGenerator {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }
         }
-        return generateFromDiagrams(features, diagramByTestId, componentDiagram(logs), outputDir, title,
-            options.customization());
+        return generateFromDiagrams(features, diagramByTestId, componentDiagram(logs), outputDir,
+            options.control().resolveTitle(title), options.customization(),
+            options.control().htmlReportFileName());
     }
 
     /** The run-level component diagram from all tracked logs, or {@code null} if nothing was tracked. */
@@ -95,9 +96,21 @@ public final class HtmlReportGenerator {
                                                        Path outputDir,
                                                        String title,
                                                        HtmlCustomization customization) throws IOException {
+        return generateFromDiagrams(features, diagramByTestId, componentDiagram, outputDir, title,
+            customization, ReportControlOptions.DEFAULT_HTML_FILE_NAME);
+    }
+
+    /** As above, writing the report to {@code <htmlFileName>.html} (the .NET {@code HtmlTestRunReportFileName}). */
+    public static GeneratedReport generateFromDiagrams(List<Feature> features,
+                                                       Map<String, String> diagramByTestId,
+                                                       String componentDiagram,
+                                                       Path outputDir,
+                                                       String title,
+                                                       HtmlCustomization customization,
+                                                       String htmlFileName) throws IOException {
         String html = renderHtml(features, diagramByTestId, componentDiagram, title, customization);
         Files.createDirectories(outputDir);
-        Path file = outputDir.resolve("TestRunReport.html");
+        Path file = outputDir.resolve(htmlFileName + ".html");
         Files.writeString(file, html, StandardCharsets.UTF_8);
         return new GeneratedReport(html, file);
     }

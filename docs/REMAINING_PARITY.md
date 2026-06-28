@@ -526,7 +526,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `currentStepTypeFetcher`'s action-start injection needs Tier-4 `TrackingDiagramOverride`;
   `useHttpContextCorrelation` needs the Tier-4 server bridge's header source. `serializerOptions` is consumed
   immediately (drives the payload serializer).
-- [ ] **Report control flags** — `testRunReportTitle` (currently hardcoded `"Kronikol4J Test Run"`),
+- [~] **Report control flags** — `testRunReportTitle` (currently hardcoded `"Kronikol4J Test Run"`),
   `htmlTestRunReportFileName`, `reportsFolderPath`, `fixedNameForReceivingService`, `expectedTestCount`
   guard, `generateComponentDiagram` toggle, `diagnosticMode` toggle, `requestResponsePostProcessor`/
   `midProcessor` hooks, `inlineBackgroundSteps`, `lazyLoadDiagramImages` (HTML-attribute form only — the
@@ -542,12 +542,25 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   gate nothing (stubs) — so per the "resolve, don't work around" rule they land *with* their owning feature.
   Pick this item up once the component-diagram generator + diagnostic wiring exist; do the live-consumer
   subset alongside them in one honest pass.
-  **Progress (2026-06-28):** `diagnosticMode` is now DONE — added to `ReportOptions` (toggle + system property
-  + Gradle DSL) with a real consumer (the `DiagnosticReportGenerator`→`ReportFinalizer` wiring item). The
-  remaining flags in this bundle (`testRunReportTitle`, `htmlTestRunReportFileName`, `reportsFolderPath`,
-  `fixedNameForReceivingService`, `expectedTestCount`, `generateComponentDiagram`, the post/mid-processor
-  hooks, `inlineBackgroundSteps`, `lazyLoadDiagramImages`, explicit `generateTestRunReportData`/
-  `generateMergeableData`) are still open and land with their owning features.
+  **Progress (2026-06-28):** several flags are now DONE:
+  - `diagnosticMode` — `ReportOptions` toggle + `kronikol.report.diagnosticMode` + Gradle DSL, with a real
+    consumer (the `DiagnosticReportGenerator`→`ReportFinalizer` wiring item).
+  - `testRunReportTitle` + `htmlTestRunReportFileName` — bundled in a new nested `ReportControlOptions` record
+    (the 7th `ReportOptions` component, the same pattern as `CiPublishOptions`/`HtmlCustomization`).
+    `testRunReportTitle` overrides the title the finalizer was given (`null` → caller's title, preserving the
+    listeners' `"Kronikol4J Test Run"` default; the .NET *auto-derivation* from `ComponentDiagramOptions.Title`/
+    `FixedNameForReceivingService` is deferred to those options). `htmlTestRunReportFileName` (default
+    `"TestRunReport"`) sets the HTML file's base name (threaded through `HtmlReportGenerator.generate` →
+    `generateFromDiagrams(...,htmlFileName)` → `ReportFinalizer`). Both exposed via system properties
+    (`kronikol.report.title`, `kronikol.report.htmlFileName`) and the Gradle DSL
+    (`testRunReportTitle`/`htmlReportFileName`). Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
+  **Still open** (land with their owning features): `reportsFolderPath` (Java uses an explicit output dir
+  via `kronikol.output.dir` — the .NET `<BaseDir>/Reports` subfolder model is N/A; revisit only if a relative
+  subfolder is wanted), `fixedNameForReceivingService`, `expectedTestCount` guard, `generateComponentDiagram`,
+  the `requestResponsePostProcessor`/`midProcessor` hooks, `inlineBackgroundSteps`, `lazyLoadDiagramImages`,
+  and the explicit `generateTestRunReportData`/`generateMergeableData` booleans (the latter two change Java's
+  current dataFormats/run-dir *inference* into explicit flags — a behavior-affecting change best done as its
+  own careful pass).
 - [x] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*

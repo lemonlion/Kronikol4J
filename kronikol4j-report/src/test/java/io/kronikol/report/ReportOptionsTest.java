@@ -82,6 +82,39 @@ class ReportOptionsTest {
     }
 
     @Test
+    void reportControlOptionsDefaultsAndWithers() {
+        ReportControlOptions c = ReportOptions.defaults().control();
+        assertThat(c.testRunReportTitle()).isNull();                  // .NET default: auto-derived (caller title)
+        assertThat(c.htmlReportFileName()).isEqualTo("TestRunReport"); // .NET HtmlTestRunReportFileName default
+        assertThat(c.resolveTitle("Fallback")).isEqualTo("Fallback"); // null override → caller's title
+
+        ReportOptions opts = ReportOptions.defaults()
+            .withTestRunReportTitle("Nightly").withHtmlReportFileName("MyReport");
+        assertThat(opts.control().testRunReportTitle()).isEqualTo("Nightly");
+        assertThat(opts.control().resolveTitle("Fallback")).isEqualTo("Nightly"); // override wins
+        assertThat(opts.control().htmlReportFileName()).isEqualTo("MyReport");
+        assertThat(opts.diagram()).isEqualTo(ReportOptions.defaults().diagram()); // unrelated options untouched
+
+        // blank file name falls back to the .NET default
+        assertThat(ReportControlOptions.DEFAULTS.withHtmlReportFileName("  ").htmlReportFileName())
+            .isEqualTo("TestRunReport");
+    }
+
+    @Test
+    void readsReportControlOptionsFromSystemProperties() {
+        System.setProperty(ReportOptions.REPORT_TITLE_PROPERTY, "CI Run");
+        System.setProperty(ReportOptions.HTML_FILE_NAME_PROPERTY, "Combined");
+        try {
+            ReportControlOptions c = ReportOptions.fromSystemProperties().control();
+            assertThat(c.testRunReportTitle()).isEqualTo("CI Run");
+            assertThat(c.htmlReportFileName()).isEqualTo("Combined");
+        } finally {
+            System.clearProperty(ReportOptions.REPORT_TITLE_PROPERTY);
+            System.clearProperty(ReportOptions.HTML_FILE_NAME_PROPERTY);
+        }
+    }
+
+    @Test
     void readsDiagramOptionsFromSystemProperties() {
         System.setProperty(ReportOptions.SEPARATE_SETUP_PROPERTY, "true");
         System.setProperty(ReportOptions.SETUP_HIGHLIGHT_COLOR_PROPERTY, "#123456");
