@@ -57,9 +57,10 @@ public final class MergeCommand {
                 fragments.add(FragmentJson.fromJson(Files.readString(file, StandardCharsets.UTF_8)));
             }
             ReportFragment merged = MergeableReportMerger.merge(fragments);
-            if (title != null) {
-                merged = merged.withTitle(title); // preserve all merged content, just override the title
-            }
+            // Title resolution mirrors .NET: the merged report's title comes ONLY from -t (else the renderer's
+            // "Test Run Report" default). .NET's MergeableReport carries no title, so fragment-carried titles
+            // must never leak into the merged output — apply -t unconditionally (null clears any carried title).
+            merged = merged.withTitle(title); // preserve all merged content, just (re)set the title
             String html = MergeableReportRenderer.renderHtml(merged);
             Files.writeString(output, html, StandardCharsets.UTF_8);
             out.println("Merged " + fragments.size() + " fragment(s) from " + jsonFiles.size()

@@ -30,6 +30,10 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   `KronikolReportMojoTest`; wiki page added.
 
 ### Added — Tier-6 helpers & wiring fixes
+- **CLI `merge` title resolution** (`kronikol4j-cli`) — fixed: a merge without `-t` now renders the default
+  `"Test Run Report"` instead of leaking the first fragment's carried title, matching .NET (whose
+  `MergeableReport` has no title field; the renderer defaults `title ??= "Test Run Report"`). `MergeCommand`
+  applies the resolved title to the merged fragment unconditionally. Proven by `MergeCommandTest`.
 - **`PhaseConfiguration.resolvePhaseFromStepType(String)`** (`kronikol4j-core`) — exposes the .NET
   `ResolvePhaseFromStepType` mapping (`Given`/`And`/`But`→Setup, `When`/`Then`→Action, else Unknown) as a
   stateless, case-insensitive *prefix* match (so `"Given that …"` resolves). Distinct from the Cucumber

@@ -1009,8 +1009,19 @@ fixes. Listed for completeness so nothing is silently dropped.
 - [ ] **Wire `DiagnosticReportGenerator` into `ReportFinalizer`** — the diagnostic generator is fully ported
   but never triggered from the finalization path (.NET invokes it when diagnostic mode is on and there are
   logs but no test contexts). Depends on the `diagnosticMode` toggle (Tier 2).
-- [ ] **CLI merge title resolution** — `kronikol4j merge` overrides the title unconditionally when `-t` is
-  given; .NET resolves it from the first fragment's CI metadata when not supplied. Minor behavior parity.
+- [x] **CLI merge title resolution** — `kronikol4j merge` title behavior now matches .NET. **Premise
+  corrected by reading the source:** .NET does *not* derive the title from CI metadata — `MergeableReport`
+  has **no title field at all** (verified: no `Title` in `MergeableReport.cs`/`MergeableReportMerger.cs`/
+  `MergeableReportReader.cs`), and `MergeableReportRenderer.Render` resolves `title ??= "Test Run Report"`
+  from the CLI `-t` arg alone. The real divergence: Java's `ReportFragment` *does* carry a `title` (set by
+  the forked runner's `ReportFragments.fromRun(title)`) which round-trips through the fragment JSON, so a
+  merge **without** `-t` surfaced the first fragment's title instead of the default. **Fix:**
+  `MergeCommand` now applies the resolved title to the merged fragment *unconditionally* (`withTitle(title)`,
+  `null` when `-t` absent), clearing any fragment-carried title so the renderer's `"Test Run Report"` default
+  applies — exactly mirroring .NET (the renderer owns the default; merge never leaks fragment titles). The
+  Gradle/Maven plugins are unaffected (both always pass `-t`, defaulting to `"Test Run Report"`). Proven by
+  `MergeCommandTest.defaultsTitleAndIgnoresFragmentCarriedTitleWhenNoFlagGiven` (+ the existing `-t` override
+  test stays green).
 
 ---
 

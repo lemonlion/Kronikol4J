@@ -53,6 +53,24 @@ class MergeCommandTest {
     }
 
     @Test
+    void defaultsTitleAndIgnoresFragmentCarriedTitleWhenNoFlagGiven(@TempDir Path dir) throws IOException {
+        // The fragments carry the title "Run" (see writeFragment). .NET's MergeableReport has no title field,
+        // so a merge without -t always renders the default "Test Run Report" — never a fragment-carried title.
+        writeFragment(dir.resolve("shard1.json"), "Checkout", "succeeds", "t1", "@startuml\nA->B\n@enduml");
+        Path output = dir.resolve("Combined.html");
+
+        int code = MergeCommand.run(
+            new String[] {dir.toString(), "-o", output.toString()},
+            new PrintStream(new ByteArrayOutputStream()), System.err);
+
+        assertThat(code).isZero();
+        String html = Files.readString(output);
+        assertThat(html)
+            .contains("<title>Test Run Report</title>")
+            .doesNotContain("<title>Run</title>");
+    }
+
+    @Test
     void reportsErrorWhenNoInputs() {
         assertThat(MergeCommand.run(new String[] {}, System.out, System.err)).isEqualTo(2);
     }
