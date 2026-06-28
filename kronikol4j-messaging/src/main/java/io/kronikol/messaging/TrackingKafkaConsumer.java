@@ -2,9 +2,9 @@ package io.kronikol.messaging;
 
 import io.kronikol.core.context.TestIdentityScope;
 import io.kronikol.core.context.TestInfo;
+import io.kronikol.core.tracking.TrackingVerbosity;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
-import java.net.URI;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -54,8 +54,14 @@ public final class TrackingKafkaConsumer {
                 continue; // no identity header -> not a tracked message
             }
             try (var ignored = TestIdentityScope.begin(who.name(), who.id())) {
-                tracker.trackConsumeEvent("Consume (Kafka)", consumerName,
-                    URI.create("kafka:///" + record.topic()), record.value());
+                // Drive the diagram label + kafka:// URI through the classifier — the consume record carries
+                // the topic, partition and offset (all rendered at Raw verbosity).
+                TrackingVerbosity verbosity = tracker.effectiveVerbosity();
+                KafkaOperationInfo op = new KafkaOperationInfo(KafkaOperation.CONSUME,
+                    record.topic(), record.partition(), record.offset());
+                tracker.trackConsumeEvent(
+                    KafkaOperationClassifier.getDiagramLabel(op, verbosity), consumerName,
+                    KafkaOperationClassifier.buildUri(op, verbosity), record.value());
             }
         }
     }

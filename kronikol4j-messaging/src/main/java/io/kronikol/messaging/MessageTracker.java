@@ -160,7 +160,9 @@ public final class MessageTracker {
             .callerDependencyCategory(options.callerDependencyCategory()).phase(phase);
     }
 
-    private TrackingVerbosity effectiveVerbosity() {
+    /** The verbosity for the current phase (per-phase override, else base) — used by the Kafka wrappers to
+     *  classify labels/URIs at the same level this tracker logs content. */
+    public TrackingVerbosity effectiveVerbosity() {
         return PhaseConfiguration.effectiveVerbosity(
             options.verbosity(), options.setupVerbosity(), options.actionVerbosity());
     }

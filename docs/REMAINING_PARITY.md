@@ -224,7 +224,7 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   OrdinalIgnoreCase host-exclusion check. The unmatched-client-name recording is exposed as an injectable
   callback seam (the `UnmatchedClientNameRegistry` itself is a separate Tier-4 item). Per-adapter wiring
   lands with the Tier-1 HTTP/cloud adapters. Proven by `ServiceNameResolverTest` + `ExcludedHostsTest`.
-- [~] **Operation classifiers** — per-protocol command/operation classification (SQL, Redis, Mongo,
+- [x] **Operation classifiers** — per-protocol command/operation classification (SQL, Redis, Mongo,
   Elasticsearch, gRPC, cloud). .NET has `UnifiedSqlClassifier`, `RedisOperationClassifier`, etc.; Java has
   keyword-only stubs.
   **SQL done:** `io.kronikol.core.sql.UnifiedSqlClassifier` (+ `UnifiedSqlOperation`, `UnifiedSqlOperationInfo`,
@@ -241,11 +241,22 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `"Consume ← …"`/`"Subscribe …"`, Summarised terse `"Init Txn"`/`"Send Offsets"`/…) and `buildUri`
   (`kafka:///<topic>[/partition][@offset]` matrix), over the unified `TrackingVerbosity` (the .NET
   `KafkaTrackingVerbosity` Raw/Detailed/Summarised collapses into it). Proven by
-  `KafkaOperationClassifierTest` (5 cases across the label + URI matrix). **Wiring** `TrackingKafkaProducer/
-  Consumer` to drive labels/URIs through it (and emit Subscribe/Commit/Flush/Unsubscribe ops) is the Tier-1
-  Kafka adapter's standing follow-up. As before, the remaining classifiers land with their adapters; the
-  .NET `Dapper`/`MassTransit` classifiers are runtime boundaries (no Java analog — Dapper is .NET-only;
-  MassTransit maps to the generic `EventBusOperationClassifier`).
+  `KafkaOperationClassifierTest` (5 cases across the label + URI matrix).
+  **All per-protocol classifiers complete (2026-06-28) → item `[x]`:** every protocol named here now has a
+  full classifier, each unit-proven byte-for-byte against .NET — SQL (`UnifiedSqlClassifier`), Redis, Mongo
+  (+ `AtlasDataApiOperationClassifier`), Elasticsearch, gRPC, Kafka, the in-process bus
+  (`EventBusOperationClassifier`), and the full cloud set: AWS (`S3`/`DynamoDb`/`Sqs`/`Sns`/`EventBridge`),
+  Azure (`Blob`/`Cosmos`/`ServiceBus`/`StorageQueue`), GCP (`BigQuery`/`CloudStorage`/`PubSub`), `Bigtable`,
+  `EventHubs`. Each is wired into its adapter to drive the diagram label + URI — the last gap, the Kafka
+  wrapper wiring, is now closed: `TrackingKafkaProducer`/`TrackingKafkaConsumer` classify
+  `Produce`/`Consume` via `KafkaOperationClassifier` (using the tracker's per-phase `effectiveVerbosity()`)
+  so labels read `"Produce → <topic>"` / `"Consume ← <topic>"` (Detailed) and `"Consume <topic>[part]@offset"`
+  (Raw, from the consume record's partition + offset), with the matching `kafka://` URIs. Proven by the
+  updated `TrackingKafkaProducerTest`/`TrackingKafkaConsumerTest` (Detailed labels + Raw partition/offset).
+  The remaining Kafka *adapter*-specific threads (Subscribe/Commit/Flush lifecycle-op tracking, the Spring
+  `BeanPostProcessor` auto-wiring) stay tracked under the Tier-1 Kafka item — they are not classifier work.
+  The .NET `Dapper`/`MassTransit` classifiers are runtime boundaries (Dapper is .NET-only; MassTransit maps to
+  the generic `EventBusOperationClassifier`).
 - [x] **`TrackingSafeSerializer` equivalent** — mock-proxy detection, `Future`/`CompletableFuture` result
   unwrapping, circular-ref handling, `MaxDepth`, `SkipTypes`. (.NET `Tracking/TrackingSafeSerializer.cs`.)
   **Done:** `io.kronikol.core.serialization.TrackingSafeSerializer` + `TrackingSerializerOptions`. Ports the
@@ -459,9 +470,14 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `TrackingKafkaConsumerTest` (MockConsumer, no broker: header-attributed consume, untracked-without-headers,
   records still returned, no scope leakage).
   **Classifier done:** `KafkaOperationClassifier` (+ `KafkaOperation`/`KafkaOperationInfo`) ports the .NET
-  label/URI logic (see the cross-cutting "Operation classifiers" item). **Remaining:** wire it into
-  `TrackingKafkaProducer/Consumer` to drive the diagram labels + `kafka://` URIs and add
-  Subscribe/Commit/Flush/Unsubscribe/Assign op tracking, `isCurrentRequestFromMyHost()`,
+  label/URI logic (see the cross-cutting "Operation classifiers" item).
+  **Classifier wiring done (2026-06-28):** `TrackingKafkaProducer`/`TrackingKafkaConsumer` now drive the
+  diagram label + `kafka://` URI through `KafkaOperationClassifier` at the tracker's per-phase
+  `effectiveVerbosity()` — `"Produce → <topic>"` / `"Consume ← <topic>"` (Detailed),
+  `"Consume <topic>[partition]@offset"` (Raw, from the consume record), replacing the hardcoded `"Kafka"` /
+  `"Consume (Kafka)"` labels. (`MessageTracker.effectiveVerbosity()` is now public for the wrappers.) Proven by
+  the updated `TrackingKafkaProducerTest`/`TrackingKafkaConsumerTest`. **Remaining:** add
+  Subscribe/Commit/Flush/Unsubscribe/Assign lifecycle-op tracking, `isCurrentRequestFromMyHost()`,
   `ITrackingComponent` self-registration, and a golden proof; plus
   the **zero-call-site-change auto-wiring** — a Spring `BeanPostProcessor` decorating Spring Kafka's
   `ConsumerFactory`/`ProducerFactory` (the Java seam analogous to .NET's `ConsumerBuilder.Build()`), which is

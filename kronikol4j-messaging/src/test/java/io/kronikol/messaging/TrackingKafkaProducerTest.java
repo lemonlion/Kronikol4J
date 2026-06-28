@@ -66,7 +66,7 @@ class TrackingKafkaProducerTest {
         List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
         assertThat(logs).hasSize(2);
         assertThat(logs.get(0).type()).isEqualTo(RequestResponseType.REQUEST);
-        assertThat(logs.get(0).method().value()).isEqualTo("Kafka");
+        assertThat(logs.get(0).method().value()).isEqualTo("Produce → orders"); // classifier Detailed label
         assertThat(logs.get(0).serviceName()).isEqualTo("orders"); // destination = the topic
         assertThat(logs.get(0).uri().toString()).isEqualTo("kafka:///orders");
         assertThat(logs.get(1).statusCode()).isEqualTo(StatusCode.of("Sent"));

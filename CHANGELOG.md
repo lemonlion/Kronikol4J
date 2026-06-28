@@ -7,6 +7,17 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Cross-cutting operation classifiers (item [x])
+- **Kafka classifier wiring** (`kronikol4j-messaging`) — `TrackingKafkaProducer`/`TrackingKafkaConsumer` now
+  drive the diagram label + `kafka://` URI through `KafkaOperationClassifier` (at the tracker's per-phase
+  `effectiveVerbosity()`), so sends/consumes read `"Produce → <topic>"` / `"Consume ← <topic>"` (Detailed) and
+  `"Consume <topic>[partition]@offset"` (Raw, from the consume record), replacing the hardcoded labels.
+  `MessageTracker.effectiveVerbosity()` is now public for the wrappers. This was the last unwired per-protocol
+  classifier: **all** of them (SQL, Redis, Mongo/Atlas, Elasticsearch, gRPC, Kafka, in-process bus, and the
+  full cloud set — AWS, Azure, GCP, Bigtable, EventHubs) now exist, are unit-proven byte-for-byte vs .NET, and
+  drive their adapters' output, completing the cross-cutting operation-classifiers item. Proven by the updated
+  `TrackingKafkaProducerTest`/`TrackingKafkaConsumerTest` (Detailed labels + Raw partition/offset).
+
 ### Completed — Tier-3 Atlas Data API transport hook (item [x])
 - **`AtlasDataApiTracking` + `AtlasDataApiTrackingInterceptor`** (`kronikol4j-mongodb`) — the MongoDB Atlas
   Data API (REST) tracking hook, the Java analog of the .NET `AtlasDataApiTrackingMessageHandler`

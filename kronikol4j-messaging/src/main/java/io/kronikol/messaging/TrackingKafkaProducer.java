@@ -4,7 +4,6 @@ import io.kronikol.core.context.TestInfo;
 import io.kronikol.core.context.TestInfoResolver;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
-import java.net.URI;
 import java.util.function.Supplier;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -36,8 +35,14 @@ public final class TrackingKafkaProducer {
                     TestInfo who = TestInfoResolver.resolve(identityFetcher);
                     if (who != null) {
                         KafkaTestHeaders.stamp(record.headers(), who);
-                        tracker.trackSendMessage("Kafka", record.topic(),
-                            URI.create("kafka:///" + record.topic()), record.value());
+                        // Drive the diagram label + kafka:// URI through the classifier (offset is assigned
+                        // by the broker post-ack, so it is unknown at send time).
+                        var verbosity = tracker.effectiveVerbosity();
+                        KafkaOperationInfo op = new KafkaOperationInfo(
+                            KafkaOperation.PRODUCE, record.topic(), record.partition(), null);
+                        tracker.trackSendMessage(
+                            KafkaOperationClassifier.getDiagramLabel(op, verbosity), record.topic(),
+                            KafkaOperationClassifier.buildUri(op, verbosity), record.value());
                     }
                 }
                 try {

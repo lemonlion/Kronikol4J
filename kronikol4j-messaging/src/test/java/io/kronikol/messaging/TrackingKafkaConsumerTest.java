@@ -39,6 +39,12 @@ class TrackingKafkaConsumerTest {
         return new MessageTracker(MessageTrackerOptions.builder().ids(IdGenerator.seeded(1)).build());
     }
 
+    /** As {@link #tracker()} but at the given verbosity. */
+    private static MessageTracker tracker(io.kronikol.core.tracking.TrackingVerbosity verbosity) {
+        return new MessageTracker(MessageTrackerOptions.builder()
+            .verbosity(verbosity).ids(IdGenerator.seeded(1)).build());
+    }
+
     private static ConsumerRecord<String, String> recordWithIdentity(long offset, String value, TestInfo who) {
         RecordHeaders headers = new RecordHeaders();
         if (who != null) {
@@ -76,12 +82,28 @@ class TrackingKafkaConsumerTest {
         assertThat(delivery.testName()).isEqualTo("MyTest"); // attributed via the header identity
         assertThat(delivery.serviceName()).isEqualTo("order-service");
         assertThat(delivery.noteOnRight()).isTrue();
+        assertThat(delivery.method().value()).isEqualTo("Consume ← orders"); // classifier Detailed label
         assertThat(delivery.uri().toString()).isEqualTo("kafka:///orders");
 
         assertThat(ack.statusCode()).isEqualTo(StatusCode.of("Ack"));
 
         // scope is cleared after the consume event (no leakage onto the polling thread)
         assertThat(TestIdentityScope.current()).isNull();
+    }
+
+    @Test
+    void rawVerbosityRendersTopicPartitionAndOffset() {
+        MockConsumer<String, String> mock =
+            mockWith(recordWithIdentity(7L, "{\"id\":1}", new TestInfo("MyTest", "id-1")));
+        Consumer<String, String> tracked = TrackingKafkaConsumer.wrap(
+            mock, tracker(io.kronikol.core.tracking.TrackingVerbosity.RAW), "order-service");
+
+        tracked.poll(Duration.ofMillis(0));
+
+        RequestResponseLog delivery = RequestResponseLogger.getAllLogs().get(0);
+        // Raw label includes [partition]@offset; the URI carries them too (record is topic=orders, partition 0).
+        assertThat(delivery.method().value()).isEqualTo("Consume orders[0]@7");
+        assertThat(delivery.uri().toString()).isEqualTo("kafka:///orders/0@7");
     }
 
     @Test
