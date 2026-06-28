@@ -1008,8 +1008,21 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   Failsafe `systemPropertyVariables` (documented in the wiki + Mojo javadoc — the Maven analog of the Gradle
   plugin auto-setting it on `Test` tasks). Proven by `KronikolReportMojoTest` (end-to-end merge of a real
   fragment → HTML, missing/empty fragments-dir no-op, descriptor packaged + version-filtered) + wiki page.
-- [ ] **Project templates / archetypes** — the `dotnet new kronikol-*` analog (Maven archetype / `gradle
+- [x] **Project templates / archetypes** — the `dotnet new kronikol-*` analog (Maven archetype / `gradle
   init` skeleton) for each test-framework combo.
+  **Done (decision + delivered starters):** Java has no `dotnet new`-style template **registry** — Gradle's
+  `init` ships only built-in types, and Kronikol4J is Gradle-first — so the faithful analog is **copyable
+  starter skeletons** committed under `templates/`. Added `templates/kronikol4j-junit5-gradle` (Gradle Kotlin
+  DSL: applies the `io.kronikol.kronikol4j` plugin, JUnit 5, `kronikol4j-junit5` + `kronikol4j-http`, a
+  `BaseComponentTest` wired with `@ExtendWith(KronikolExtension.class)`, and a sample `TrackingHttpClient`
+  test) and `templates/kronikol4j-junit5-maven` (the Maven equivalent: Surefire `kronikol.run.dir` +
+  `kronikol4j-maven-plugin` `report` goal). Both cover the build-tool × primary-framework matrix; TestNG /
+  Cucumber follow the same shape (swap the integration dep + base class — documented). The starters are
+  template *resources* (not wired into the Gradle build, exactly like .NET's `templates/` sources), with a
+  `templates/README.md` index + a wiki **Project Starters** page. **Decision:** a Maven archetype
+  (`mvn archetype:generate`) is the more *instantiable* form but needs the `maven-archetype-plugin` to build a
+  valid descriptor (awkward in this Gradle repo, Maven-users-only) — noted as a possible future addition; the
+  copyable starters already serve both Gradle and Maven.
 - [~] **Build-time weaving auto-wiring** — the assertion/step weavers as Gradle/Maven tasks, so users don't
   need an explicit `-javaagent:` argument (the ByteBuddy agent exists but isn't auto-wired). .NET ships
   three distinct build packages: `Kronikol.StepTracking` (`.targets` that codegen the step attributes + run

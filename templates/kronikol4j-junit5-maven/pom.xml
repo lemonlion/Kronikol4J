@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Kronikol4J component-test starter (JUnit 5 + Maven). Copy, rename, and point the sample test at your SUT. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.example</groupId>
+  <artifactId>my-component-tests</artifactId>
+  <version>1.0-SNAPSHOT</version>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <kronikol4j.version>0.1.25-SNAPSHOT</kronikol4j.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.11.4</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- JUnit 5 integration: auto-registers the report listener + identity-scoping extension. -->
+    <dependency>
+      <groupId>io.github.lemonlion</groupId>
+      <artifactId>kronikol4j-junit5</artifactId>
+      <version>${kronikol4j.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- A tracking HTTP client (wrap any java.net.http.HttpClient). Swap for -jdbc / -redis / … as needed. -->
+    <dependency>
+      <groupId>io.github.lemonlion</groupId>
+      <artifactId>kronikol4j-http</artifactId>
+      <version>${kronikol4j.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Forked test JVMs emit a fragment when kronikol.run.dir is set; the plugin (below) merges them. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <systemPropertyVariables>
+            <kronikol.run.dir>${project.build.directory}/kronikol-fragments</kronikol.run.dir>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+      <!-- Merges the forked fragments into one HTML report (bound to the verify phase). -->
+      <plugin>
+        <groupId>io.github.lemonlion</groupId>
+        <artifactId>kronikol4j-maven-plugin</artifactId>
+        <version>${kronikol4j.version}</version>
+        <executions>
+          <execution>
+            <goals><goal>report</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

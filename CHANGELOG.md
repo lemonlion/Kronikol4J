@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-5 tooling
+- **Project starters** (`templates/`) — the `dotnet new kronikol-*` analog: copyable starter skeletons
+  `kronikol4j-junit5-gradle` and `kronikol4j-junit5-maven` (JUnit 5 + the Kronikol4J integration + a
+  `BaseComponentTest` and a sample `TrackingHttpClient` test). Java has no `dotnet new`-style template
+  registry, so the faithful analog is committed copyable skeletons (matching how .NET ships its `templates/`
+  sources). Index `templates/README.md` + wiki **Project Starters** page; a Maven archetype is noted as a
+  possible future addition.
 - **Build-time weaving auto-wiring** (`kronikol4j-gradle-plugin`) — the assertion agent is now auto-attached
   to test JVMs (the `-javaagent:` argument no longer has to be passed by hand). Opt in with
   `kronikol { attachAssertionAgent = true }` (optional `assertionAgentCoordinates` override): the plugin
