@@ -837,7 +837,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `currentStepTypeFetcher`'s action-start injection needs Tier-4 `TrackingDiagramOverride`;
   `useHttpContextCorrelation` needs the Tier-4 server bridge's header source. `serializerOptions` is consumed
   immediately (drives the payload serializer).
-- [~] **Report control flags** — `testRunReportTitle` (currently hardcoded `"Kronikol4J Test Run"`),
+- [x] **Report control flags** — `testRunReportTitle` (currently hardcoded `"Kronikol4J Test Run"`),
   `htmlTestRunReportFileName`, `reportsFolderPath`, `fixedNameForReceivingService`, `expectedTestCount`
   guard, `generateComponentDiagram` toggle, `diagnosticMode` toggle, `requestResponsePostProcessor`/
   `midProcessor` hooks, `inlineBackgroundSteps`, `lazyLoadDiagramImages` (HTML-attribute form only — the
@@ -898,9 +898,17 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
     The .NET `ExpectedTestCount` guard (a `Func<int>` there → a nullable `Integer` here). System property
     `kronikol.report.expectedTestCount` + Gradle DSL `expectedTestCount`. Proven by `ReportFinalizerTest`
     (suppressed below / kept when met). Unblocked by the specs-in-finalizer wiring (Specifications report item).
-  **Still open** (genuinely blocked on an unbuilt feature): `inlineBackgroundSteps` (needs an inline-background
-  step renderer that does not yet exist). Every other flag in this bundle is now done or resolved as a
-  boundary above — so this item is effectively complete bar that single feature-gated flag.
+  **`inlineBackgroundSteps` resolved as verified .NET dead-config (2026-06-28) → item complete `[x]`:** an
+  audit of `c:\Code\Kronikol\src\Kronikol` shows `ReportConfigurationOptions.InlineBackgroundSteps` is
+  **declared but never read** — no consumer in `BackgroundStepsDetector`, `ReportGenerator`, or anywhere else
+  (grep across all `.cs` returns only the property declaration). The background-steps feature itself runs
+  unconditionally on both sides: Java's `BackgroundStepsDetector.detectAndExtract` (a faithful port) extracts
+  shared Given/When prefixes into `Scenario.backgroundSteps` and the renderer emits the "Background Steps"
+  section — golden-proven by `GoldenHtmlParityTest` + `BackgroundStepsDetectorTest`. Porting the flag as a Java
+  option would be configuration that gates nothing (the anti-stub rule), so it is documented here as dead .NET
+  config rather than stubbed (same disposition as the InternalFlow `Display`/`Trigger`/`ContentStrategy`
+  options). With every other flag in this bundle done or resolved as a boundary above, the Report control flags
+  item is complete.
 - [x] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*

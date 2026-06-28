@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Resolved — Report control flags item complete (inlineBackgroundSteps is .NET dead-config)
+- Audited the last open flag in the Report-control-flags bundle, `InlineBackgroundSteps`: it is **declared but
+  never read** anywhere in the .NET source (no consumer in `BackgroundStepsDetector`/`ReportGenerator`/etc.).
+  The background-steps feature runs unconditionally on both sides — Java's `BackgroundStepsDetector` extracts
+  shared step prefixes and the renderer emits the "Background Steps" section (golden-proven). Porting the flag
+  would be config that gates nothing, so it is documented as dead .NET config rather than stubbed (same
+  disposition as the InternalFlow `Display`/`Trigger`/`ContentStrategy` options). Closes the Report control
+  flags item — every flag is now implemented or resolved as a boundary.
+
 ### Added — headersToForward across all HTTP client adapters (HTTP item complete)
 - **`IncomingRequestHeaders`** (`kronikol4j-core`) — a zero-dependency ambient seam (the .NET
   `HttpContextAccessor` analog) exposing the current incoming server request's headers via a `ThreadLocal`
