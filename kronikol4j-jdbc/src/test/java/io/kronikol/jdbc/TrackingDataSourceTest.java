@@ -109,6 +109,40 @@ class TrackingDataSourceTest {
         assertThat(logs.get(1).content()).isEqualTo("1 rows affected");
     }
 
+    @Test
+    void untypedExecuteIsTrackedWithUpdateCount() throws Exception {
+        try (Connection c = tracked.getConnection(); Statement s = c.createStatement()) {
+            boolean hasResultSet = s.execute("INSERT INTO customers (id, name) VALUES (50, 'Dennis')");
+            assertThat(hasResultSet).isFalse();
+        }
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2);
+        assertThat(logs.get(0).method().value()).isEqualTo("INSERT INTO customers");
+        assertThat(logs.get(1).type()).isEqualTo(RequestResponseType.RESPONSE);
+        assertThat(logs.get(1).content()).isEqualTo("1 rows affected"); // read back via getUpdateCount()
+    }
+
+    @Test
+    void preparedStatementBatchIsTrackedWithSummedCounts() throws Exception {
+        try (Connection c = tracked.getConnection();
+             var ps = c.prepareStatement("INSERT INTO customers (id, name) VALUES (?, ?)")) {
+            ps.setInt(1, 60);
+            ps.setString(2, "Ken");
+            ps.addBatch();
+            ps.setInt(1, 61);
+            ps.setString(2, "Brian");
+            ps.addBatch();
+            int[] counts = ps.executeBatch();
+            assertThat(counts).containsExactly(1, 1);
+        }
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2);
+        assertThat(logs.get(0).method().value()).isEqualTo("INSERT INTO customers");
+        assertThat(logs.get(1).content()).isEqualTo("2 rows affected"); // 1 + 1 summed
+    }
+
     // --- verbosity + classifier exposed end-to-end through the DataSource (the Dapper/JdbcTemplate analog) ---
 
     @Test

@@ -74,6 +74,14 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Added — Tier-1 JDBC (untyped execute + batch)
+- **`execute(...)` and `executeBatch()`/`executeLargeBatch()` tracking** (`kronikol4j-jdbc`) —
+  `StatementInvocationHandler` now records the untyped `execute(...)` (response row count via
+  `getUpdateCount()`, or unknown when it produced a `ResultSet`) and prepared-statement batch execution
+  (response = summed positive per-statement counts, skipping `SUCCESS_NO_INFO`/`EXECUTE_FAILED`). Previously
+  only the typed `executeQuery`/`executeUpdate`/`executeLargeUpdate` were tracked. Proven by
+  `TrackingDataSourceTest` against H2.
+
 ### Added — Tier-1 Kafka (operation classifier)
 - **`KafkaOperationClassifier`** (`kronikol4j-messaging`) — ports the .NET `KafkaOperationClassifier`:
   `getDiagramLabel` (Raw `"<Op> <topic>[partition]@offset"`, Detailed directional `"Produce → …"` /

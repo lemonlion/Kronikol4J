@@ -299,8 +299,12 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `"N rows [Col1, Col2]"` on exhaustion/close, the `TrackingDbDataReader` analog). Response formatting in
   `SqlResultSummary` (ROW_COUNT_ONLY + ROW_COUNT_AND_COLUMNS, 20-column truncation). Proven end-to-end
   against in-memory **H2** (`TrackingDataSourceTest`: insert→row count, select→rows+columns, prepared
-  statements) + `SqlResultSummaryTest`. **Remaining (tracked follow-ups):** `FULL_ROWS` cell-level JSON
-  capture; untyped `execute(...)`/`executeBatch()` tracking; a golden-rendered proof; per-driver
+  statements). **Untyped `execute(...)` + batch tracking done (2026-06-28):** `StatementInvocationHandler`
+  now also records `execute(...)` (response row count read back via `getUpdateCount()`, left unknown when it
+  produced a `ResultSet`) and `executeBatch()`/`executeLargeBatch()` for prepared statements (response = the
+  summed positive per-statement counts, skipping the `SUCCESS_NO_INFO`/`EXECUTE_FAILED` sentinels). Proven by
+  `TrackingDataSourceTest` (`untypedExecuteIsTrackedWithUpdateCount`, `preparedStatementBatchIsTrackedWithSummedCounts`).
+  **Remaining (tracked follow-ups):** `FULL_ROWS` cell-level JSON capture; a golden-rendered proof; per-driver
   `DependencyCategory` defaults; the ClickHouse/Spanner/Bigtable modules consume this same plumbing.
 - [~] **Redis** (`kronikol4j-redis`) — Lettuce/Jedis command hook; `RedisOperationClassifier` (25+
   commands); GET hit/miss; endpoint/db/key in URI; verbosity. *(.NET `RedisTracking*`.)*
