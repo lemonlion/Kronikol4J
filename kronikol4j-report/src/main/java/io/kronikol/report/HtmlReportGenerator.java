@@ -2,9 +2,11 @@ package io.kronikol.report;
 
 import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.diagram.component.ComponentDiagramGenerator;
+import io.kronikol.diagram.component.ComponentDiagramRenderOptions;
 import io.kronikol.diagram.component.ComponentRelationship;
 import io.kronikol.diagram.model.PlantUmlForTest;
 import io.kronikol.diagram.plantuml.PlantUmlCreator;
+import io.kronikol.report.component.ComponentDiagramOptions;
 import io.kronikol.report.data.ReportData;
 import io.kronikol.report.flow.InternalFlowPopupInput;
 import io.kronikol.report.flow.WholeTestFlowInput;
@@ -58,16 +60,32 @@ public final class HtmlReportGenerator {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }
         }
-        String componentDiagram = options.generateComponentDiagram() ? componentDiagram(logs) : null;
+        String componentDiagram = options.generateComponentDiagram()
+            ? componentDiagram(logs, options.componentDiagram()) : null;
         return generateFromDiagrams(features, diagramByTestId, componentDiagram, outputDir,
             options.control().resolveTitle(title), options.customization(),
             options.control().htmlReportFileName());
     }
 
-    /** The run-level component diagram from all tracked logs, or {@code null} if nothing was tracked. */
-    private static String componentDiagram(List<RequestResponseLog> logs) {
-        List<ComponentRelationship> relationships = ComponentDiagramGenerator.extractRelationships(logs);
-        return relationships.isEmpty() ? null : ComponentDiagramGenerator.generatePlantUml(relationships);
+    /**
+     * The run-level component diagram from all tracked logs honouring the {@link ComponentDiagramOptions}
+     * (participant filter at aggregation, plus title / theme / arrow-colour mode / per-category colours /
+     * custom label formatter at render), or {@code null} if nothing was tracked / everything was filtered out.
+     */
+    private static String componentDiagram(List<RequestResponseLog> logs, ComponentDiagramOptions opts) {
+        List<ComponentRelationship> relationships =
+            ComponentDiagramGenerator.extractRelationships(logs, opts.participantFilter());
+        if (relationships.isEmpty()) {
+            return null;
+        }
+        ComponentDiagramRenderOptions render = ComponentDiagramRenderOptions.builder()
+            .title(opts.title())
+            .plantUmlTheme(opts.plantUmlTheme())
+            .relationshipLabelFormatter(opts.relationshipLabelFormatter())
+            .arrowColorMode(opts.arrowColorMode())
+            .dependencyColors(opts.dependencyColors())
+            .build();
+        return ComponentDiagramGenerator.generatePlantUml(relationships, render);
     }
 
     /** Renders from pre-computed diagrams — used by the merge path, where fragments already carry

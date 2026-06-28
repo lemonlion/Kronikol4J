@@ -5,6 +5,7 @@ import io.kronikol.diagram.plantuml.FocusDeEmphasis;
 import io.kronikol.diagram.plantuml.FocusEmphasis;
 import io.kronikol.diagram.plantuml.GraphQlBodyFormat;
 import io.kronikol.report.ci.CiPublishOptions;
+import io.kronikol.report.component.ComponentDiagramOptions;
 import io.kronikol.report.data.ReportDataFormat;
 import io.kronikol.report.model.HtmlCustomization;
 import java.util.ArrayList;
@@ -34,7 +35,8 @@ import java.util.Set;
  */
 public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats,
                             boolean generateSchema, HtmlCustomization customization, CiPublishOptions ci,
-                            boolean diagnosticMode, ReportControlOptions control) {
+                            boolean diagnosticMode, ReportControlOptions control,
+                            ComponentDiagramOptions componentDiagram) {
 
     /** System property (boolean) enabling per-dependency-type arrow colours. */
     public static final String ARROW_COLORS_PROPERTY = "kronikol.diagram.arrowColors";
@@ -119,6 +121,15 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         customization = customization == null ? HtmlCustomization.NONE : customization;
         ci = ci == null ? CiPublishOptions.NONE : ci;
         control = control == null ? ReportControlOptions.DEFAULTS : control;
+        componentDiagram = componentDiagram == null ? ComponentDiagramOptions.defaults() : componentDiagram;
+    }
+
+    /** Seven-arg shape (default component-diagram options) — the back-compatible constructor. */
+    public ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats, boolean generateSchema,
+                         HtmlCustomization customization, CiPublishOptions ci, boolean diagnosticMode,
+                         ReportControlOptions control) {
+        this(diagram, dataFormats, generateSchema, customization, ci, diagnosticMode, control,
+            ComponentDiagramOptions.defaults());
     }
 
     /** Six-arg shape (default report-control flags) — the back-compatible constructor. */
@@ -216,7 +227,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     // --- withers ---
     public ReportOptions withDiagram(DiagramOptions value) {
-        return new ReportOptions(value, dataFormats, generateSchema, customization, ci, diagnosticMode, control);
+        return new ReportOptions(value, dataFormats, generateSchema, customization, ci, diagnosticMode, control,
+            componentDiagram);
     }
 
     public ReportOptions withArrowColors(boolean value) {
@@ -280,7 +292,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     }
 
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
-        return new ReportOptions(diagram, formats, generateSchema, customization, ci, diagnosticMode, control);
+        return new ReportOptions(diagram, formats, generateSchema, customization, ci, diagnosticMode, control,
+            componentDiagram);
     }
 
     /**
@@ -294,19 +307,20 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     /** Enables the {@code TestRunReport.schema.json}/{@code .xsd} schema alongside each data format. */
     public ReportOptions withGenerateSchema(boolean value) {
-        return new ReportOptions(diagram, dataFormats, value, customization, ci, diagnosticMode, control);
+        return new ReportOptions(diagram, dataFormats, value, customization, ci, diagnosticMode, control,
+            componentDiagram);
     }
 
     /** The HTML customization (CSS/favicon/logo/step-numbers) applied to the generated report. */
     public ReportOptions withHtmlCustomization(HtmlCustomization value) {
         return new ReportOptions(diagram, dataFormats, generateSchema,
-            value == null ? HtmlCustomization.NONE : value, ci, diagnosticMode, control);
+            value == null ? HtmlCustomization.NONE : value, ci, diagnosticMode, control, componentDiagram);
     }
 
     /** The CI summary/artifact-publishing options applied at end-of-run. */
     public ReportOptions withCi(CiPublishOptions value) {
         return new ReportOptions(diagram, dataFormats, generateSchema, customization,
-            value == null ? CiPublishOptions.NONE : value, diagnosticMode, control);
+            value == null ? CiPublishOptions.NONE : value, diagnosticMode, control, componentDiagram);
     }
 
     /**
@@ -315,13 +329,21 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
      * enqueued (the empty-report case). Mirrors .NET {@code ReportConfigurationOptions.DiagnosticMode}.
      */
     public ReportOptions withDiagnosticMode(boolean value) {
-        return new ReportOptions(diagram, dataFormats, generateSchema, customization, ci, value, control);
+        return new ReportOptions(diagram, dataFormats, generateSchema, customization, ci, value, control,
+            componentDiagram);
     }
 
     /** The report-control flags (title / HTML file name) applied at end-of-run. */
     public ReportOptions withControl(ReportControlOptions value) {
         return new ReportOptions(diagram, dataFormats, generateSchema, customization, ci, diagnosticMode,
-            value == null ? ReportControlOptions.DEFAULTS : value);
+            value == null ? ReportControlOptions.DEFAULTS : value, componentDiagram);
+    }
+
+    /** The component-diagram options (title / theme / arrow-colour mode / participant filter / per-category
+     *  colours) driving the run-level component diagram (the .NET {@code ReportConfigurationOptions.ComponentDiagram}). */
+    public ReportOptions withComponentDiagramOptions(ComponentDiagramOptions value) {
+        return new ReportOptions(diagram, dataFormats, generateSchema, customization, ci, diagnosticMode, control,
+            value == null ? ComponentDiagramOptions.defaults() : value);
     }
 
     /** Overrides the report title (the .NET {@code TestRunReportTitle}); {@code null} → caller's title used. */

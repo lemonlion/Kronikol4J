@@ -129,6 +129,53 @@ class HtmlReportGeneratorTest {
     }
 
     @Test
+    void honoursComponentDiagramOptions(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        var features = List.of(new Feature("Checkout",
+            List.of(Scenario.passed("Checkout succeeds", "t1"))));
+        var opts = ReportOptions.defaults().withComponentDiagramOptions(
+            io.kronikol.report.component.ComponentDiagramOptions.builder()
+                .title("My System Map")
+                .plantUmlTheme("cerulean")
+                .dependencyColors(java.util.Map.of(DependencyCategories.HTTP, "#123456"))
+                .build());
+
+        var report = HtmlReportGenerator.generate(
+            features, RequestResponseLogger.getAllLogs(), dir, "Demo Run", opts);
+
+        // The component diagram (gzip-decoded) carries the custom title/theme + override arrow colour.
+        assertThat(PumlData.all(Files.readString(report.htmlFile())))
+            .contains("!theme cerulean")
+            .contains("title My System Map")
+            .contains("test -[#123456]-> orderService");
+    }
+
+    @Test
+    void componentDiagramParticipantFilterExcludesServices(@TempDir Path dir) throws IOException {
+        trackCheckout(); // OrderService
+        UUID trace = UUID.randomUUID();
+        UUID rr = UUID.randomUUID();
+        RequestResponseLogger.log(RequestResponseLog.builder()
+            .testName("Checkout succeeds").testId("t1")
+            .method(Method.Http.GET).uri(URI.create("http://secret/keys"))
+            .serviceName("SecretService").callerName("Test")
+            .type(RequestResponseType.REQUEST).traceId(trace).requestResponseId(rr)
+            .dependencyCategory(DependencyCategories.HTTP).build());
+        var features = List.of(new Feature("Checkout",
+            List.of(Scenario.passed("Checkout succeeds", "t1"))));
+        var opts = ReportOptions.defaults().withComponentDiagramOptions(
+            io.kronikol.report.component.ComponentDiagramOptions.builder()
+                .participantFilter(name -> !name.equals("SecretService"))
+                .build());
+
+        var report = HtmlReportGenerator.generate(
+            features, RequestResponseLogger.getAllLogs(), dir, "Demo Run", opts);
+        String componentPuml = PumlData.all(Files.readString(report.htmlFile()));
+
+        assertThat(componentPuml).contains("**OrderService**").doesNotContain("**SecretService**");
+    }
+
+    @Test
     void omitsTheComponentDiagramWhenNothingWasTracked(@TempDir Path dir) throws IOException {
         var features = List.of(new Feature("Checkout",
             List.of(Scenario.passed("Checkout succeeds", "t1"))));

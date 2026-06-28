@@ -7,6 +7,17 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — ComponentDiagramOptions wired onto ReportOptions (ComponentDiagramOptions progress)
+- **`ReportOptions.componentDiagram()`** (8th record component, default `ComponentDiagramOptions.defaults()`) +
+  **`withComponentDiagramOptions(...)`** — a user's component-diagram `title`, `plantUmlTheme`, `arrowColorMode`,
+  per-category `dependencyColors`, `relationshipLabelFormatter`, and `participantFilter` now drive the embedded
+  run-level component diagram: `HtmlReportGenerator.generate` maps them onto a `ComponentDiagramRenderOptions`
+  and applies the participant filter at aggregation. A back-compat 7-arg `ReportOptions` constructor is kept;
+  `ComponentDiagramOptions.defaults()` is now a cached singleton (so default-holding records compare equal).
+  Proven end-to-end by `HtmlReportGeneratorTest` (title/theme/colour decoded from the gzip puml-data island;
+  participant filter excludes a service). Component-diagram options remain open only for the stats/flame-chart
+  fields (gated on the unported `RelationshipStats`).
+
 ### Added — component-diagram render options + marker-exclusion parity fix (ComponentDiagramOptions progress)
 - **`ComponentDiagramRenderOptions`** (`kronikol4j-diagram`) + **`ComponentDiagramGenerator.generatePlantUml(
   relationships, options)`** — the generator now honors the render-relevant subset of the .NET

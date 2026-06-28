@@ -750,11 +750,20 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `overrideStart`/`overrideEnd`/`actionStart` marker logs (matching .NET — Java previously aggregated them).
   Default-options output is byte-identical (component-diagram golden unchanged). Proven by
   `ComponentDiagramGeneratorOptionsTest` (7 cases) + the unchanged golden.
-  **Remaining (`[~]`):** (a) exposing `ComponentDiagramOptions` on the `ReportOptions` surface so an end user
-  can set these (the wider report-options record change — lands with the report-options config pass); and
-  (b) the stats/flame-chart driven fields (`showRelationshipFlows`, `relationshipFlowStyle`,
-  `lowCoverageThreshold`, `showSystemFlameChart`, `maxFlameChartTests`, performance/hotspot arrow colouring,
-  low-coverage dashed arrows) — gated on the not-yet-ported `RelationshipStats`/`DependencyGraphMetrics`.
+  **Report-surface exposure done (2026-06-28):** `ComponentDiagramOptions` is now the 8th component of the
+  `ReportOptions` record (default `ComponentDiagramOptions.defaults()`, a cached singleton so default-holding
+  records compare equal — the function fields make value-equality impractical), with `withComponentDiagramOptions`
+  + back-compat 7-arg constructor preserved. `HtmlReportGenerator.generate` now maps it onto a
+  `ComponentDiagramRenderOptions` and applies the `participantFilter` at aggregation, so an end user's
+  title/theme/arrow-colour-mode/per-category-colours/label-formatter/participant-filter actually drive the
+  embedded run-level component diagram. Proven end-to-end by `HtmlReportGeneratorTest` (custom title+theme+colour
+  decoded from the gzip puml-data island; participant filter excludes a service) + `ReportOptionsTest`.
+  **Remaining (`[~]`):** only the stats/flame-chart driven fields (`showRelationshipFlows`, `relationshipFlowStyle`,
+  `lowCoverageThreshold`, `showSystemFlameChart`, `maxFlameChartTests`, `embedInTestRunReport`, `fileName`,
+  performance/hotspot arrow colouring, low-coverage dashed arrows) — gated on the not-yet-ported
+  `RelationshipStats`/`DependencyGraphMetrics`/component flame-chart machinery. No system-property channel for
+  the component-diagram options yet (they need code-level config; the functional fields don't map to a string
+  property) — `fromSystemProperties` defaults them.
 - [x] **`TestTrackingMessageHandlerOptions`** (3/12) — add `portsToServiceNames`, `clientNamesToServiceNames`,
   `fixedNameForReceivingService`, `headersToForward`, `excludedHosts`, `trackDuringSetup/Action`,
   `currentStepTypeFetcher`, `internalFlowActivitySources`.

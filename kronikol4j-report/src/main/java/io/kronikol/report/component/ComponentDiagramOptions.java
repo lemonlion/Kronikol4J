@@ -16,6 +16,8 @@ import java.util.function.Predicate;
  */
 public final class ComponentDiagramOptions {
 
+    private static final ComponentDiagramOptions DEFAULTS = builder().build();
+
     private final String fileName;
     private final boolean embedInTestRunReport;
     private final String title;
@@ -60,9 +62,10 @@ public final class ComponentDiagramOptions {
     public Map<String, String> dependencyColors() { return dependencyColors; }
     public int maxFlameChartTests() { return maxFlameChartTests; }
 
-    /** The default options (matching the .NET defaults). */
+    /** The default options (matching the .NET defaults) — a cached singleton so a record holding the
+     *  defaults compares equal by reference (the function fields make value-equality impractical). */
     public static ComponentDiagramOptions defaults() {
-        return builder().build();
+        return DEFAULTS;
     }
 
     public static Builder builder() {
