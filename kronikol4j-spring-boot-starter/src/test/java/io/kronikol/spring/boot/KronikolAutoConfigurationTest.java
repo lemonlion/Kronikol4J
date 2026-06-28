@@ -63,6 +63,35 @@ class KronikolAutoConfigurationTest {
     }
 
     @Test
+    void registersHibernateStatementInspectorWhenHibernateOnClasspath() {
+        try (var ctx = new AnnotationConfigApplicationContext()) {
+            addProperty(ctx, "kronikol.service-name", "ShopDb");
+            ctx.register(KronikolAutoConfiguration.class);
+            ctx.refresh();
+
+            var customizer = ctx.getBean(
+                org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer.class);
+            // Applying it installs a KronikolStatementInspector under Hibernate's statement-inspector setting.
+            var hibernateProps = new java.util.HashMap<String, Object>();
+            customizer.customize(hibernateProps);
+            assertThat(hibernateProps.get(org.hibernate.cfg.AvailableSettings.STATEMENT_INSPECTOR))
+                .isInstanceOf(io.kronikol.hibernate.KronikolStatementInspector.class);
+        }
+    }
+
+    @Test
+    void hibernateInspectorDisabledByProperty() {
+        try (var ctx = new AnnotationConfigApplicationContext()) {
+            addProperty(ctx, "kronikol.hibernate-tracking", "false");
+            ctx.register(KronikolAutoConfiguration.class);
+            ctx.refresh();
+
+            assertThat(ctx.getBeanNamesForType(
+                org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer.class)).isEmpty();
+        }
+    }
+
+    @Test
     void serviceNameBindsFromConfiguration() {
         try (var ctx = new AnnotationConfigApplicationContext()) {
             addProperty(ctx, "kronikol.service-name", "OrderService");

@@ -1,13 +1,17 @@
 package io.kronikol.spring.boot;
 
+import io.kronikol.hibernate.KronikolStatementInspector;
 import io.kronikol.http.HttpTrackingConfig;
 import io.kronikol.http.HttpTrackingOptions;
+import io.kronikol.jdbc.SqlTrackingOptions;
 import io.kronikol.servlet.KronikolServletFilter;
 import io.kronikol.spring.KronikolRestTemplateInterceptor;
 import io.kronikol.spring.KronikolWebClientFilter;
+import org.hibernate.cfg.AvailableSettings;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.boot.web.client.RestTemplateCustomizer;
@@ -64,5 +68,26 @@ public class KronikolAutoConfiguration {
     public WebClientCustomizer kronikolWebClientCustomizer(KronikolProperties properties) {
         return builder -> builder.filter(new KronikolWebClientFilter(
             HttpTrackingConfig.builder().fixedServiceName(properties.getServiceName()).build()));
+    }
+
+    /**
+     * JPA/Hibernate apps: auto-register the {@link KronikolStatementInspector} so every SQL statement
+     * Hibernate issues is tracked — the Spring-Data/JPA auto-registration of the ORM integration point
+     * (the .NET {@code SqlTrackingInterceptor : DbCommandInterceptor} analog). Active when Hibernate is on
+     * the classpath; disable with {@code kronikol.hibernate-tracking=false}.
+     *
+     * <p>This captures SQL text only (no row counts — {@code StatementInspector} has no completion callback);
+     * for full two-phase capture with result summaries, also wrap the JPA {@code DataSource} with the JDBC
+     * module's {@code TrackingDataSource}.
+     */
+    @Bean
+    @ConditionalOnClass(name = "org.hibernate.cfg.AvailableSettings")
+    @ConditionalOnProperty(prefix = "kronikol", name = "hibernate-tracking",
+        havingValue = "true", matchIfMissing = true)
+    public HibernatePropertiesCustomizer kronikolHibernateStatementInspector(KronikolProperties properties) {
+        KronikolStatementInspector inspector =
+            new KronikolStatementInspector(SqlTrackingOptions.forDatabase(properties.getServiceName()));
+        return hibernateProperties ->
+            hibernateProperties.put(AvailableSettings.STATEMENT_INSPECTOR, inspector);
     }
 }

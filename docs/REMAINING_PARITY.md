@@ -732,8 +732,13 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   interaction, no-identity skip, null/blank pass-through) + wiki page. **Remaining (`[~]`):**
   `StatementInspector` is a SQL-text hook with no execution-completion callback, so the response carries no
   row count — full two-phase capture **with** row counts / result-set summaries is delivered by wrapping the
-  JPA `DataSource` with the existing JDBC `TrackingDataSource` (documented in the wiki); a dedicated
-  Spring-Data auto-registration helper + a golden-rendered proof are the follow-ups.
+  JPA `DataSource` with the existing JDBC `TrackingDataSource` (documented in the wiki).
+  **Spring-Data auto-registration done (2026-06-28):** the Spring Boot starter now contributes a
+  `HibernatePropertiesCustomizer` bean (`@ConditionalOnClass org.hibernate.cfg.AvailableSettings`,
+  `kronikol.hibernate-tracking` default-on) that installs a `KronikolStatementInspector` (built from the
+  configured `serviceName`) under Hibernate's `STATEMENT_INSPECTOR` setting — so a JPA/Hibernate app gets SQL
+  tracking with zero wiring. Proven by `KronikolAutoConfigurationTest` (customizer installs the inspector;
+  disabled via `kronikol.hibernate-tracking=false`). **Remaining (`[~]`):** a golden-rendered proof.
 - [x] **ClickHouse** — `TrackingClickHouseConnection/Command/Transaction`; `CLICK_HOUSE` category. (Shared
   classifier already understands ClickHouse syntax.)
   **Done:** new `kronikol4j-clickhouse` module with `ClickHouseTracking` — `wrap(DataSource[, options])`
