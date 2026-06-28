@@ -182,9 +182,12 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   (Action-phase suppression skips all three; Setup unaffected). **Azure + GCP done (2026-06-28):** same wiring
   — `AzureTrackingOptions`/`GcpTrackingOptions` gained `trackDuringSetup/Action` and their cosmos/blob/
   serviceBus and bigQuery/storage/pubSub recorders guard on `shouldTrack(...)`. Proven by
-  `AzureTrackingTest`/`GcpTrackingTest`. **Remaining:** the same per-adapter wiring for
-  Cassandra/Elasticsearch/Bigtable/messaging recorders (identical pattern) + `Setup/ActionVerbosity`
-  per-phase overrides; box flips `[x]` once every recorder consults phase.
+  `AzureTrackingTest`/`GcpTrackingTest`. **Cassandra + Elasticsearch done (2026-06-28):** same wiring —
+  `CassandraTrackingOptions`/`ElasticsearchTrackingOptions` gained `trackDuringSetup/Action` and their
+  `record(...)` paths guard on `shouldTrack(...)`. Proven by `CassandraTrackingTest`/`ElasticsearchTrackingTest`.
+  **Remaining:** the same per-adapter wiring for the Bigtable/EventHubs/StorageQueues/EventBridge/eventbus/Atlas
+  recorders (identical pattern) + `Setup/ActionVerbosity` per-phase overrides; box flips `[x]` once every
+  recorder consults phase.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)

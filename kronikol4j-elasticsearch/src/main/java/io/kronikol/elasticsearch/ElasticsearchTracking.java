@@ -1,6 +1,7 @@
 package io.kronikol.elasticsearch;
 
 import io.kronikol.core.constants.DependencyCategories;
+import io.kronikol.core.context.PhaseConfiguration;
 import io.kronikol.core.context.TestInfo;
 import io.kronikol.core.context.TestInfoResolver;
 import io.kronikol.core.tracking.Interactions;
@@ -33,6 +34,9 @@ public final class ElasticsearchTracking {
      */
     public static void record(ElasticsearchTrackingOptions options, String operation, String index,
                               String body, String resultSummary) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         String request = index + ": " + (body == null ? "" : body);
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
@@ -54,6 +58,9 @@ public final class ElasticsearchTracking {
      */
     public static void record(ElasticsearchTrackingOptions options, String httpMethod, URI requestUri,
                               String body, String resultSummary) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
         ElasticsearchOperationInfo info = ElasticsearchOperationClassifier.classify(httpMethod, requestUri);
         TrackingVerbosity verbosity = options.verbosity();
         String label = ElasticsearchOperationClassifier.getDiagramLabel(info, verbosity);
@@ -65,28 +72,53 @@ public final class ElasticsearchTracking {
             StatusCode.of("OK"), resultSummary);
     }
 
+    /** Whether the current phase suppresses tracking per the options' {@code trackDuringSetup/Action}. */
+    private static boolean suppressedByPhase(ElasticsearchTrackingOptions options) {
+        return !PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction());
+    }
+
     /** Configuration for Elasticsearch tracking. */
     public record ElasticsearchTrackingOptions(String serviceName, String callerName,
-                                               Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
+                                               Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
+                                               boolean trackDuringSetup, boolean trackDuringAction) {
 
         public ElasticsearchTrackingOptions {
             verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
         }
 
-        /** Three-arg shape (default verbosity) — the back-compatible constructor. */
+        /** Three-arg shape (default verbosity, both phases tracked) — back-compatible. */
         public ElasticsearchTrackingOptions(String serviceName, String callerName,
                                             Supplier<TestInfo> testInfoFetcher) {
-            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT);
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true);
+        }
+
+        /** Four-arg shape (both phases tracked) — back-compatible. */
+        public ElasticsearchTrackingOptions(String serviceName, String callerName,
+                                            Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
+            this(serviceName, callerName, testInfoFetcher, verbosity, true, true);
         }
 
         public static ElasticsearchTrackingOptions forCluster(String serviceName) {
             return new ElasticsearchTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
-                TrackingVerbosity.DEFAULT);
+                TrackingVerbosity.DEFAULT, true, true);
         }
 
         /** A copy with the given verbosity (Summarised omits the request body). */
         public ElasticsearchTrackingOptions withVerbosity(TrackingVerbosity value) {
-            return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, value);
+            return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, value,
+                trackDuringSetup, trackDuringAction);
+        }
+
+        /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
+        public ElasticsearchTrackingOptions withTrackDuringSetup(boolean value) {
+            return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                value, trackDuringAction);
+        }
+
+        /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
+        public ElasticsearchTrackingOptions withTrackDuringAction(boolean value) {
+            return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, value);
         }
     }
 }

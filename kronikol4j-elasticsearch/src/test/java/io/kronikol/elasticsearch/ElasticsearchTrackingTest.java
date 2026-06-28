@@ -37,6 +37,20 @@ class ElasticsearchTrackingTest {
     }
 
     @Test
+    void actionPhaseSuppressionSkipsRecording() {
+        var options = ElasticsearchTrackingOptions.forCluster("SearchCluster").withTrackDuringAction(false);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);
+        try {
+            ElasticsearchTracking.record(options, "search", "products", "{}", "0 hits");
+            ElasticsearchTracking.record(options, "GET",
+                java.net.URI.create("http://es:9200/products/_search"), "{}", "0 hits");
+            assertThat(RequestResponseLogger.getAllLogs()).isEmpty();
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void classifierDrivenRecordUsesClassifierLabelUriAndBody() {
         ElasticsearchTracking.record(ElasticsearchTrackingOptions.forCluster("SearchCluster"),
             "GET", java.net.URI.create("http://es:9200/products/_search"), "{\"query\":{}}", "3 hits");
