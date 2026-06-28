@@ -114,6 +114,8 @@ public class KronikolPlugin implements Plugin<Project> {
         forwardString(test, ReportOptions.HTML_FILE_NAME_PROPERTY, ext.getHtmlReportFileName());
         forwardBool(test, ReportOptions.GENERATE_COMPONENT_DIAGRAM_PROPERTY, ext.getGenerateComponentDiagram());
         forwardBool(test, ReportOptions.GENERATE_MERGEABLE_DATA_PROPERTY, ext.getGenerateMergeableData());
+        forwardBool(test, ReportOptions.GENERATE_TEST_RUN_REPORT_DATA_PROPERTY,
+            ext.getGenerateTestRunReportData());
         // CI summary / artifacts
         forwardBool(test, ReportOptions.WRITE_CI_SUMMARY_PROPERTY, ext.getWriteCiSummary());
         forwardInt(test, ReportOptions.MAX_CI_SUMMARY_DIAGRAMS_PROPERTY, ext.getMaxCiSummaryDiagrams());

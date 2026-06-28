@@ -96,6 +96,9 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     /** System property (boolean) writing the standalone mergeable fragment {@code TestRunReport.mergeable.json}
      *  (default {@code false}). */
     public static final String GENERATE_MERGEABLE_DATA_PROPERTY = "kronikol.report.generateMergeableData";
+    /** System property (boolean) master-switching the machine-readable test-run-report data file(s)
+     *  (default {@code true}). */
+    public static final String GENERATE_TEST_RUN_REPORT_DATA_PROPERTY = "kronikol.report.generateTestRunReportData";
     /** System property (boolean) writing the markdown run summary to the detected CI platform. */
     public static final String WRITE_CI_SUMMARY_PROPERTY = "kronikol.ci.writeCiSummary";
     /** System property (int) capping diagrams in the CI summary (default 10). */
@@ -349,6 +352,16 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return control.generateMergeableData();
     }
 
+    /** Master switch for the machine-readable test-run-report data file(s) (the .NET {@code GenerateTestRunReportData}). */
+    public ReportOptions withGenerateTestRunReportData(boolean value) {
+        return withControl(control.withGenerateTestRunReportData(value));
+    }
+
+    /** Whether the test-run-report data file(s) are written (delegates to {@link #control()}). */
+    public boolean generateTestRunReportData() {
+        return control.generateTestRunReportData();
+    }
+
     /**
      * Reads every diagram + report toggle from system properties (each falling back to {@link #defaults()}),
      * so a listener-driven run configures them with e.g. {@code -Dkronikol.diagram.separateSetup=true} or
@@ -388,7 +401,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
             stringProperty(REPORT_TITLE_PROPERTY, null),
             stringProperty(HTML_FILE_NAME_PROPERTY, ReportControlOptions.DEFAULT_HTML_FILE_NAME),
             boolProperty(GENERATE_COMPONENT_DIAGRAM_PROPERTY, true),
-            boolProperty(GENERATE_MERGEABLE_DATA_PROPERTY, false));
+            boolProperty(GENERATE_MERGEABLE_DATA_PROPERTY, false),
+            boolProperty(GENERATE_TEST_RUN_REPORT_DATA_PROPERTY, true));
     }
 
     /** Builds the {@link CiPublishOptions} from system properties (all defaulting to the .NET defaults). */

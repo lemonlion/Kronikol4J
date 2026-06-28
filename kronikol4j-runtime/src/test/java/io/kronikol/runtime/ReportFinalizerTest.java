@@ -234,6 +234,33 @@ class ReportFinalizerTest {
     }
 
     @Test
+    void finalizeEmitsTestRunReportJsonByDefault(@TempDir Path dir) throws IOException {
+        // .NET parity: GenerateTestRunReportData defaults true + TestRunReportDataFormat defaults JSON,
+        // so a default run emits TestRunReport.json (no explicit dataFormats needed).
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run");
+
+        assertThat(Files.readString(dir.resolve("TestRunReport.json")))
+            .contains("Checkout succeeds");
+        assertThat(dir.resolve("TestRunReport.xml")).doesNotExist(); // only the default JSON
+    }
+
+    @Test
+    void finalizeSkipsDataWhenGenerateTestRunReportDataDisabled(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        // Kill switch: no data file even though a format is explicitly requested.
+        ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults()
+            .withDataFormats(Set.of(ReportDataFormat.JSON)).withGenerateTestRunReportData(false));
+
+        assertThat(dir.resolve("TestRunReport.json")).doesNotExist();
+        assertThat(dir.resolve("TestRunReport.html")).exists(); // HTML still written
+    }
+
+    @Test
     void finalizeWritesMergeableFragmentWhenEnabled(@TempDir Path dir) throws IOException {
         trackCheckout();
         RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));

@@ -573,10 +573,17 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `<BaseDir>/Reports` subfolder). `lazyLoadDiagramImages` is N/A (Java renders diagrams in-browser via
   PlantUML-WASM, not `<img>` tags). `requestResponsePostProcessor`/`midProcessor` map to the programmatic
   `NoteProcessors` passed to `PlantUmlCreator.create` (the deliberate Java seam, not a `ReportOptions` field).
-  **Still open** (genuinely blocked on unbuilt features): `expectedTestCount` guard + `inlineBackgroundSteps`
-  (no specs-in-finalizer / inline-background renderer yet), and the explicit `generateTestRunReportData`
-  boolean (changing Java's `dataFormats`-emptiness *inference* into an explicit default-emit-JSON flag is a
-  behavior-affecting change best done as its own careful pass).
+  - `generateTestRunReportData` (default `true`) — added to `ReportControlOptions` as the master switch for
+    the machine-readable data file(s). `ReportFinalizer.writeReportData` now emits when the switch is on:
+    the explicit `dataFormats` set when configured, else the single `testRunReportDataFormat` (default JSON).
+    **Behavior change (intended .NET parity):** a default standalone run now emits `TestRunReport.json`
+    alongside the HTML (matching .NET's `GenerateTestRunReportData=true` + `TestRunReportDataFormat=Json`);
+    setting it `false` is a kill-switch even when formats are configured. System property
+    `kronikol.report.generateTestRunReportData` + Gradle DSL `generateTestRunReportData`. The full suite +
+    goldens + Playwright stayed green. Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
+  **Still open** (genuinely blocked on unbuilt features, deferred to their owners): `expectedTestCount` guard
+  (needs the specifications report wired into the finalizer) and `inlineBackgroundSteps` (needs an
+  inline-background renderer). All other flags in this bundle are now done or resolved as boundaries above.
 - [x] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*

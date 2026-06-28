@@ -171,12 +171,19 @@ public final class ReportFinalizer {
         return files;
     }
 
-    /** Emits {@code TestRunReport.<ext>} for each requested {@link ReportDataFormat} (none by default). */
+    /**
+     * Emits the machine-readable test-run-report data file(s). Mirrors .NET: gated by the
+     * {@code generateTestRunReportData} master switch (default on); the formats are the explicit
+     * {@code dataFormats} set when configured, else the single {@code testRunReportDataFormat} (default JSON,
+     * the .NET {@code TestRunReportDataFormat}) — so a default run emits {@code TestRunReport.json}.
+     */
     private static void writeReportData(Path outputDir, List<Feature> features,
                                         List<RequestResponseLog> logs, ReportOptions options) throws IOException {
-        if (options.dataFormats().isEmpty()) {
+        if (!options.generateTestRunReportData()) {
             return;
         }
+        java.util.Set<ReportDataFormat> formats = options.dataFormats().isEmpty()
+            ? java.util.Set.of(options.testRunReportDataFormat()) : options.dataFormats();
         Map<String, List<String>> diagrams = new LinkedHashMap<>();
         for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.diagram())) {
             if (!p.diagrams().isEmpty()) {
@@ -190,7 +197,7 @@ public final class ReportFinalizer {
         ReportData data = new ReportData(ReportData.defaultKronikolVersion(),
             RunResults.startedAt(), Instant.now(), features, diagrams, logsByTestId);
         Files.createDirectories(outputDir);
-        for (ReportDataFormat format : options.dataFormats()) {
+        for (ReportDataFormat format : formats) {
             Files.writeString(outputDir.resolve("TestRunReport." + format.extension()),
                 format.serialize(data), StandardCharsets.UTF_8);
             if (options.generateSchema()) {

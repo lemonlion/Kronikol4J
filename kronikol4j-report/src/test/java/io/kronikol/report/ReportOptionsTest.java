@@ -141,6 +141,20 @@ class ReportOptionsTest {
     }
 
     @Test
+    void generateTestRunReportDataDefaultsTrueAndWithers() {
+        assertThat(ReportOptions.defaults().generateTestRunReportData()).isTrue(); // .NET default true
+        assertThat(ReportOptions.defaults().withGenerateTestRunReportData(false)
+            .generateTestRunReportData()).isFalse();
+
+        System.setProperty(ReportOptions.GENERATE_TEST_RUN_REPORT_DATA_PROPERTY, "false");
+        try {
+            assertThat(ReportOptions.fromSystemProperties().generateTestRunReportData()).isFalse();
+        } finally {
+            System.clearProperty(ReportOptions.GENERATE_TEST_RUN_REPORT_DATA_PROPERTY);
+        }
+    }
+
+    @Test
     void readsDiagramOptionsFromSystemProperties() {
         System.setProperty(ReportOptions.SEPARATE_SETUP_PROPERTY, "true");
         System.setProperty(ReportOptions.SETUP_HIGHLIGHT_COLOR_PROPERTY, "#123456");

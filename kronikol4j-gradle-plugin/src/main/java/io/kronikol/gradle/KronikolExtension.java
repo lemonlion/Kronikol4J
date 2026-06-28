@@ -136,6 +136,10 @@ public interface KronikolExtension {
      *  {@code GenerateMergeableData}, default false). */
     Property<Boolean> getGenerateMergeableData();
 
+    /** Master switch for the machine-readable test-run-report data file(s) (the .NET
+     *  {@code GenerateTestRunReportData}, default true → a default run emits {@code TestRunReport.json}). */
+    Property<Boolean> getGenerateTestRunReportData();
+
     // --- CI summary / artifacts ---
 
     /** Write the markdown run summary to the detected CI platform. */

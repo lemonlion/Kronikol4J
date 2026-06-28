@@ -36,11 +36,16 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   `null` → caller's title), `htmlReportFileName` (default `TestRunReport`; the HTML file's base name),
   `generateComponentDiagram` (default `true`; when off, the run-level component diagram is omitted), and
   `generateMergeableData` (default `false`; when on, a standalone run also writes the mergeable
-  `TestRunReport.mergeable.json` fragment for `kronikol merge`). Threaded through `HtmlReportGenerator.generate`
-  and `ReportFinalizer`; exposed via `kronikol.report.{title,htmlFileName,generateComponentDiagram,
-  generateMergeableData}` and the matching Gradle DSL properties. The .NET `TestRunReportTitle` /
-  `HtmlTestRunReportFileName` / `GenerateComponentDiagram` / `GenerateMergeableData` analogs. Proven by
-  `ReportOptionsTest` + `ReportFinalizerTest`.
+  `TestRunReport.mergeable.json` fragment for `kronikol merge`), and `generateTestRunReportData` (default
+  `true`; master switch for the data file). Threaded through `HtmlReportGenerator.generate` and
+  `ReportFinalizer`; exposed via `kronikol.report.{title,htmlFileName,generateComponentDiagram,
+  generateMergeableData,generateTestRunReportData}` and the matching Gradle DSL properties. The .NET
+  `TestRunReportTitle` / `HtmlTestRunReportFileName` / `GenerateComponentDiagram` / `GenerateMergeableData` /
+  `GenerateTestRunReportData` analogs. Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
+- **`TestRunReport.json` now emitted by default** (`kronikol4j-runtime`) — matching .NET, a standalone run
+  writes `TestRunReport.json` (the `testRunReportDataFormat`, default JSON) alongside the HTML when
+  `generateTestRunReportData` is on (the new default). Previously Java emitted a data file only when
+  `dataFormats` was explicitly set. Disable with `generateTestRunReportData = false`.
 - **Per-report-type data formats** (`kronikol4j-report`) — added the .NET-named scalar
   `ReportOptions.testRunReportDataFormat()` + `withTestRunReportDataFormat(ReportDataFormat)` (the
   `TestRunReportDataFormat` analog, default JSON) as a thin, documented convenience over the existing
