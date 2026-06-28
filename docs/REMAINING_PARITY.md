@@ -1230,11 +1230,18 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   (rendering already byte-complete). Proven by `InternalFlowSpanStoreTest`, `InternalFlowSpanCollectorTest`
   (granularity matrix), `KronikolSpanProcessorTest` (real SDK tracer → store, projected fields + parent
   linkage). **Boundary/remaining:** the .NET "exclude the AppInsights-conflict sources" has no Java analog
-  (no AppInsights DependencyTracking conflict) — documented N/A. **Remaining (`[~]`):** DI/eager-start
-  auto-registration of the `KronikolSpanProcessor` (a Spring Boot starter bean wiring it onto the
-  `SdkTracerProvider`) and exposing the ~12 InternalFlow sub-options + `WholeTestFlowVisualization` on the
-  report-options surface (the rendering enums already exist — this is the config-surface wiring, with the
-  report-control-flags pass).
+  (no AppInsights DependencyTracking conflict) — documented N/A.
+  **Auto-registration done (2026-06-28):** `KronikolAutoConfigurationCustomizerProvider implements
+  io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider` (autoconfigure-spi
+  `compileOnly`, registered via `META-INF/services`) adds the `KronikolSpanProcessor` to the SDK with zero
+  wiring whenever it is built through `AutoConfiguredOpenTelemetrySdk` — the OTel Java agent, the Spring Boot
+  OTel starter, or a manual `AutoConfiguredOpenTelemetrySdk.builder()` (the framework-agnostic Java analog of
+  the .NET DI/eager-start registration; better than a Spring-only bean). Opt out with
+  `-Dotel.kronikol.internalflow.enabled=false`. Proven by `KronikolAutoConfigurationCustomizerProviderTest`
+  (real autoconfigured SDK: a span lands in `InternalFlowSpanStore`; opt-out flag disables it). **Remaining
+  (`[~]`):** exposing the ~12 InternalFlow sub-options + `WholeTestFlowVisualization` on the report-options
+  surface (the rendering enums already exist — config-surface wiring that lands with the report-control-flags
+  pass).
 - [x] **`TrackingDiagramOverride`** — inject arbitrary PlantUML fragments + programmatic phase boundaries
   (`insertPlantUml`/`startOverride`/`endOverride`/`startAction`/`startSetup`).
   **Done:** `io.kronikol.core.tracking.TrackingDiagramOverride` ports the .NET

@@ -13,5 +13,9 @@ dependencies {
     compileOnly("io.opentelemetry:opentelemetry-api:1.43.0")
     // The SpanProcessor SPI the capture bridge implements (the user brings the OTel SDK).
     compileOnly("io.opentelemetry:opentelemetry-sdk:1.43.0")
+    // The autoconfigure SPI for zero-wiring registration of the span processor (the user brings it).
+    compileOnly("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi:1.43.0")
     testImplementation("io.opentelemetry:opentelemetry-sdk:1.43.0")
+    testImplementation("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi:1.43.0")
+    testImplementation("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.43.0")
 }

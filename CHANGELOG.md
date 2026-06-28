@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — InternalFlow span-processor auto-registration (InternalFlow item progress)
+- **`KronikolAutoConfigurationCustomizerProvider`** (`kronikol4j-opentelemetry`) — an OTel autoconfigure SPI
+  provider (registered via `META-INF/services`, autoconfigure-spi `compileOnly`) that adds the
+  `KronikolSpanProcessor` to the SDK with zero wiring whenever it is built through
+  `AutoConfiguredOpenTelemetrySdk` (the OTel agent, the Spring Boot OTel starter, or a manual builder) — the
+  framework-agnostic analog of the .NET InternalFlow DI/eager-start registration. Opt out with
+  `-Dotel.kronikol.internalflow.enabled=false`. Proven by `KronikolAutoConfigurationCustomizerProviderTest`
+  (real autoconfigured SDK). The InternalFlow item remains open for the ~12 report-surface sub-options.
+
 ### Completed — TrackingProxy OTel span lifecycle (item [x])
 - **`ProxyOptions.activitySourceName`** + **`ProxyOtelSpan`** (`kronikol4j-proxy`) — when set, each tracked
   proxy call opens an OpenTelemetry span on the named tracer (`<iface>.<method>`) and ends it around the
