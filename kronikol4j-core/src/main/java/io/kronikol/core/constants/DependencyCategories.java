@@ -28,6 +28,9 @@ public final class DependencyCategories {
     /** Java-native addition (no .NET counterpart); renders as a {@code database} participant. */
     public static final String CASSANDRA = "Cassandra";
     public static final String DATABASE = "Database";
+    /** MongoDB Atlas Data API (REST). Like .NET, not in the palette map → renders as the {@code Unknown}
+     *  participant shape. */
+    public static final String ATLAS_DATA_API = "AtlasDataApi";
 
     // Caches
     public static final String REDIS = "Redis";

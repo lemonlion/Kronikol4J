@@ -7,6 +7,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-3 Atlas Data API transport hook (item [x])
+- **`AtlasDataApiTracking` + `AtlasDataApiTrackingInterceptor`** (`kronikol4j-mongodb`) — the MongoDB Atlas
+  Data API (REST) tracking hook, the Java analog of the .NET `AtlasDataApiTrackingMessageHandler`
+  `DelegatingHandler`. `AtlasDataApiTracking.record(...)` is the recorder core (classify → excluded-operation
+  / phase / Summarised-`Other` / identity gates → emit the pair on the new `DependencyCategories.ATLAS_DATA_API`
+  category with the classifier label and `atlas:///<db>/<coll>` clean URI, raw request URI + method at Raw);
+  `AtlasDataApiTrackingInterceptor` is the OkHttp `Interceptor` (okhttp `compileOnly`) that auto-invokes it,
+  buffering the request body for classification and capturing the response body. `AtlasDataApiTrackingOptions`
+  carries verbosity (+ per-phase), `trackDuringSetup/Action`, `excludedOperations`, `excludedHeaders`. Atlas
+  Data API could previously be classified but not recorded. Like .NET, the category is absent from the palette
+  map so it renders as the `Unknown` participant. Proven by `AtlasDataApiTrackingInterceptorTest`
+  (MockWebServer). Completes the Atlas Data API adapter.
+
 ### Completed — Cross-cutting deferred flush HTTP handler (item [x])
 - **`DeferredLogFlushInterceptor`** (`kronikol4j-http`) — an OkHttp `Interceptor` (okhttp `compileOnly`), the
   Java analog of the .NET `DeferredLogFlushHandler` `DelegatingHandler`: after each HTTP exchange it drains

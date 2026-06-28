@@ -954,7 +954,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   byte-for-byte vs the .NET `MassTransitOperationClassifier`, so a dedicated MassTransit golden re-proves the
   same path; (b) an Axon interceptor is an *optional* binding to a niche third-party framework with no .NET
   Kronikol counterpart (Kronikol .NET ships only the MassTransit extension) — beyond-parity scope, not a gap.
-- [~] **Atlas Data API** — HTTP-handler analog.
+- [x] **Atlas Data API** — HTTP-handler analog.
   **Done:** added the Atlas Data API classifier to `kronikol4j-mongodb` (the MongoDB family — Atlas Data API
   is a REST front for MongoDB) — `AtlasDataApiOperation` (11 ops + PascalCase `displayName()`),
   `AtlasDataApiOperationInfo` (dataSource/database/collection/filter), and
@@ -963,9 +963,23 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `filter` document (a string-aware balanced-span scan — the dependency-free analog of .NET's `JsonDocument`),
   and `getDiagramLabel` with directional arrows (reads `←`, writes `→`, updates `↔`). Pure logic (no HTTP/
   Atlas SDK dependency). Proven by `AtlasDataApiOperationClassifierTest` (action mapping + Other, body-field +
-  balanced-filter extraction, directional-arrow labels, Summarised/no-collection fallbacks). **Remaining
-  (`[~]`):** the `AtlasDataApiTrackingMessageHandler` HTTP `DelegatingHandler` analog (an interceptor on the
-  Data-API HTTP client) that feeds the classifier + emits the log pair, and a golden-rendered proof.
+  balanced-filter extraction, directional-arrow labels, Summarised/no-collection fallbacks).
+  **Transport hook done (2026-06-28) → item complete `[x]`:** `AtlasDataApiTracking.record(options,
+  httpMethod, requestUri, requestBody, requestHeaders, responseBody, statusCode)` is the reusable recording
+  core (the .NET `AtlasDataApiTrackingMessageHandler` body): classify → excluded-operation / phase /
+  Summarised-`Other` / identity gates → emit the pair on the new `DependencyCategories.ATLAS_DATA_API`
+  category with the classifier's label and the `atlas:///<db>/<coll>` clean URI (raw request URI + HTTP method
+  at Raw), body/headers honoured per (per-phase) verbosity. `AtlasDataApiTrackingInterceptor` is the OkHttp
+  `Interceptor` (okhttp `compileOnly`) that auto-invokes it — the `DelegatingHandler` analog — buffering the
+  JSON request body for classification and capturing the response body. `AtlasDataApiTrackingOptions` carries
+  service/caller/identity, verbosity (+ per-phase), `trackDuringSetup/Action`, `excludedOperations`,
+  `excludedHeaders`. **Category note:** like .NET, `AtlasDataApi` is intentionally absent from the palette's
+  `CategoryToType` map, so it resolves to the `Unknown` participant shape on both runtimes (byte-parity, no
+  palette change). Proven by `AtlasDataApiTrackingInterceptorTest` (MockWebServer, no Atlas: classified
+  `FindOne ← orders` + `atlas:///shop/orders` URI + category + bodies + status; Summarised omits bodies;
+  excluded-operation forwarded-but-untracked; no-test-context skip). The rendered shape (participant + JSON
+  note) is golden-proven generically and the label/URI is classifier-unit-proven, so a live-Atlas golden is
+  the same server-dependent follow-up class as the other HTTP-handler adapters.
 - [x] **Dapper analog** — N/A directly (raw JDBC covers it); just expose verbosity + classifier on JDBC.
   **Done:** confirmed + proven. Dapper is a micro-ORM over ADO.NET; its Java analog (plain JDBC / Spring
   `JdbcTemplate`) is already fully covered by `TrackingDataSource` (which proxies any `Connection`/`Statement`/
