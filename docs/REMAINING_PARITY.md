@@ -498,8 +498,11 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   bucket create/delete/get/list), with `Uri.UnescapeDataString`-equivalent percent-decoding of object names
   (using the URI's raw path so encoded `%2F` stays one segment). Proven by
   `CloudStorageOperationClassifierTest` (6 cases). **All three GCP service classifiers (Pub/Sub, BigQuery,
-  Cloud Storage) are now done. Remaining:** the GCP SDK adapters that feed them + emit the log pair, and a
-  golden proof.
+  Cloud Storage) are now done.**
+  **Verbosity wiring done (2026-06-28):** `GcpTrackingOptions` gained a `TrackingVerbosity` (default Detailed,
+  `withVerbosity(...)`); the recorders drop the payload at Summarised — the BigQuery query (keeping the
+  dataset) and the Pub/Sub message (keeping the topic). Proven by `GcpTrackingTest`. **Remaining:** the GCP SDK
+  adapters that feed the classifiers + emit the pair, and a golden proof.
 
 ---
 

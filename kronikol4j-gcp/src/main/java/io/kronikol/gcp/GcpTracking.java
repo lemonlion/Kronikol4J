@@ -8,6 +8,7 @@ import io.kronikol.core.tracking.Method;
 import io.kronikol.core.tracking.RequestResponseMetaType;
 import io.kronikol.core.tracking.StatusCode;
 import io.kronikol.core.tracking.TrackingDefaults;
+import io.kronikol.core.tracking.TrackingVerbosity;
 import java.net.URI;
 import java.util.Locale;
 import java.util.function.Supplier;
@@ -26,8 +27,9 @@ public final class GcpTracking {
     }
 
     public static void bigQuery(GcpTrackingOptions options, String operation, String dataset, String query) {
-        record(options, DependencyCategories.BIG_QUERY, operation, BIGQUERY_URI,
-            dataset + ": " + (query == null ? "" : query));
+        // Summarised omits the query payload — only the dataset identity is kept.
+        String payload = options.verbosity().includesPayload() && query != null ? query : "";
+        record(options, DependencyCategories.BIG_QUERY, operation, BIGQUERY_URI, dataset + ": " + payload);
     }
 
     public static void storage(GcpTrackingOptions options, String operation, String bucket, String object) {
@@ -36,9 +38,11 @@ public final class GcpTracking {
 
     public static void pubSub(GcpTrackingOptions options, String topic, String message) {
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        // Summarised omits the message payload — only the topic identity is kept.
+        String payload = options.verbosity().includesPayload() && message != null ? message : "";
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.MESSAGE_QUEUE, Method.of("PUBLISH"), PUBSUB_URI, null,
-            "topic: " + topic + "\n" + (message == null ? "" : message),
+            "topic: " + topic + "\n" + payload,
             StatusCode.of("Sent"), null, RequestResponseMetaType.EVENT);
     }
 
@@ -52,9 +56,25 @@ public final class GcpTracking {
 
     /** Configuration for Google Cloud tracking. */
     public record GcpTrackingOptions(String serviceName, String callerName,
-                                     Supplier<TestInfo> testInfoFetcher) {
+                                     Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
+
+        public GcpTrackingOptions {
+            verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
+        }
+
+        /** Three-arg shape (default verbosity) — the back-compatible constructor. */
+        public GcpTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher) {
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT);
+        }
+
         public static GcpTrackingOptions forService(String serviceName) {
-            return new GcpTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null);
+            return new GcpTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
+                TrackingVerbosity.DEFAULT);
+        }
+
+        /** A copy with the given verbosity (Summarised omits the BigQuery query / Pub/Sub message). */
+        public GcpTrackingOptions withVerbosity(TrackingVerbosity value) {
+            return new GcpTrackingOptions(serviceName, callerName, testInfoFetcher, value);
         }
     }
 }

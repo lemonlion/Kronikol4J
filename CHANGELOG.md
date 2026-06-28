@@ -74,6 +74,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Added — Tier-1 GCP (verbosity wiring)
+- **Recorder verbosity** (`kronikol4j-gcp`) — `GcpTrackingOptions` gained a `TrackingVerbosity` (default
+  Detailed, `withVerbosity(...)`); at Summarised the recorders drop the payload (the BigQuery query, the
+  Pub/Sub message) while keeping the dataset/topic identity. Proven by `GcpTrackingTest`. The GCP SDK adapters
+  + a golden proof remain.
+
 ### Added — Tier-1 Azure (verbosity wiring)
 - **Recorder verbosity** (`kronikol4j-azure`) — `AzureTrackingOptions` gained a `TrackingVerbosity` (default
   Detailed, `withVerbosity(...)`); at Summarised the recorders drop the payload (the Cosmos document, the

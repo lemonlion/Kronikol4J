@@ -39,4 +39,25 @@ class GcpTrackingTest {
         String uml = PlantUmlCreator.create(logs).get(0).diagrams().get(0);
         assertThat(uml).contains("queue \"Events\" as events").contains("test -[#9B59B6]> events: PUBLISH: /");
     }
+
+    @Test
+    void summarisedVerbosityOmitsBigQueryQueryButKeepsDataset() {
+        var options = GcpTrackingOptions.forService("Analytics")
+            .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        GcpTracking.bigQuery(options, "query", "sales", "SELECT count(*) FROM orders");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs.get(0).content()).isEqualTo("sales: "); // dataset kept, query dropped
+    }
+
+    @Test
+    void summarisedVerbosityOmitsPubSubMessageButKeepsTopic() {
+        var options = GcpTrackingOptions.forService("Events")
+            .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        GcpTracking.pubSub(options, "orders", "{\"id\":1}");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).anySatisfy(l -> assertThat(l.content()).isEqualTo("topic: orders\n"));
+        assertThat(logs).noneSatisfy(l -> assertThat(l.content()).contains("{\"id\":1}"));
+    }
 }
