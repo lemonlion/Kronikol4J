@@ -6,7 +6,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -85,6 +89,60 @@ class ProcessingCorrelationTest {
         assertThat(stage.toCompletableFuture().join()).isNull();
         assertThat(seen.get()).isEqualTo(new TestInfo("AsyncTest", "id-3"));
         assertThat(TestIdentityScope.current()).isNull(); // cleared on the launching thread
+    }
+
+    @Test
+    void wrapSyncRunsUnderResolvedScopeThenClears() {
+        // wrapSync is the .NET WrapSync naming alias of wrap(Consumer, keySelector).
+        TestCorrelationStore.correlate("sync-1", "SyncTest", "id-s");
+        AtomicReference<TestInfo> seen = new AtomicReference<>();
+
+        Consumer<String> wrapped = ProcessingCorrelation.wrapSync(
+            item -> seen.set(TestIdentityScope.current()), item -> "sync-1");
+        wrapped.accept("payload");
+
+        assertThat(seen.get()).isEqualTo(new TestInfo("SyncTest", "id-s"));
+        assertThat(TestIdentityScope.current()).isNull();
+    }
+
+    @Test
+    void wrapAsyncForwardsCancellationSignalToHandler() {
+        TestCorrelationStore.correlate("evt-c", "CancelTest", "id-c");
+        AtomicReference<TestInfo> seen = new AtomicReference<>();
+        AtomicBoolean handlerSawCancellation = new AtomicBoolean(false);
+
+        BiFunction<String, BooleanSupplier, CompletionStage<Void>> handler = (item, cancelled) -> {
+            seen.set(TestIdentityScope.current());
+            handlerSawCancellation.set(cancelled.getAsBoolean()); // the token is threaded through
+            return CompletableFuture.completedFuture(null);
+        };
+        var wrapped = ProcessingCorrelation.wrapAsync(handler, item -> "evt-c");
+
+        wrapped.apply("payload", () -> true).toCompletableFuture().join();
+
+        assertThat(seen.get()).isEqualTo(new TestInfo("CancelTest", "id-c"));
+        assertThat(handlerSawCancellation).isTrue();
+        assertThat(TestIdentityScope.current()).isNull();
+    }
+
+    @Test
+    void wrapBatchAsyncWithCancellationForwardsSignalAndScopesFromFirstCorrelatable() {
+        TestCorrelationStore.correlate("bk2", "BatchCancelTest", "id-bc");
+        AtomicReference<TestInfo> seen = new AtomicReference<>();
+        AtomicBoolean handlerSawCancellation = new AtomicBoolean(true);
+
+        BiFunction<Collection<String>, BooleanSupplier, CompletionStage<Void>> handler = (batch, cancelled) -> {
+            seen.set(TestIdentityScope.current());
+            handlerSawCancellation.set(cancelled.getAsBoolean());
+            return CompletableFuture.completedFuture(null);
+        };
+        var wrapped = ProcessingCorrelation.wrapBatchAsync(handler, item -> item);
+
+        wrapped.apply(List.of("unknown", "bk2"), () -> false).toCompletableFuture().join();
+
+        assertThat(seen.get()).isEqualTo(new TestInfo("BatchCancelTest", "id-bc"));
+        assertThat(handlerSawCancellation).isFalse(); // signal forwarded faithfully
+        assertThat(TestIdentityScope.current()).isNull();
     }
 
     @Test

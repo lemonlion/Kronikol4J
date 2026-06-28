@@ -30,6 +30,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   `KronikolReportMojoTest`; wiki page added.
 
 ### Added — Tier-6 helpers & wiring fixes
+- **`ProcessingCorrelation` naming/signature parity** (`kronikol4j-core`) — added `wrapSync` (the .NET
+  `WrapSync` naming alias of `wrap`) and cancellation-aware overloads of `wrapAsync`/`wrapBatchAsync`
+  (`BiFunction<…, BooleanSupplier, CompletionStage<Void>>`) — the parity twins of .NET's
+  `Wrap`/`WrapBatch`, which thread a `CancellationToken` to the handler. `BooleanSupplier` is the zero-dep
+  Java analog of the (absent) universal cancellation token; the wrapper forwards it unchanged. Proven by
+  `ProcessingCorrelationTest`.
 - **`TestInfoResolver.createHttpFallbackFetcher`** (`kronikol4j-core`) — the .NET `CreateHttpFallbackFetcher`
   analog: a static factory returning a `Supplier<TestInfo>` that resolves identity from the request's
   `test-tracking-current-test-{name,id}` headers first, then a fallback delegate. The HTTP-context accessor

@@ -1012,8 +1012,19 @@ fixes. Listed for completeness so nothing is silently dropped.
   module's `GherkinPhase.forKeyword`, which is the *stateful* variant where `And`/`But` inherit the current
   phase (correct for live Gherkin step streams) — both are kept. Proven by `PhaseConfigurationTest` (4 new
   cases: Given/And/But→Setup, When/Then→Action, case-insensitive prefix, null/empty/unmatched→Unknown).
-- [ ] **`ProcessingCorrelation` naming/signature parity** — `wrapSync` named alias + the cancellation-signal
+- [x] **`ProcessingCorrelation` naming/signature parity** — `wrapSync` named alias + the cancellation-signal
   parameter on the batch wrapper (Java's batch wrapper omits it). *(.NET `ProcessingCorrelation.cs:41`.)*
+  **Done:** (1) `wrapSync(Consumer<T>, keySelector)` added as the .NET `WrapSync` naming alias of the existing
+  `wrap` (Java's `wrap` already *is* the synchronous `Action<T>` form; the alias gives API-name parity).
+  (2) Cancellation-aware overloads of both async wrappers — `wrapAsync(BiFunction<T, BooleanSupplier,
+  CompletionStage<Void>>, …)` and `wrapBatchAsync(BiFunction<Collection<T>, BooleanSupplier,
+  CompletionStage<Void>>, …)` — the parity twins of .NET's `Wrap`/`WrapBatch` which thread a
+  `CancellationToken` to the handler. Java has no universal cancellation token (documented boundary, cf.
+  `TrackingSerializerOptions`' `FilterCancellationTokens` note), so the cooperative signal is modelled as a
+  `BooleanSupplier` (`getAsBoolean()` ≡ `CancellationToken.IsCancellationRequested`); the wrapper establishes
+  the scope (batch: from the first correlatable item) and forwards the signal unchanged. The token-less
+  forms are kept (Java idiom). Proven by `ProcessingCorrelationTest` (3 new cases: `wrapSync` scope+clear,
+  per-item + batch async signal forwarding).
 - [ ] **Wire `DiagnosticReportGenerator` into `ReportFinalizer`** — the diagnostic generator is fully ported
   but never triggered from the finalization path (.NET invokes it when diagnostic mode is on and there are
   logs but no test contexts). Depends on the `diagnosticMode` toggle (Tier 2).

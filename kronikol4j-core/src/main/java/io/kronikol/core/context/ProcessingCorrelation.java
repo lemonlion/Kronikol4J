@@ -3,6 +3,8 @@ package io.kronikol.core.context;
 import java.util.Collection;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -25,6 +27,16 @@ public final class ProcessingCorrelation {
                 handler.accept(item);
             }
         };
+    }
+
+    /**
+     * The .NET {@code WrapSync} naming alias of {@link #wrap(Consumer, Function)} — wraps a synchronous
+     * per-item action (.NET's {@code Action<T>}) so each item runs under the correct test's scope. Provided
+     * for naming parity with the .NET API ({@code Wrap} is async / {@code WrapSync} is synchronous); Java's
+     * {@link #wrap} already <em>is</em> the synchronous form (a {@link Consumer}).
+     */
+    public static <T> Consumer<T> wrapSync(Consumer<T> handler, Function<T, String> keySelector) {
+        return wrap(handler, keySelector);
     }
 
     /** Wraps a batch handler, establishing the scope from the first correlatable item. */
@@ -88,6 +100,40 @@ public final class ProcessingCorrelation {
             String key = firstCorrelatableKey(batch, keySelector);
             try (var ignored = key == null ? null : CorrelatedProcessingScope.begin(key)) {
                 return handler.apply(batch);
+            }
+        };
+    }
+
+    /**
+     * Cancellation-aware variant of {@link #wrapAsync} — the parity twin of .NET's
+     * {@code Wrap(Func<T, CancellationToken, Task>, …)}, which threads a cancellation token to the handler.
+     * Java has no universal cancellation token, so the cooperative-cancellation signal is modelled as a
+     * {@link BooleanSupplier} ({@code getAsBoolean()} ≡ {@code CancellationToken.IsCancellationRequested});
+     * the wrapper only establishes the scope and forwards the signal unchanged to the handler.
+     */
+    public static <T> BiFunction<T, BooleanSupplier, CompletionStage<Void>> wrapAsync(
+        BiFunction<T, BooleanSupplier, CompletionStage<Void>> handler, Function<T, String> keySelector) {
+        return (item, cancellationSignal) -> {
+            String key = keySelector.apply(item);
+            try (var ignored = CorrelatedProcessingScope.begin(key)) {
+                return handler.apply(item, cancellationSignal);
+            }
+        };
+    }
+
+    /**
+     * Cancellation-aware variant of {@link #wrapBatchAsync} — the parity twin of .NET's
+     * {@code WrapBatch(Func<IReadOnlyCollection<T>, CancellationToken, Task>, …)}. The cancellation token is
+     * the {@link BooleanSupplier} analog (see {@link #wrapAsync(BiFunction, Function)}); scope comes from the
+     * first correlatable item and the signal is forwarded to the handler unchanged.
+     */
+    public static <T> BiFunction<Collection<T>, BooleanSupplier, CompletionStage<Void>> wrapBatchAsync(
+        BiFunction<Collection<T>, BooleanSupplier, CompletionStage<Void>> handler,
+        Function<T, String> keySelector) {
+        return (batch, cancellationSignal) -> {
+            String key = firstCorrelatableKey(batch, keySelector);
+            try (var ignored = key == null ? null : CorrelatedProcessingScope.begin(key)) {
+                return handler.apply(batch, cancellationSignal);
             }
         };
     }
