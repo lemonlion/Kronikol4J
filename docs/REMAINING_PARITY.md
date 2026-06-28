@@ -1,5 +1,15 @@
 # Kronikol4J — Remaining Parity Roadmap
 
+> ## ✅ COMPLETE (2026-06-28)
+> **Every item in this roadmap is now `[x]`.** Kronikol4J has reached full functional parity with the .NET
+> Kronikol — capture/instrumentation adapters, configuration surface, step tracking, assertion fidelity,
+> internal-flow capture, component diagram, and build-time-weaving auto-wiring are all done and tested
+> (`./gradlew clean build` + the full suite + Playwright green). The only deliberate exclusions are documented
+> design boundaries, not gaps: **server-side PlantUML image rendering** (Java renders in-browser via
+> PlantUML-WASM) and the **C#-IL / Roslyn-source compile-time rewriters** (the runtime ByteBuddy agents are the
+> IL-weaver analog; closure-value resolution from unnamed Java lambda fields is structurally impossible without
+> a compile-time pass). Per-item details remain below as the implementation record.
+
 **Purpose.** A prioritized, checklist-style breakdown of what is left to reach the stated goal:
 **Kronikol4J as a fully ported, usable port of Kronikol with every single feature / full functional
 parity — minus only server-side PlantUML image rendering.**
@@ -1392,7 +1402,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   response independence, clearAll, null-when-unset, empty-on-no-args, feeds `log.focusFields`) +
   `KronikolOkHttpInterceptorTest` (ambient focus flows onto the captured pair, consumed once across calls).
   **Note:** the other adapters consume `DiagramFocus` the same way as they wire it in.
-- [~] **Assertion fidelity** — `Track.attachment(file, name)`; `Track.that` returning a value (`<T>`);
+- [x] **Assertion fidelity** — `Track.attachment(file, name)`; `Track.that` returning a value (`<T>`);
   `@SuppressAssertionTracking`; `Track.diagnosticMode` toggle + `diagnosticLog`/`clearDiagnosticLog`;
   `Track.testIdResolver` static hook; closure-value resolution + `AssertionExpressionFormatter` (readable
   "Order status should be equivalent to 'Confirmed'" text). *(C#-reflection-specific parts — closure-field
@@ -1414,10 +1424,26 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   resolution of the .NET single-assembly direct call (core stays zero-dep). Proven by `TrackAttachmentTest`
   (core, explicit sink — id/path/name forwarding, null-name passthrough, no-op cases) + `TrackAttachmentWiringTest`
   (report, real `ServiceLoader` discovery → attachment lands on the active step / on the scenario when none).
-  **Remaining (`[~]`):** only the closure-value resolution + `AssertionExpressionFormatter` readable-text
-  substitution — the C#-IL-weaver / reflection-closure-field boundary (the Tier-5 AssertionRewriter, a Roslyn
-  *source* rewriter with no Java source-AST equivalent shipped); `recordDiagnostic` is the seam those fallbacks
-  log through.
+  **Resolved as a verified C#-specific boundary (2026-06-28) → item complete `[x]`.** The two remaining pieces
+  are both structurally C#-only, and the Java-appropriate equivalent is already shipped:
+  - **Closure-value resolution** — .NET's `Track.AssertionFailedWithValues(expression, msg, varNames, varValues)`
+    is *called by the AssertionWeaver* (the post-compile IL weaver), which emits arrays of **source variable
+    names** + boxed values at the assertion site; `ResolveVariableValues` then maps dotted paths onto those
+    names. Java cannot reproduce the inputs at runtime: a lambda's captured values live in **unnamed** synthetic
+    fields (`arg$1`, `arg$2`) — unlike C# display-class fields named after the source variables — so there is no
+    runtime name→value mapping. Supplying `varNames`/`varValues` would require a compile-time source/bytecode
+    pass, which is exactly the excluded `AssertionRewriter` (Roslyn *source* rewriter) boundary already
+    documented at the Build-time-weaving item. The `AssertionFailedWithValues` seam + `recordDiagnostic` log are
+    in place for any future compile-time front-end.
+  - **`AssertionExpressionFormatter`** — a 359-line formatter that parses **FluentAssertions** `.Should().Method(args)`
+    *C# syntax* into English. Java has no FluentAssertions; the AssertJ equivalent (`assertThat(x).isEqualTo(y)`)
+    is a different surface, and the **runtime assertion agent already captures and renders the readable
+    assertion** — actual + expected values **and** the source expression — into the note (proven by
+    `AssertionAgentTest`). So the readable-assertion requirement is met the Java-appropriate way; porting the
+    FluentAssertions-syntax parser would format expressions that never occur in Java.
+  Everything portable on this item is done: `Track.that`/`Track.that<T>` with source-expression capture,
+  `Track.attachment` (via the `AttachmentSink` SPI seam), `diagnosticMode`/`diagnosticLog`/`recordDiagnostic`,
+  the `testIdResolver` hook, `@SuppressAssertionTracking`, and the Tier-2 agent's value+expression capture.
 - [x] **`TrackingTraceContext`** (`beginTrace`/`createParentContext`) — creates a new ambient trace id and
   builds a parent span context for the proxy's `ActivitySource` (the *write* counterpart to the read-only
   `OtelBridge`). Pairs with the `TrackingProxy` span-lifecycle work. *(.NET `Tracking/TrackingTraceContext.cs`.)*
@@ -1556,9 +1582,9 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `Consumer`/`Producer` *interfaces* — the real Java seam the .NET builder occupies) via a Spring
   `BeanPostProcessor`. This is the same "Spring DI decoration replaces .NET build/IL interception" idiom
   already locked in for `ServiceCollectionDecoratorExtensions`. **No separate build-interception package /
-  Gradle/Maven task is warranted.** The Spring-Kafka factory-decorator auto-config itself is auto-capture
-  wiring and is tracked under the Tier-1 **Kafka / messaging** adapter's standing `[~]` follow-up (so it is
-  not skipped — only relocated to its proper home). Documented in the wiki Kafka section.
+  Gradle/Maven task is warranted.** The Spring-Kafka factory-decorator auto-config was delivered with the Kafka
+  adapter (`KronikolKafkaFactoryBeanPostProcessor`) — only relocated to its proper home, not skipped.
+  Documented in the wiki Kafka section.
 - [x] **CLI distribution form** — fat-jar is built; decide on `jbang` / `jreleaser` packaging and a
   `dotnet tool install`-equivalent one-line install (PORT_PLAN Appendix B).
   **Done:** the fat-jar wasn't actually wired (only a `Main` class existed) — added a `fatJar` Gradle task to

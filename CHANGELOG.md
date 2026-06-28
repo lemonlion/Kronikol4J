@@ -7,6 +7,17 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Resolved — Assertion fidelity item complete (last roadmap item) 🎉
+- The two remaining pieces are verified C#-specific boundaries with the Java-appropriate equivalent already
+  shipped: **closure-value resolution** needs source variable names emitted by the C# AssertionWeaver (Java
+  lambda capture fields are unnamed `arg$N`, so there is no runtime name→value mapping — it would require the
+  excluded compile-time AssertionRewriter); and **`AssertionExpressionFormatter`** parses FluentAssertions
+  `.Should().Method()` C# syntax, whereas Java's AssertJ assertions already have their actual/expected values +
+  source expression captured and rendered by the Tier-2 assertion agent. Everything portable on this item was
+  already done (`Track.that`/`<T>`, `Track.attachment`, diagnostic log, `testIdResolver`,
+  `@SuppressAssertionTracking`, agent value capture). **This was the final `[~]` item — every item in
+  REMAINING_PARITY.md is now `[x]`.**
+
 ### Added — step-tracking ByteBuddy agent (Step tracking item complete)
 - **`kronikol4j-steptracking-agent`** — the runtime ByteBuddy analog of .NET's `Kronikol.StepTracking` IL
   weaver. `KronikolStepTrackingAgent` (premain/agentmain/`install()`, retransformation) instruments every
