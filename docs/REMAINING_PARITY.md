@@ -738,9 +738,23 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   with the .NET defaults; plus the missing `io.kronikol.diagram.component.ArrowColorMode` enum
   (DEPENDENCY_TYPE/PERFORMANCE). Placed in the report module (it references report's `InternalFlowDiagramStyle`
   and composes diagram's `ArrowColorMode`/`ComponentRelationship`; report→diagram avoids a dependency cycle).
-  Proven by `ComponentDiagramOptionsTest`. **Remaining:** wiring it through the report orchestration
-  (`HtmlReportGenerator`/`ComponentDiagramGenerator`) so the options actually drive generation — lands with the
-  report control-flags wiring — plus a golden proof.
+  Proven by `ComponentDiagramOptionsTest`.
+  **Render-honoring generator done (2026-06-28):** `ComponentDiagramGenerator.generatePlantUml(relationships,
+  ComponentDiagramRenderOptions)` now honors the render-relevant subset — custom `title`, optional `!theme`,
+  the `relationshipLabelFormatter`, `ArrowColorMode` (DEPENDENCY_TYPE colours by category; PERFORMANCE renders
+  a plain `-->` arrow until the stats machinery lands), and per-category `dependencyColors` overrides — and
+  `extractRelationships(logs, participantFilter)` applies the caller/service `participantFilter`. The new
+  `io.kronikol.diagram.component.ComponentDiagramRenderOptions` (diagram module) carries that subset, so the
+  generator takes it without a report→diagram cycle; the report's full `ComponentDiagramOptions` maps onto it.
+  **Parity fix (now live in the default report path):** `extractRelationships` now also excludes
+  `overrideStart`/`overrideEnd`/`actionStart` marker logs (matching .NET — Java previously aggregated them).
+  Default-options output is byte-identical (component-diagram golden unchanged). Proven by
+  `ComponentDiagramGeneratorOptionsTest` (7 cases) + the unchanged golden.
+  **Remaining (`[~]`):** (a) exposing `ComponentDiagramOptions` on the `ReportOptions` surface so an end user
+  can set these (the wider report-options record change — lands with the report-options config pass); and
+  (b) the stats/flame-chart driven fields (`showRelationshipFlows`, `relationshipFlowStyle`,
+  `lowCoverageThreshold`, `showSystemFlameChart`, `maxFlameChartTests`, performance/hotspot arrow colouring,
+  low-coverage dashed arrows) — gated on the not-yet-ported `RelationshipStats`/`DependencyGraphMetrics`.
 - [x] **`TestTrackingMessageHandlerOptions`** (3/12) — add `portsToServiceNames`, `clientNamesToServiceNames`,
   `fixedNameForReceivingService`, `headersToForward`, `excludedHosts`, `trackDuringSetup/Action`,
   `currentStepTypeFetcher`, `internalFlowActivitySources`.

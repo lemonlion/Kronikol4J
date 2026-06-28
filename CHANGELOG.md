@@ -7,6 +7,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — component-diagram render options + marker-exclusion parity fix (ComponentDiagramOptions progress)
+- **`ComponentDiagramRenderOptions`** (`kronikol4j-diagram`) + **`ComponentDiagramGenerator.generatePlantUml(
+  relationships, options)`** — the generator now honors the render-relevant subset of the .NET
+  `ComponentDiagramOptions`: custom `title`, optional `!theme`, a `relationshipLabelFormatter`, `ArrowColorMode`
+  (DEPENDENCY_TYPE colours by category; PERFORMANCE renders a plain arrow until per-relationship stats are
+  ported), and per-category `dependencyColors` overrides. `extractRelationships(logs, participantFilter)` adds
+  the caller/service participant filter. The render-options holder lives in the diagram module so the generator
+  takes it without a report→diagram cycle.
+- **Parity fix:** `ComponentDiagramGenerator.extractRelationships` now excludes `overrideStart`/`overrideEnd`/
+  `actionStart` marker logs (matching .NET) — previously they were aggregated into the run-level component
+  diagram. Live in the report's default path. Default-options output is byte-identical (component-diagram golden
+  unchanged). Proven by `ComponentDiagramGeneratorOptionsTest`.
+
 ### Added — async step wrappers (Step-tracking item progress)
 - **`StepCollector.completeStepAsync(CompletableFuture<T>)`** (+ explicit-`testId` overload) — ports the .NET
   `CompleteStepAsync(Task)`/`CompleteStepAsync<T>(Task<T>)`: wraps an async step's returned future so the
