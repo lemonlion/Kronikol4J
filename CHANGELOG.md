@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-3 AWS EventBridge interceptor (item [x])
+- **EventBridge auto-capture** (`kronikol4j-aws`) — wired into the shared `AwsExecutionInterceptor`:
+  `detectService` recognises the `events.<region>.amazonaws.com` host and `AwsServiceRouter` dispatches to
+  `EventBridgeOperationClassifier`, emitting on `MessageQueue` with the `eventbridge://<bus>/` host-form URI
+  (bus from the body, default `"default"`). Parity correction: the .NET `EventBridgeTrackingMessageHandler`
+  emits a normal request/response pair (real status), not an event — so the interceptor matches that; the
+  standalone `AwsTracking.eventBridge(...)` recorder remains event-styled as a Java hand-use convenience.
+  Proven by `AwsExecutionInterceptorTest`.
+
 ### Completed — Tier-1 AWS ExecutionInterceptor (item [x])
 - **`AwsExecutionInterceptor`** (`kronikol4j-aws`) — a real AWS SDK v2 `ExecutionInterceptor` (sdk-core /
   http-client-spi `compileOnly`) that auto-captures S3 / DynamoDB / SQS / SNS calls, the Java analog of the

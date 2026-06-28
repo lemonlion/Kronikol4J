@@ -31,6 +31,9 @@ public final class AwsServiceRouter {
             return null;
         }
         String host = uri.getHost().toLowerCase(Locale.ROOT);
+        if (host.startsWith("events.") || host.contains(".events.")) {
+            return AwsService.EVENTBRIDGE; // events.<region>.amazonaws.com
+        }
         if (host.contains("sqs.")) {
             return AwsService.SQS;
         }
@@ -83,6 +86,14 @@ public final class AwsServiceRouter {
                     DynamoDbOperationClassifier.getDiagramLabel(info, verbosity), info.tableName(),
                     schemeUri("dynamodb", info.tableName()), DependencyCategories.DYNAMO_DB,
                     info.operation() == DynamoDbOperation.OTHER);
+            }
+            case EVENTBRIDGE -> {
+                EventBridgeOperationInfo info = EventBridgeOperationClassifier.classify(xAmzTarget, body);
+                String bus = info.eventBusName() != null ? info.eventBusName() : "default";
+                yield new AwsClassification(service,
+                    EventBridgeOperationClassifier.getDiagramLabel(info, verbosity), info.eventBusName(),
+                    URI.create("eventbridge://" + bus + "/"), DependencyCategories.MESSAGE_QUEUE,
+                    info.operation() == EventBridgeOperation.OTHER);
             }
         };
     }

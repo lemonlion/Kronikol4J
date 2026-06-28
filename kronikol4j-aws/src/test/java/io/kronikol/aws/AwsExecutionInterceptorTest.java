@@ -94,6 +94,19 @@ class AwsExecutionInterceptorTest {
     }
 
     @Test
+    void eventBridgePutEventsUsesEventbridgeHostUri() {
+        interceptor().track(
+            request("POST", "https://events.us-east-1.amazonaws.com/", "AWSEvents.PutEvents", null),
+            200, "{\"Entries\":[{\"EventBusName\":\"orders\",\"DetailType\":\"OrderPlaced\",\"Source\":\"shop\"}]}",
+            null);
+
+        RequestResponseLog req = RequestResponseLogger.getAllLogs().get(0);
+        assertThat(req.method().value()).contains("PutEvents"); // classifier label
+        assertThat(req.uri().toString()).isEqualTo("eventbridge://orders/"); // host-form, bus from body
+        assertThat(req.dependencyCategory()).isEqualTo(DependencyCategories.MESSAGE_QUEUE);
+    }
+
+    @Test
     void rawVerbosityUsesRawMethodAndRequestUri() {
         var options = AwsTrackingOptions.forService("Aws")
             .withTestInfoFetcher(() -> new TestInfo("MyTest", "id-1"))

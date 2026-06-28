@@ -941,7 +941,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `StorageQueueTrackingMessageHandler` HTTP `DelegatingHandler` analog (a transport interceptor on the Queue
   REST client) that auto-invokes `storageQueue(...)`, and a golden-rendered proof — the same SDK-auto-capture
   transport-hook follow-up tracked across the cloud adapters.
-- [~] **AWS EventBridge** — interceptor.
+- [x] **AWS EventBridge** — interceptor.
   **Done:** added the EventBridge classifier to `kronikol4j-aws` (alongside the existing SQS/SNS/S3/DynamoDB
   classifiers) — `EventBridgeOperation` (28 ops + PascalCase `displayName()`), `EventBridgeOperationInfo`
   (bus/rule/detailType/source/entryCount), and `EventBridgeOperationClassifier`, a full port of the .NET
@@ -957,9 +957,18 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   event-shaped pair (MESSAGE_QUEUE category, `EVENT` meta, `"Sent"` status) with the classifier's diagram
   label, the `eventbridge://<bus>/` URI (bus host-form, defaults to `"default"` — matches .NET), and the body
   honoured per (per-phase) verbosity. Proven by `AwsTrackingTest` (PutEvents label/URI/event-shape; Summarised
-  drops body + default bus). **Remaining (`[~]`):** the AWS SDK v2 `ExecutionInterceptor` that auto-feeds this
-  from real calls, and a golden-rendered proof — the same SDK-auto-capture follow-up tracked across the AWS
-  adapters.
+  drops body + default bus).
+  **Interceptor done (2026-06-28) → item complete `[x]`:** EventBridge is now wired into the shared
+  `AwsExecutionInterceptor` (see the AWS item): `detectService` recognises the `events.<region>.amazonaws.com`
+  host and `AwsServiceRouter` dispatches to `EventBridgeOperationClassifier`, emitting the pair on
+  `MessageQueue` with the `eventbridge://<bus>/` host-form URI (bus from the body, defaulting to `"default"`).
+  **Parity correction:** reading `EventBridgeTrackingMessageHandler.cs` shows the .NET handler emits a normal
+  **request/response** pair (real status), *not* an event — so the interceptor (the faithful auto-capture
+  analog) does request/response, matching .NET exactly. The standalone `AwsTracking.eventBridge(...)` recorder
+  remains event-styled as a deliberate Java hand-use convenience (documented divergence; the interceptor is
+  the .NET-handler-equivalent path). Proven by `AwsExecutionInterceptorTest.eventBridgePutEventsUsesEventbridge
+  HostUri` (PutEvents label + `eventbridge://orders/` URI + MessageQueue category). Golden coverage is the same
+  as the other AWS services (queue participant rendering golden-proven generically; label/URI unit-proven).
 - [x] **MassTransit analog** — bus observer hooks (Java equivalent: Spring `ApplicationEvent`s / Axon — see
   PORT_PLAN Appendix B open question).
   **Open question resolved:** the Java equivalent is a generic in-process message-bus tracker (new

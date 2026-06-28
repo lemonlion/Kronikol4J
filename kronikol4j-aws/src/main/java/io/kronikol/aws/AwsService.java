@@ -12,7 +12,8 @@ public enum AwsService {
     S3("s3", DependencyCategories.S3),
     SQS("sqs", DependencyCategories.MESSAGE_QUEUE),
     SNS("sns", DependencyCategories.MESSAGE_QUEUE),
-    DYNAMODB("dynamodb", DependencyCategories.DYNAMO_DB);
+    DYNAMODB("dynamodb", DependencyCategories.DYNAMO_DB),
+    EVENTBRIDGE("eventbridge", DependencyCategories.MESSAGE_QUEUE);
 
     private final String uriScheme;
     private final String dependencyCategory;
