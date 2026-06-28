@@ -37,8 +37,10 @@ public final class CassandraTracking {
             return;
         }
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
-        // Summarised omits the CQL statement payload — only the table identity is kept.
-        String payload = options.verbosity().includesPayload() && statement != null ? statement : "";
+        // Summarised omits the CQL statement payload — only the table identity is kept (per-phase resolved).
+        TrackingVerbosity verbosity = PhaseConfiguration.effectiveVerbosity(
+            options.verbosity(), options.setupVerbosity(), options.actionVerbosity());
+        String payload = verbosity.includesPayload() && statement != null ? statement : "";
         String request = table + ": " + payload;
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.CASSANDRA, Method.of(operation.toUpperCase(Locale.ROOT)), CASSANDRA_URI,
@@ -48,7 +50,8 @@ public final class CassandraTracking {
     /** Configuration for Cassandra tracking. */
     public record CassandraTrackingOptions(String serviceName, String callerName,
                                            Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
-                                           boolean trackDuringSetup, boolean trackDuringAction) {
+                                           boolean trackDuringSetup, boolean trackDuringAction,
+                                           TrackingVerbosity setupVerbosity, TrackingVerbosity actionVerbosity) {
 
         public CassandraTrackingOptions {
             verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
@@ -57,36 +60,56 @@ public final class CassandraTracking {
         /** Three-arg shape (default verbosity, both phases tracked) — back-compatible. */
         public CassandraTrackingOptions(String serviceName, String callerName,
                                         Supplier<TestInfo> testInfoFetcher) {
-            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true);
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true, null, null);
         }
 
         /** Four-arg shape (both phases tracked) — back-compatible. */
         public CassandraTrackingOptions(String serviceName, String callerName,
                                         Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
-            this(serviceName, callerName, testInfoFetcher, verbosity, true, true);
+            this(serviceName, callerName, testInfoFetcher, verbosity, true, true, null, null);
+        }
+
+        /** Six-arg shape (no per-phase verbosity overrides) — back-compatible. */
+        public CassandraTrackingOptions(String serviceName, String callerName,
+                                        Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
+                                        boolean trackDuringSetup, boolean trackDuringAction) {
+            this(serviceName, callerName, testInfoFetcher, verbosity, trackDuringSetup, trackDuringAction,
+                null, null);
         }
 
         public static CassandraTrackingOptions forKeyspace(String serviceName) {
             return new CassandraTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
-                TrackingVerbosity.DEFAULT, true, true);
+                TrackingVerbosity.DEFAULT, true, true, null, null);
         }
 
         /** A copy with the given verbosity (Summarised omits the CQL statement). */
         public CassandraTrackingOptions withVerbosity(TrackingVerbosity value) {
             return new CassandraTrackingOptions(serviceName, callerName, testInfoFetcher, value,
-                trackDuringSetup, trackDuringAction);
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
         /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
         public CassandraTrackingOptions withTrackDuringSetup(boolean value) {
             return new CassandraTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                value, trackDuringAction);
+                value, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
         /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
         public CassandraTrackingOptions withTrackDuringAction(boolean value) {
             return new CassandraTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                trackDuringSetup, value);
+                trackDuringSetup, value, setupVerbosity, actionVerbosity);
+        }
+
+        /** A copy with a Setup-phase verbosity override (the .NET {@code SetupVerbosity}; {@code null} = base). */
+        public CassandraTrackingOptions withSetupVerbosity(TrackingVerbosity value) {
+            return new CassandraTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, value, actionVerbosity);
+        }
+
+        /** A copy with an Action-phase verbosity override (the .NET {@code ActionVerbosity}; {@code null} = base). */
+        public CassandraTrackingOptions withActionVerbosity(TrackingVerbosity value) {
+            return new CassandraTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, setupVerbosity, value);
         }
     }
 }

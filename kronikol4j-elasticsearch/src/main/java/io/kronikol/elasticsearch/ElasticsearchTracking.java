@@ -62,7 +62,8 @@ public final class ElasticsearchTracking {
             return;
         }
         ElasticsearchOperationInfo info = ElasticsearchOperationClassifier.classify(httpMethod, requestUri);
-        TrackingVerbosity verbosity = options.verbosity();
+        TrackingVerbosity verbosity = PhaseConfiguration.effectiveVerbosity(
+            options.verbosity(), options.setupVerbosity(), options.actionVerbosity());
         String label = ElasticsearchOperationClassifier.getDiagramLabel(info, verbosity);
         URI uri = ElasticsearchOperationClassifier.buildUri(info, verbosity, requestUri);
         String content = verbosity.includesPayload() ? body : null;
@@ -80,7 +81,9 @@ public final class ElasticsearchTracking {
     /** Configuration for Elasticsearch tracking. */
     public record ElasticsearchTrackingOptions(String serviceName, String callerName,
                                                Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
-                                               boolean trackDuringSetup, boolean trackDuringAction) {
+                                               boolean trackDuringSetup, boolean trackDuringAction,
+                                               TrackingVerbosity setupVerbosity,
+                                               TrackingVerbosity actionVerbosity) {
 
         public ElasticsearchTrackingOptions {
             verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
@@ -89,36 +92,56 @@ public final class ElasticsearchTracking {
         /** Three-arg shape (default verbosity, both phases tracked) — back-compatible. */
         public ElasticsearchTrackingOptions(String serviceName, String callerName,
                                             Supplier<TestInfo> testInfoFetcher) {
-            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true);
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true, null, null);
         }
 
         /** Four-arg shape (both phases tracked) — back-compatible. */
         public ElasticsearchTrackingOptions(String serviceName, String callerName,
                                             Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
-            this(serviceName, callerName, testInfoFetcher, verbosity, true, true);
+            this(serviceName, callerName, testInfoFetcher, verbosity, true, true, null, null);
+        }
+
+        /** Six-arg shape (no per-phase verbosity overrides) — back-compatible. */
+        public ElasticsearchTrackingOptions(String serviceName, String callerName,
+                                            Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
+                                            boolean trackDuringSetup, boolean trackDuringAction) {
+            this(serviceName, callerName, testInfoFetcher, verbosity, trackDuringSetup, trackDuringAction,
+                null, null);
         }
 
         public static ElasticsearchTrackingOptions forCluster(String serviceName) {
             return new ElasticsearchTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
-                TrackingVerbosity.DEFAULT, true, true);
+                TrackingVerbosity.DEFAULT, true, true, null, null);
         }
 
         /** A copy with the given verbosity (Summarised omits the request body). */
         public ElasticsearchTrackingOptions withVerbosity(TrackingVerbosity value) {
             return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, value,
-                trackDuringSetup, trackDuringAction);
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
         /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
         public ElasticsearchTrackingOptions withTrackDuringSetup(boolean value) {
             return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                value, trackDuringAction);
+                value, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
         /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
         public ElasticsearchTrackingOptions withTrackDuringAction(boolean value) {
             return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                trackDuringSetup, value);
+                trackDuringSetup, value, setupVerbosity, actionVerbosity);
+        }
+
+        /** A copy with a Setup-phase verbosity override (the .NET {@code SetupVerbosity}; {@code null} = base). */
+        public ElasticsearchTrackingOptions withSetupVerbosity(TrackingVerbosity value) {
+            return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, value, actionVerbosity);
+        }
+
+        /** A copy with an Action-phase verbosity override (the .NET {@code ActionVerbosity}; {@code null} = base). */
+        public ElasticsearchTrackingOptions withActionVerbosity(TrackingVerbosity value) {
+            return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, setupVerbosity, value);
         }
     }
 }

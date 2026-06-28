@@ -37,6 +37,22 @@ class ElasticsearchTrackingTest {
     }
 
     @Test
+    void setupPhaseVerbosityOverrideDropsBody() {
+        var options = ElasticsearchTrackingOptions.forCluster("SearchCluster")
+            .withSetupVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.SETUP);
+        try {
+            ElasticsearchTracking.record(options, "GET",
+                java.net.URI.create("http://es:9200/products/_search"), "{\"query\":{}}", "0 hits");
+            var logs = RequestResponseLogger.getAllLogs();
+            assertThat(logs.get(0).content()).isNull(); // Setup override = Summarised → body dropped
+            assertThat(logs.get(0).uri().toString()).isEqualTo("elasticsearch:///"); // and scheme-only URI
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void actionPhaseSuppressionSkipsRecording() {
         var options = ElasticsearchTrackingOptions.forCluster("SearchCluster").withTrackDuringAction(false);
         io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);

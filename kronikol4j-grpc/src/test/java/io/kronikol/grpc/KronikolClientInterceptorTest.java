@@ -51,10 +51,30 @@ class KronikolClientInterceptorTest {
         assertThat(logs.get(1).content()).isNull();
     }
 
+    @Test
+    void setupPhaseVerbosityOverrideOmitsPayloads() {
+        // Base Detailed, but the Setup-phase override = Summarised → message bodies dropped in Setup.
+        GrpcTrackingOptions options = new GrpcTrackingOptions(
+            "OrderService", "Test", () -> new TestInfo("MyTest", "id-1"), TrackingVerbosity.DETAILED)
+            .withSetupVerbosity(TrackingVerbosity.SUMMARISED);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.SETUP);
+        try {
+            List<RequestResponseLog> logs = driveWith(options);
+            assertThat(logs.get(0).content()).isNull();
+            assertThat(logs.get(1).content()).isNull();
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
     /** Runs one unary call through the interceptor at {@code verbosity}, returns the recorded logs. */
     private static List<RequestResponseLog> drive(TrackingVerbosity verbosity) {
-        GrpcTrackingOptions options = new GrpcTrackingOptions(
-            "OrderService", "Test", () -> new TestInfo("MyTest", "id-1"), verbosity);
+        return driveWith(new GrpcTrackingOptions(
+            "OrderService", "Test", () -> new TestInfo("MyTest", "id-1"), verbosity));
+    }
+
+    /** Runs one unary call through the interceptor with the given {@code options}, returns the recorded logs. */
+    private static List<RequestResponseLog> driveWith(GrpcTrackingOptions options) {
         FakeChannel channel = new FakeChannel();
 
         ClientCall<String, String> call = new KronikolClientInterceptor(options)

@@ -37,6 +37,19 @@ class CassandraTrackingTest {
     }
 
     @Test
+    void setupPhaseVerbosityOverrideDropsCqlStatement() {
+        var options = CassandraTrackingOptions.forKeyspace("OrderStore")
+            .withSetupVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.SETUP);
+        try {
+            CassandraTracking.record(options, "select", "shop.orders", "SELECT 1", "1 row");
+            assertThat(RequestResponseLogger.getAllLogs().get(0).content()).isEqualTo("shop.orders: ");
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void actionPhaseSuppressionSkipsRecording() {
         var options = CassandraTrackingOptions.forKeyspace("OrderStore").withTrackDuringAction(false);
         io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);

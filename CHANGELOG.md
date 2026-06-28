@@ -98,6 +98,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
+### Added — Tier-1 Cassandra + Elasticsearch + gRPC (per-phase verbosity)
+- **`Setup/ActionVerbosity` overrides** (`kronikol4j-cassandra`, `kronikol4j-elasticsearch`, `kronikol4j-grpc`)
+  — options records gained `setupVerbosity`/`actionVerbosity`; the recorders/interceptor resolve the effective
+  level for the current phase via `PhaseConfiguration.effectiveVerbosity(...)`. Proven by their tracking tests.
+  With the richer recorders (SQL/Redis/Mongo/Bigtable/EventHubs/EventBus + MessageTracker) already per-phase,
+  HTTP is the last adapter pending per-phase verbosity.
+
 ### Added — Tier-1 Azure + GCP (per-phase verbosity)
 - **`Setup/ActionVerbosity` overrides** (`kronikol4j-azure`, `kronikol4j-gcp`) — both options records gained
   `setupVerbosity`/`actionVerbosity` (`withSetupVerbosity/ActionVerbosity`); the recorders resolve the

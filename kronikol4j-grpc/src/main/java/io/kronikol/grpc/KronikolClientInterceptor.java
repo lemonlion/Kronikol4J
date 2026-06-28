@@ -39,7 +39,8 @@ public final class KronikolClientInterceptor implements ClientInterceptor {
         MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
 
         String fullMethodName = method.getFullMethodName();
-        TrackingVerbosity verbosity = options.verbosity();
+        TrackingVerbosity verbosity = io.kronikol.core.context.PhaseConfiguration.effectiveVerbosity(
+            options.verbosity(), options.setupVerbosity(), options.actionVerbosity());
         boolean capturePayload = verbosity.includesPayload(); // Summarised omits the message bodies
         // Classify the call type so streaming calls get distinct labels (server-/client-/duplex-stream).
         GrpcOperation operation = GrpcOperationClassifier.classify(method.getType());

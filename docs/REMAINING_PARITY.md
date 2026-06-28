@@ -201,10 +201,15 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   the recorders resolve the effective level per phase. Proven by `AwsTrackingTest` (Setup-override drops the
   payload while Action keeps it). **Azure + GCP done (2026-06-28):** same wiring — `setupVerbosity`/
   `actionVerbosity` on both options, recorders resolve `effectiveVerbosity`. Proven by
-  `AzureTrackingTest`/`GcpTrackingTest`. **Remaining:** apply the same per-phase-verbosity wiring to the other
-  adapters (Cassandra/ES/gRPC/messaging; SQL/Redis/Mongo's richer recorders already resolve per-phase via
-  their `SqlTrackingVerbosity`/`MessageTrackerVerbosity` paths); this box flips `[x]` once the rest resolve
-  `effectiveVerbosity`.
+  `AzureTrackingTest`/`GcpTrackingTest`. **Cassandra + Elasticsearch + gRPC done (2026-06-28):** same wiring
+  (`setupVerbosity`/`actionVerbosity` + `effectiveVerbosity` resolution). Proven by their tracking tests.
+  **Verified already per-phase:** the richer `InteractionRecorder`s — SQL/JDBC, Redis, Mongo, Bigtable,
+  EventHubs, EventBus — and `MessageTracker` all resolve `effectiveVerbosity(base, setup, action)`. The
+  `MessageTracking` facade + `TrackingProxy` have no verbosity dimension (payload always / serializer-based),
+  so per-phase verbosity is N/A there. **Last remaining gap:** HTTP — `HttpTrackingConfig` carries a single
+  `verbosity` + the `trackDuringSetup/Action` toggles but no `setupVerbosity`/`actionVerbosity`, and the
+  OkHttp/JDK/WebClient adapters don't resolve `effectiveVerbosity`. Once HTTP adds the two per-phase overrides
+  and resolves them, **every** path honors both dimensions and this box flips `[x]`.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)
