@@ -30,6 +30,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   `KronikolReportMojoTest`; wiki page added.
 
 ### Added — Tier-6 helpers & wiring fixes
+- **Diagnostic report wiring** (`kronikol4j-report` + `kronikol4j-runtime` + `kronikol4j-gradle-plugin`) —
+  added the `diagnosticMode` toggle to `ReportOptions` (`withDiagnosticMode`, the
+  `kronikol.report.diagnosticMode` system property, and Gradle-DSL `diagnosticMode`) and wired
+  `ReportFinalizer` to write the standalone `DiagnosticReport.html` at both .NET trigger points: after the
+  normal report, and on the empty path (logs recorded but no test contexts enqueued, where the main report
+  is skipped). The previously-ported `DiagnosticReportGenerator` was never invoked from finalization. Proven
+  by `ReportFinalizerTest`.
 - **`ProcessingCorrelation` naming/signature parity** (`kronikol4j-core`) — added `wrapSync` (the .NET
   `WrapSync` naming alias of `wrap`) and cancellation-aware overloads of `wrapAsync`/`wrapBatchAsync`
   (`BiFunction<…, BooleanSupplier, CompletionStage<Void>>`) — the parity twins of .NET's

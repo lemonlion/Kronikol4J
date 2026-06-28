@@ -221,6 +221,60 @@ class ReportFinalizerTest {
         }
     }
 
+    @Test
+    void finalizeWritesDiagnosticReportWhenEnabled(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults().withDiagnosticMode(true));
+
+        assertThat(dir.resolve("TestRunReport.html")).exists();
+        assertThat(Files.readString(dir.resolve("DiagnosticReport.html")))
+            .contains("Kronikol — Diagnostic Report")
+            .contains("Request/Response Log Summary");
+    }
+
+    @Test
+    void finalizeWritesDiagnosticReportWhenLogsButNoTestContexts(@TempDir Path dir) throws IOException {
+        // Logs were recorded but no scenarios enqueued — the main report is skipped, but the diagnostic
+        // report is still written to explain the empty result (matches .NET's empty-path branch).
+        trackCheckout(); // logs exist...
+        // ...but no RunResults.record(...) call → RunResults.isEmpty()
+
+        var report = ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults().withDiagnosticMode(true));
+
+        assertThat(report).isNull(); // empty run → no main report
+        assertThat(dir.resolve("TestRunReport.html")).doesNotExist();
+        assertThat(Files.readString(dir.resolve("DiagnosticReport.html")))
+            .contains("Kronikol — Diagnostic Report")
+            .contains("2 total log entries"); // the tracked request + response pair
+    }
+
+    @Test
+    void finalizeDoesNotWriteDiagnosticReportByDefault(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run");
+
+        assertThat(dir.resolve("DiagnosticReport.html")).doesNotExist();
+    }
+
+    @Test
+    void finalizeRunToDefaultReadsDiagnosticModeSystemProperty(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+        System.setProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY, dir.toString());
+        System.setProperty(ReportOptions.DIAGNOSTIC_MODE_PROPERTY, "true");
+        try {
+            ReportFinalizer.finalizeRunToDefault("Run");
+            assertThat(dir.resolve("DiagnosticReport.html")).exists();
+        } finally {
+            System.clearProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY);
+            System.clearProperty(ReportOptions.DIAGNOSTIC_MODE_PROPERTY);
+        }
+    }
+
     private static void trackCheckout() {
         UUID trace = UUID.randomUUID();
         UUID rr = UUID.randomUUID();

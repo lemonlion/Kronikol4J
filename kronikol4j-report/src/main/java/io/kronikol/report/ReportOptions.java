@@ -33,7 +33,8 @@ import java.util.Set;
  * pick them up without an API change).
  */
 public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats,
-                            boolean generateSchema, HtmlCustomization customization, CiPublishOptions ci) {
+                            boolean generateSchema, HtmlCustomization customization, CiPublishOptions ci,
+                            boolean diagnosticMode) {
 
     /** System property (boolean) enabling per-dependency-type arrow colours. */
     public static final String ARROW_COLORS_PROPERTY = "kronikol.diagram.arrowColors";
@@ -84,6 +85,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     public static final String SHOW_STEP_NUMBERS_PROPERTY = "kronikol.report.showStepNumbers";
     /** System property (boolean) emitting a blank report when any scenario failed. */
     public static final String BLANK_ON_FAILED_PROPERTY = "kronikol.report.generateBlankOnFailedTests";
+    /** System property (boolean) writing the standalone {@code DiagnosticReport.html} at end-of-run. */
+    public static final String DIAGNOSTIC_MODE_PROPERTY = "kronikol.report.diagnosticMode";
     /** System property (boolean) writing the markdown run summary to the detected CI platform. */
     public static final String WRITE_CI_SUMMARY_PROPERTY = "kronikol.ci.writeCiSummary";
     /** System property (int) capping diagrams in the CI summary (default 10). */
@@ -112,6 +115,12 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     public ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats, boolean generateSchema,
                          HtmlCustomization customization) {
         this(diagram, dataFormats, generateSchema, customization, CiPublishOptions.NONE);
+    }
+
+    /** Five-arg shape (diagnostic mode off) — the back-compatible constructor. */
+    public ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFormats, boolean generateSchema,
+                         HtmlCustomization customization, CiPublishOptions ci) {
+        this(diagram, dataFormats, generateSchema, customization, ci, false);
     }
 
     /** Diagram colours only (no data files) — the back-compatible shape. */
@@ -174,7 +183,7 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
 
     // --- withers ---
     public ReportOptions withDiagram(DiagramOptions value) {
-        return new ReportOptions(value, dataFormats, generateSchema, customization, ci);
+        return new ReportOptions(value, dataFormats, generateSchema, customization, ci, diagnosticMode);
     }
 
     public ReportOptions withArrowColors(boolean value) {
@@ -238,24 +247,33 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     }
 
     public ReportOptions withDataFormats(Set<ReportDataFormat> formats) {
-        return new ReportOptions(diagram, formats, generateSchema, customization, ci);
+        return new ReportOptions(diagram, formats, generateSchema, customization, ci, diagnosticMode);
     }
 
     /** Enables the {@code TestRunReport.schema.json}/{@code .xsd} schema alongside each data format. */
     public ReportOptions withGenerateSchema(boolean value) {
-        return new ReportOptions(diagram, dataFormats, value, customization, ci);
+        return new ReportOptions(diagram, dataFormats, value, customization, ci, diagnosticMode);
     }
 
     /** The HTML customization (CSS/favicon/logo/step-numbers) applied to the generated report. */
     public ReportOptions withHtmlCustomization(HtmlCustomization value) {
         return new ReportOptions(diagram, dataFormats, generateSchema,
-            value == null ? HtmlCustomization.NONE : value, ci);
+            value == null ? HtmlCustomization.NONE : value, ci, diagnosticMode);
     }
 
     /** The CI summary/artifact-publishing options applied at end-of-run. */
     public ReportOptions withCi(CiPublishOptions value) {
         return new ReportOptions(diagram, dataFormats, generateSchema, customization,
-            value == null ? CiPublishOptions.NONE : value);
+            value == null ? CiPublishOptions.NONE : value, diagnosticMode);
+    }
+
+    /**
+     * Enables diagnostic mode — the standalone {@code DiagnosticReport.html} (tracking health, warnings,
+     * statistics) is written at end-of-run, including when logs were recorded but no test contexts were
+     * enqueued (the empty-report case). Mirrors .NET {@code ReportConfigurationOptions.DiagnosticMode}.
+     */
+    public ReportOptions withDiagnosticMode(boolean value) {
+        return new ReportOptions(diagram, dataFormats, generateSchema, customization, ci, value);
     }
 
     /**
@@ -286,7 +304,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
             parseDataFormats(System.getProperty(DATA_FORMATS_PROPERTY)),
             boolProperty(GENERATE_SCHEMA_PROPERTY, false),
             customizationFromSystemProperties(),
-            ciFromSystemProperties());
+            ciFromSystemProperties(),
+            boolProperty(DIAGNOSTIC_MODE_PROPERTY, false));
     }
 
     /** Builds the {@link CiPublishOptions} from system properties (all defaulting to the .NET defaults). */

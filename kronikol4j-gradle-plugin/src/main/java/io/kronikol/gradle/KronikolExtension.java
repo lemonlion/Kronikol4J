@@ -119,6 +119,9 @@ public interface KronikolExtension {
     /** Emit a blank report when any scenario failed. */
     Property<Boolean> getGenerateBlankOnFailedTests();
 
+    /** Write the standalone {@code DiagnosticReport.html} (tracking health/warnings) at end-of-run. */
+    Property<Boolean> getDiagnosticMode();
+
     // --- CI summary / artifacts ---
 
     /** Write the markdown run summary to the detected CI platform. */

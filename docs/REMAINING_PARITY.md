@@ -538,6 +538,12 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   gate nothing (stubs) — so per the "resolve, don't work around" rule they land *with* their owning feature.
   Pick this item up once the component-diagram generator + diagnostic wiring exist; do the live-consumer
   subset alongside them in one honest pass.
+  **Progress (2026-06-28):** `diagnosticMode` is now DONE — added to `ReportOptions` (toggle + system property
+  + Gradle DSL) with a real consumer (the `DiagnosticReportGenerator`→`ReportFinalizer` wiring item). The
+  remaining flags in this bundle (`testRunReportTitle`, `htmlTestRunReportFileName`, `reportsFolderPath`,
+  `fixedNameForReceivingService`, `expectedTestCount`, `generateComponentDiagram`, the post/mid-processor
+  hooks, `inlineBackgroundSteps`, `lazyLoadDiagramImages`, explicit `generateTestRunReportData`/
+  `generateMergeableData`) are still open and land with their owning features.
 - [ ] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*
@@ -1025,9 +1031,18 @@ fixes. Listed for completeness so nothing is silently dropped.
   the scope (batch: from the first correlatable item) and forwards the signal unchanged. The token-less
   forms are kept (Java idiom). Proven by `ProcessingCorrelationTest` (3 new cases: `wrapSync` scope+clear,
   per-item + batch async signal forwarding).
-- [ ] **Wire `DiagnosticReportGenerator` into `ReportFinalizer`** — the diagnostic generator is fully ported
+- [x] **Wire `DiagnosticReportGenerator` into `ReportFinalizer`** — the diagnostic generator is fully ported
   but never triggered from the finalization path (.NET invokes it when diagnostic mode is on and there are
   logs but no test contexts). Depends on the `diagnosticMode` toggle (Tier 2).
+  **Done:** added the `diagnosticMode` toggle to `ReportOptions` (6th record component, default `false`, with
+  `withDiagnosticMode`, the `kronikol.report.diagnosticMode` system property in `fromSystemProperties`, and
+  Gradle-DSL exposure via `KronikolExtension.getDiagnosticMode`) and wired `ReportFinalizer` to write
+  `DiagnosticReport.html` at both .NET trigger points: (1) the normal path — after the main report — and
+  (2) the empty path — when `RunResults.isEmpty()` but tracked logs exist (the "logs recorded but no test
+  contexts" case, where the main report is skipped but the diagnostic still explains the empty result). The
+  "Configuration" dump reflects the actual `internalFlowTracking` toggle and defaults the rest to the .NET
+  baseline until their owning flags land. Proven by `ReportFinalizerTest` (4 new cases: normal-path write,
+  empty-path write, off-by-default, system-property read) with the full suite + goldens still green.
 - [x] **CLI merge title resolution** — `kronikol4j merge` title behavior now matches .NET. **Premise
   corrected by reading the source:** .NET does *not* derive the title from CI metadata — `MergeableReport`
   has **no title field at all** (verified: no `Title` in `MergeableReport.cs`/`MergeableReportMerger.cs`/

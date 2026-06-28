@@ -7,6 +7,8 @@ import io.kronikol.diagram.plantuml.PlantUmlCreator;
 import io.kronikol.report.HtmlReportGenerator;
 import io.kronikol.report.HtmlReportGenerator.GeneratedReport;
 import io.kronikol.report.ReportOptions;
+import io.kronikol.report.diagnostics.DiagnosticConfig;
+import io.kronikol.report.diagnostics.DiagnosticReportGenerator;
 import io.kronikol.report.ci.CiArtifactPublisher;
 import io.kronikol.report.ci.CiDiagram;
 import io.kronikol.report.ci.CiEnvironment;
@@ -61,6 +63,14 @@ public final class ReportFinalizer {
     public static GeneratedReport finalizeRun(Path outputDir, String title, ReportOptions options)
             throws IOException {
         if (RunResults.isEmpty()) {
+            // .NET parity: when logs were recorded but no test contexts were enqueued, the main report would
+            // be empty — emit the diagnostic report (when enabled) to explain why, then skip the empty report.
+            if (options.diagnosticMode()) {
+                List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+                if (!logs.isEmpty()) {
+                    writeDiagnosticReport(outputDir, List.of(), logs, options);
+                }
+            }
             return null;
         }
         List<Feature> features = RunResults.toFeatures();
@@ -68,7 +78,33 @@ public final class ReportFinalizer {
         GeneratedReport report = HtmlReportGenerator.generate(features, logs, outputDir, title, options);
         writeReportData(outputDir, features, logs, options);
         writeCiOutputs(outputDir, features, logs, options);
+        if (options.diagnosticMode()) {
+            writeDiagnosticReport(outputDir, features, logs, options);
+        }
         return report;
+    }
+
+    /**
+     * Writes the standalone {@code DiagnosticReport.html} (the .NET {@code DiagnosticReportGenerator.Generate}
+     * file-emit step). The "Configuration" section reflects the one toggle {@link ReportOptions} currently
+     * carries ({@code internalFlowTracking}); the remaining config rows track the .NET defaults until their
+     * owning options land (the not-yet-built report-control flags).
+     */
+    private static void writeDiagnosticReport(Path outputDir, List<Feature> features,
+                                              List<RequestResponseLog> logs, ReportOptions options)
+            throws IOException {
+        String html = DiagnosticReportGenerator.buildHtml(logs, features, diagnosticConfig(options));
+        Files.createDirectories(outputDir);
+        Files.writeString(outputDir.resolve("DiagnosticReport.html"), html, StandardCharsets.UTF_8);
+    }
+
+    /** The diagnostic "Configuration" dump: actual {@code internalFlowTracking}, .NET defaults for the rest. */
+    private static DiagnosticConfig diagnosticConfig(ReportOptions options) {
+        DiagnosticConfig d = DiagnosticConfig.dotNetDefaults();
+        String internalFlow = options.internalFlowTracking() ? "True" : "False";
+        return new DiagnosticConfig(internalFlow, d.internalFlowSpanGranularity(),
+            d.internalFlowActivitySources(), d.internalFlowDiagramStyle(), d.internalFlowNoDataBehavior(),
+            d.diagramFormat(), d.plantUmlRendering(), d.generateComponentDiagram());
     }
 
     /**
