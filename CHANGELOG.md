@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-3 Bigtable gRPC interceptor (item [x])
+- **`KronikolBigtableInterceptor`** (`kronikol4j-bigtable`) — a gRPC `ClientInterceptor` (grpc-api
+  `compileOnly`) that auto-captures Cloud Bigtable data calls (the `google-cloud-bigtable` client runs on
+  gax-grpc, so register it on the channel). It derives the operation from the gRPC method's bare name
+  (`…/ReadRows` → `ReadRows`), extracts the table from the request message's `getTableName()` reflectively (no
+  Bigtable-proto dependency), and drives the two-phase recorder (`logRequest` on `sendMessage`, `logResponse`/
+  failure on `onClose`). Bigtable could previously be classified/recorded only by hand. Proven by
+  `KronikolBigtableInterceptorTest` (grpc-api fakes, no live Bigtable). Completes the Bigtable adapter.
+
 ### Completed — Tier-1 Elasticsearch transport hook (item [x])
 - **`KronikolElasticsearchInterceptor`** (`kronikol4j-elasticsearch`) — an Apache HttpCore
   `HttpResponseInterceptor` (httpcore `compileOnly`) that auto-captures ES/OpenSearch REST calls, installed on

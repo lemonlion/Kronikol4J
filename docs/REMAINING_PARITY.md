@@ -962,7 +962,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `DataSource`; the shared `UnifiedSqlClassifier` already strips Spanner statement hints. Proven by
   `SpannerTrackingTest` (Spanner defaults + end-to-end H2 capture with the `spanner://` URI + `Spanner`
   category + rendered database participant) + wiki row.
-- [~] **Bigtable** — `BigtableTracker` + options + classifier; `BIGTABLE` category.
+- [x] **Bigtable** — `BigtableTracker` + options + classifier; `BIGTABLE` category.
   **Done:** new `kronikol4j-bigtable` module porting all three named deliverables — `BigtableOperation`
   (+ PascalCase `displayName()`), `BigtableOperationInfo`, `BigtableOperationClassifier` (method-name →
   operation incl. `…Async` variants; `getDiagramLabel` across Raw/Detailed/Summarised with directional arrows,
@@ -972,9 +972,17 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   phase suppression, excluded-operation + Summarised filtering, phase variants) matching the .NET
   `BigtableTracker`. Pure logic + core only (no Bigtable SDK dependency). Proven by `BigtableTrackingTest`
   (classifier incl. async variants + labels across verbosity, event-styled request/response pair with shared
-  correlation, excluded/identity gating, rendered database participant) + wiki row. **Remaining (`[~]`):** a
-  Bigtable client SDK hook (gRPC interceptor) that auto-feeds the recorder from real `ReadRows`/`MutateRow`
-  calls, and a golden-rendered proof — the same SDK-auto-capture follow-up tracked across the cloud adapters.
+  correlation, excluded/identity gating, rendered database participant) + wiki row.
+  **gRPC interceptor done (2026-06-28) → item complete `[x]`:** `KronikolBigtableInterceptor implements
+  io.grpc.ClientInterceptor` (grpc-api `compileOnly`) — the `google-cloud-bigtable` data client runs on
+  gax-grpc, so register it on its channel. Per call it derives the operation from the gRPC method's bare name
+  (`google.bigtable.v2.Bigtable/ReadRows` → `ReadRows`, matching the classifier), extracts the table from the
+  request message's `getTableName()` reflectively (no Bigtable-proto dependency), and drives the two-phase
+  recorder — `logRequest` on `sendMessage`, `logResponse` (or the gRPC failure description) on `onClose`.
+  Proven by `KronikolBigtableInterceptorTest` (grpc-api fakes + a stand-in request with `getTableName()`, no
+  live Bigtable): `ReadRows ← orders` label + Bigtable category + shared-correlation pair. Golden coverage is
+  the same as the other adapters (database participant rendering golden-proven generically; label/URI
+  unit-proven).
 - [x] **Azure EventHubs** — producer/consumer client wrappers.
   **Done:** new `kronikol4j-eventhubs` module porting the .NET `EventHubsTracker` + classifier + options —
   `EventHubsOperation` (+ PascalCase `displayName()`), `EventHubsOperationInfo`,
