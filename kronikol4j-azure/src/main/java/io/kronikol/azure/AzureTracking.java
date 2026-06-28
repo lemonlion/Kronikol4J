@@ -143,6 +143,12 @@ public final class AzureTracking {
                 trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
+        /** A copy with the given test-identity fetcher (the .NET {@code CurrentTestInfoFetcher}). */
+        public AzureTrackingOptions withTestInfoFetcher(Supplier<TestInfo> value) {
+            return new AzureTrackingOptions(serviceName, callerName, value, verbosity,
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
+        }
+
         /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
         public AzureTrackingOptions withTrackDuringSetup(boolean value) {
             return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,

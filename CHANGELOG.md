@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-3 Azure Storage Queues pipeline policy (item [x])
+- **`KronikolAzureStorageQueuePolicy`** (`kronikol4j-azure`) — an Azure SDK `HttpPipelinePolicy` (azure-core
+  `compileOnly`), the Java analog of the .NET `StorageQueueTrackingMessageHandler`. Add it to the queue
+  client's pipeline via `QueueClientBuilder.addPolicy(...)`; its reactive `process(...)` reads the request
+  method/URL/body, runs the pipeline, then delegates to the existing `AzureTracking.storageQueue(...)` recorder
+  with the response status. Storage Queues could previously be classified/recorded only by hand. Proven by
+  `KronikolAzureStorageQueuePolicyTest` (real `com.azure.core.http.HttpRequest`, no live pipeline). This
+  establishes the Azure `HttpPipelinePolicy` pattern that the Cosmos/Blob policies will reuse.
+
 ### Completed — Tier-3 AWS EventBridge interceptor (item [x])
 - **EventBridge auto-capture** (`kronikol4j-aws`) — wired into the shared `AwsExecutionInterceptor`:
   `detectService` recognises the `events.<region>.amazonaws.com` host and `AwsServiceRouter` dispatches to

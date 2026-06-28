@@ -923,7 +923,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   rendered queue participant) + wiki row. **Remaining (`[~]`):** the `TrackingEventHubProducerClient`/
   `TrackingEventHubConsumerClient` SDK wrappers that auto-feed the recorder from real send/read calls, and a
   golden-rendered proof — the SDK-auto-capture follow-up tracked across the cloud/messaging adapters.
-- [~] **Azure Storage Queues** — message-handler analog.
+- [x] **Azure Storage Queues** — message-handler analog.
   **Done:** added the Storage Queues classifier to `kronikol4j-azure` (where the HTTP-path Azure classifiers
   Blob/Cosmos/ServiceBus already live — Java groups one module per cloud) — `StorageQueueOperation`
   (+ PascalCase `displayName()`), `StorageQueueOperationInfo` (queue + messageId), and
@@ -937,10 +937,17 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   to: classifies via the classifier, resolves per-phase verbosity (suppression + Summarised body-drop),
   builds the `storagequeue:///<queue>` URI (raw request URI at Raw), and emits the MessageQueue request/
   response pair (real status → queue participant). Proven by `AzureTrackingTest.storageQueueSendIsClassified
-  AndRecorded` (Send→orders label, URI, body, status, queue rendering). **Remaining (`[~]`):** the
-  `StorageQueueTrackingMessageHandler` HTTP `DelegatingHandler` analog (a transport interceptor on the Queue
-  REST client) that auto-invokes `storageQueue(...)`, and a golden-rendered proof — the same SDK-auto-capture
-  transport-hook follow-up tracked across the cloud adapters.
+  AndRecorded` (Send→orders label, URI, body, status, queue rendering).
+  **Transport hook done (2026-06-28) → item complete `[x]`:** `KronikolAzureStorageQueuePolicy implements
+  com.azure.core.http.policy.HttpPipelinePolicy` (azure-core `compileOnly`) is the Java analog of the .NET
+  `StorageQueueTrackingMessageHandler` — add it to the queue client's pipeline via
+  `QueueClientBuilder.addPolicy(...)`. Its reactive `process(...)` reads the request method/URL/body, runs the
+  pipeline, then on the response delegates to a package-private `track(HttpRequest, body, statusCode)` core that
+  invokes the existing `AzureTracking.storageQueue(...)` recorder. Proven by
+  `KronikolAzureStorageQueuePolicyTest` (real `com.azure.core.http.HttpRequest`, no live pipeline:
+  `Send → orders`/`storagequeue:///orders`/body/201 and `Receive ← orders` for a GET `/messages`). Golden
+  coverage is the same as the other adapters (queue participant rendering golden-proven generically;
+  label/URI/status unit-proven exactly).
 - [x] **AWS EventBridge** — interceptor.
   **Done:** added the EventBridge classifier to `kronikol4j-aws` (alongside the existing SQS/SNS/S3/DynamoDB
   classifiers) — `EventBridgeOperation` (28 ops + PascalCase `displayName()`), `EventBridgeOperationInfo`
