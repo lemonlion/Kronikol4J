@@ -98,11 +98,15 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
-### Added — Tier-1 AWS (verbosity wiring)
+### Added — Tier-1 AWS (verbosity + phase wiring)
 - **Recorder verbosity** (`kronikol4j-aws`) — `AwsTrackingOptions` gained a `TrackingVerbosity` (default
   Detailed, `withVerbosity(...)`); at Summarised the recorders drop the payload (the DynamoDB item, the
   SQS/SNS message) while keeping the resource/destination identity. Proven by `AwsTrackingTest`. The AWS SDK v2
   `ExecutionInterceptor` + a golden proof remain.
+- **Recorder phase suppression** (`kronikol4j-aws`) — `AwsTrackingOptions` gained
+  `trackDuringSetup`/`trackDuringAction` (default true, `withTrackDuringSetup/Action`); the s3/dynamoDb/sqs/sns
+  recorders now consult `PhaseConfiguration.shouldTrack(...)` and skip recording in a suppressed phase
+  (the .NET `TrackDuringSetup`/`TrackDuringAction` analog). Proven by `AwsTrackingTest`.
 
 ### Added — Tier-1 Elasticsearch (classifier-driven recorder + verbosity)
 - **Classifier-driven `record` + verbosity** (`kronikol4j-elasticsearch`) — added a

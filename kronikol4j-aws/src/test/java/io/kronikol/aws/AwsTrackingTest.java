@@ -56,6 +56,32 @@ class AwsTrackingTest {
     }
 
     @Test
+    void actionPhaseSuppressionSkipsRecordingWhenTrackDuringActionFalse() {
+        var options = AwsTrackingOptions.forService("OrdersTable").withTrackDuringAction(false);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);
+        try {
+            AwsTracking.dynamoDb(options, "PutItem", "orders", "{\"id\":1}");
+            AwsTracking.s3(options, "put", "bucket", "key");
+            AwsTracking.sqs(options, "orders", "msg");
+            assertThat(RequestResponseLogger.getAllLogs()).isEmpty(); // all suppressed in the Action phase
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
+    void setupPhaseStillTracksWhenOnlyActionSuppressed() {
+        var options = AwsTrackingOptions.forService("OrdersTable").withTrackDuringAction(false);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.SETUP);
+        try {
+            AwsTracking.dynamoDb(options, "PutItem", "orders", "{\"id\":1}");
+            assertThat(RequestResponseLogger.getAllLogs()).hasSize(2); // Setup unaffected
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void summarisedVerbosityOmitsDynamoDbItemPayloadButKeepsTable() {
         var options = AwsTrackingOptions.forService("OrdersTable")
             .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);

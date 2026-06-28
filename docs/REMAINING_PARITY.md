@@ -175,6 +175,13 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `TrackDuringSetup/Action` or `Setup/ActionVerbosity` options (those option surfaces are the Tier-1 adapter
   + Tier-2 option items). Each Tier-1 adapter wires these primitives in as it is built; this box flips to
   `[x]` once every execution path consults them.
+  **Wiring progress (2026-06-28):** HTTP (`HttpTrackingConfig.trackDuringSetup/Action`) and SQL/JDBC
+  (`SqlTrackingOptions`, reused by Hibernate) already consult phase. AWS now does too — `AwsTrackingOptions`
+  gained `trackDuringSetup`/`trackDuringAction` (default true, `withTrackDuringSetup/Action`) and the s3/
+  dynamoDb/sqs/sns recorders guard on `PhaseConfiguration.shouldTrack(...)`. Proven by `AwsTrackingTest`
+  (Action-phase suppression skips all three; Setup unaffected). **Remaining:** the same per-adapter wiring for
+  Azure/GCP/Cassandra/Elasticsearch/Bigtable/messaging recorders (identical pattern) + `Setup/ActionVerbosity`
+  per-phase overrides; box flips `[x]` once every recorder consults phase.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)

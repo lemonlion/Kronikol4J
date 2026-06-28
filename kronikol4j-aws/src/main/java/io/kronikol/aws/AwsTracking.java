@@ -1,6 +1,7 @@
 package io.kronikol.aws;
 
 import io.kronikol.core.constants.DependencyCategories;
+import io.kronikol.core.context.PhaseConfiguration;
 import io.kronikol.core.context.TestInfo;
 import io.kronikol.core.context.TestInfoResolver;
 import io.kronikol.core.tracking.Interactions;
@@ -34,6 +35,9 @@ public final class AwsTracking {
 
     /** Records an S3 operation, e.g. {@code s3(opts, "PUT", "my-bucket", "photo.jpg")}. */
     public static void s3(AwsTrackingOptions options, String operation, String bucket, String key) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.S3, verb(operation), S3_URI, bucket + "/" + key,
@@ -43,6 +47,9 @@ public final class AwsTracking {
     /** Records a DynamoDB operation, e.g. {@code dynamoDb(opts, "PutItem", "orders", "{...}")}.
      *  At Summarised verbosity the item payload is omitted (only the table identity is kept). */
     public static void dynamoDb(AwsTrackingOptions options, String operation, String table, String item) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         String payload = options.verbosity().includesPayload() && item != null ? item : "";
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
@@ -61,6 +68,9 @@ public final class AwsTracking {
     }
 
     private static void event(AwsTrackingOptions options, String verb, String destination, String message) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         // Summarised omits the message payload — only the destination identity is kept.
         String payload = options.verbosity().includesPayload() && message != null ? message : "";
@@ -74,27 +84,52 @@ public final class AwsTracking {
         return Method.of(operation == null ? "AWS" : operation.toUpperCase(Locale.ROOT));
     }
 
+    /** Whether the current phase suppresses tracking per the options' {@code trackDuringSetup/Action}. */
+    private static boolean suppressedByPhase(AwsTrackingOptions options) {
+        return !PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction());
+    }
+
     /** Configuration for AWS tracking. */
     public record AwsTrackingOptions(String serviceName, String callerName,
-                                     Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
+                                     Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
+                                     boolean trackDuringSetup, boolean trackDuringAction) {
 
         public AwsTrackingOptions {
             verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
         }
 
-        /** Three-arg shape (default verbosity) — the back-compatible constructor. */
+        /** Three-arg shape (default verbosity, both phases tracked) — back-compatible. */
         public AwsTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher) {
-            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT);
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true);
+        }
+
+        /** Four-arg shape (both phases tracked) — back-compatible. */
+        public AwsTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher,
+                                  TrackingVerbosity verbosity) {
+            this(serviceName, callerName, testInfoFetcher, verbosity, true, true);
         }
 
         public static AwsTrackingOptions forService(String serviceName) {
             return new AwsTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
-                TrackingVerbosity.DEFAULT);
+                TrackingVerbosity.DEFAULT, true, true);
         }
 
         /** A copy with the given verbosity (Summarised omits the DynamoDB item / message payloads). */
         public AwsTrackingOptions withVerbosity(TrackingVerbosity value) {
-            return new AwsTrackingOptions(serviceName, callerName, testInfoFetcher, value);
+            return new AwsTrackingOptions(serviceName, callerName, testInfoFetcher, value,
+                trackDuringSetup, trackDuringAction);
+        }
+
+        /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
+        public AwsTrackingOptions withTrackDuringSetup(boolean value) {
+            return new AwsTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                value, trackDuringAction);
+        }
+
+        /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
+        public AwsTrackingOptions withTrackDuringAction(boolean value) {
+            return new AwsTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, value);
         }
     }
 }
