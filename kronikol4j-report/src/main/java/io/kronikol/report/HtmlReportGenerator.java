@@ -58,7 +58,8 @@ public final class HtmlReportGenerator {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }
         }
-        return generateFromDiagrams(features, diagramByTestId, componentDiagram(logs), outputDir,
+        String componentDiagram = options.generateComponentDiagram() ? componentDiagram(logs) : null;
+        return generateFromDiagrams(features, diagramByTestId, componentDiagram, outputDir,
             options.control().resolveTitle(title), options.customization(),
             options.control().htmlReportFileName());
     }

@@ -554,9 +554,15 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
     `generateFromDiagrams(...,htmlFileName)` → `ReportFinalizer`). Both exposed via system properties
     (`kronikol.report.title`, `kronikol.report.htmlFileName`) and the Gradle DSL
     (`testRunReportTitle`/`htmlReportFileName`). Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
+  - `generateComponentDiagram` (default `true`) — added to `ReportControlOptions`; `HtmlReportGenerator.generate`
+    now skips computing/embedding the run-level component diagram when off (the `<div id="component-diagram">`
+    + toggle button vanish). The .NET `GenerateComponentDiagram` analog (the component-diagram *generator*
+    already existed — the earlier "no generator yet" note was stale). System property
+    `kronikol.report.generateComponentDiagram` + Gradle DSL `generateComponentDiagram`. Proven by
+    `ReportOptionsTest` + `ReportFinalizerTest` (present by default / absent when disabled).
   **Still open** (land with their owning features): `reportsFolderPath` (Java uses an explicit output dir
   via `kronikol.output.dir` — the .NET `<BaseDir>/Reports` subfolder model is N/A; revisit only if a relative
-  subfolder is wanted), `fixedNameForReceivingService`, `expectedTestCount` guard, `generateComponentDiagram`,
+  subfolder is wanted), `fixedNameForReceivingService`, `expectedTestCount` guard,
   the `requestResponsePostProcessor`/`midProcessor` hooks, `inlineBackgroundSteps`, `lazyLoadDiagramImages`,
   and the explicit `generateTestRunReportData`/`generateMergeableData` booleans (the latter two change Java's
   current dataFormats/run-dir *inference* into explicit flags — a behavior-affecting change best done as its

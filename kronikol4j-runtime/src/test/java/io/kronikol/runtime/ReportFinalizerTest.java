@@ -234,6 +234,19 @@ class ReportFinalizerTest {
     }
 
     @Test
+    void finalizeOmitsComponentDiagramWhenDisabled(@TempDir Path dir) throws IOException {
+        trackCheckout(); // a Test -> OrderService HTTP interaction → a run-level component diagram
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        var on = ReportFinalizer.finalizeRun(dir.resolve("on"), "Run", ReportOptions.defaults());
+        assertThat(Files.readString(on.htmlFile())).contains("id=\"component-diagram\""); // default: present
+
+        var off = ReportFinalizer.finalizeRun(dir.resolve("off"), "Run",
+            ReportOptions.defaults().withGenerateComponentDiagram(false));
+        assertThat(Files.readString(off.htmlFile())).doesNotContain("id=\"component-diagram\"");
+    }
+
+    @Test
     void finalizeAppliesTitleOverride(@TempDir Path dir) throws IOException {
         RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
 

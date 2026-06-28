@@ -104,14 +104,25 @@ class ReportOptionsTest {
     void readsReportControlOptionsFromSystemProperties() {
         System.setProperty(ReportOptions.REPORT_TITLE_PROPERTY, "CI Run");
         System.setProperty(ReportOptions.HTML_FILE_NAME_PROPERTY, "Combined");
+        System.setProperty(ReportOptions.GENERATE_COMPONENT_DIAGRAM_PROPERTY, "false");
         try {
             ReportControlOptions c = ReportOptions.fromSystemProperties().control();
             assertThat(c.testRunReportTitle()).isEqualTo("CI Run");
             assertThat(c.htmlReportFileName()).isEqualTo("Combined");
+            assertThat(c.generateComponentDiagram()).isFalse();
         } finally {
             System.clearProperty(ReportOptions.REPORT_TITLE_PROPERTY);
             System.clearProperty(ReportOptions.HTML_FILE_NAME_PROPERTY);
+            System.clearProperty(ReportOptions.GENERATE_COMPONENT_DIAGRAM_PROPERTY);
         }
+    }
+
+    @Test
+    void generateComponentDiagramDefaultsTrueAndWithers() {
+        assertThat(ReportOptions.defaults().control().generateComponentDiagram()).isTrue(); // .NET default true
+        ReportOptions off = ReportOptions.defaults().withGenerateComponentDiagram(false);
+        assertThat(off.control().generateComponentDiagram()).isFalse();
+        assertThat(off.control().htmlReportFileName()).isEqualTo("TestRunReport"); // unrelated control flags kept
     }
 
     @Test

@@ -91,6 +91,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     public static final String REPORT_TITLE_PROPERTY = "kronikol.report.title";
     /** System property (string) for the HTML report file name without extension (default {@code TestRunReport}). */
     public static final String HTML_FILE_NAME_PROPERTY = "kronikol.report.htmlFileName";
+    /** System property (boolean) embedding the run-level component diagram (default {@code true}). */
+    public static final String GENERATE_COMPONENT_DIAGRAM_PROPERTY = "kronikol.report.generateComponentDiagram";
     /** System property (boolean) writing the markdown run summary to the detected CI platform. */
     public static final String WRITE_CI_SUMMARY_PROPERTY = "kronikol.ci.writeCiSummary";
     /** System property (int) capping diagrams in the CI summary (default 10). */
@@ -324,6 +326,16 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return withControl(control.withHtmlReportFileName(value));
     }
 
+    /** Embeds (or omits) the run-level component diagram (the .NET {@code GenerateComponentDiagram}). */
+    public ReportOptions withGenerateComponentDiagram(boolean value) {
+        return withControl(control.withGenerateComponentDiagram(value));
+    }
+
+    /** Whether the run-level component diagram is embedded (delegates to {@link #control()}). */
+    public boolean generateComponentDiagram() {
+        return control.generateComponentDiagram();
+    }
+
     /**
      * Reads every diagram + report toggle from system properties (each falling back to {@link #defaults()}),
      * so a listener-driven run configures them with e.g. {@code -Dkronikol.diagram.separateSetup=true} or
@@ -361,7 +373,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     public static ReportControlOptions controlFromSystemProperties() {
         return new ReportControlOptions(
             stringProperty(REPORT_TITLE_PROPERTY, null),
-            stringProperty(HTML_FILE_NAME_PROPERTY, ReportControlOptions.DEFAULT_HTML_FILE_NAME));
+            stringProperty(HTML_FILE_NAME_PROPERTY, ReportControlOptions.DEFAULT_HTML_FILE_NAME),
+            boolProperty(GENERATE_COMPONENT_DIAGRAM_PROPERTY, true));
     }
 
     /** Builds the {@link CiPublishOptions} from system properties (all defaulting to the .NET defaults). */

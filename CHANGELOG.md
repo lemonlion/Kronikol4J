@@ -30,13 +30,15 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   `KronikolReportMojoTest`; wiki page added.
 
 ### Added — Tier-2 options
-- **Report control flags — title + HTML file name** (`kronikol4j-report` + `kronikol4j-runtime` +
-  `kronikol4j-gradle-plugin`) — new nested `ReportControlOptions` on `ReportOptions` carrying
-  `testRunReportTitle` (overrides the finalizer's title; `null` → caller's title) and `htmlReportFileName`
-  (default `TestRunReport`; the HTML file's base name). Threaded through `HtmlReportGenerator.generate` and
-  `ReportFinalizer`, exposed via `kronikol.report.title`/`kronikol.report.htmlFileName` and the Gradle DSL
-  (`testRunReportTitle`/`htmlReportFileName`). The .NET `TestRunReportTitle`/`HtmlTestRunReportFileName`
-  analogs. Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
+- **Report control flags — title, HTML file name, component-diagram toggle** (`kronikol4j-report` +
+  `kronikol4j-runtime` + `kronikol4j-gradle-plugin`) — new nested `ReportControlOptions` on `ReportOptions`
+  carrying `testRunReportTitle` (overrides the finalizer's title; `null` → caller's title), `htmlReportFileName`
+  (default `TestRunReport`; the HTML file's base name), and `generateComponentDiagram` (default `true`; when
+  off, `HtmlReportGenerator.generate` omits the run-level component diagram). Threaded through
+  `HtmlReportGenerator.generate` and `ReportFinalizer`; exposed via `kronikol.report.title` /
+  `kronikol.report.htmlFileName` / `kronikol.report.generateComponentDiagram` and the matching Gradle DSL
+  properties. The .NET `TestRunReportTitle` / `HtmlTestRunReportFileName` / `GenerateComponentDiagram` analogs.
+  Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
 - **Per-report-type data formats** (`kronikol4j-report`) — added the .NET-named scalar
   `ReportOptions.testRunReportDataFormat()` + `withTestRunReportDataFormat(ReportDataFormat)` (the
   `TestRunReportDataFormat` analog, default JSON) as a thin, documented convenience over the existing

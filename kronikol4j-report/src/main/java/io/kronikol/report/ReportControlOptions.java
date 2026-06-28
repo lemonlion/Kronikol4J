@@ -12,26 +12,40 @@ package io.kronikol.report;
  * @param htmlReportFileName  the HTML report file name <em>without</em> extension (the .NET
  *                            {@code HtmlTestRunReportFileName}, default {@code "TestRunReport"} →
  *                            {@code TestRunReport.html})
+ * @param generateComponentDiagram  embed the run-level component diagram (the .NET
+ *                            {@code GenerateComponentDiagram}, default {@code true})
  */
-public record ReportControlOptions(String testRunReportTitle, String htmlReportFileName) {
+public record ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
+                                   boolean generateComponentDiagram) {
 
     /** The .NET-default file name (without extension). */
     public static final String DEFAULT_HTML_FILE_NAME = "TestRunReport";
 
-    /** The .NET defaults: no title override (caller's title used), {@code "TestRunReport"} file name. */
-    public static final ReportControlOptions DEFAULTS = new ReportControlOptions(null, DEFAULT_HTML_FILE_NAME);
+    /** The .NET defaults: no title override (caller's title used), {@code "TestRunReport"} file name,
+     *  component diagram on. */
+    public static final ReportControlOptions DEFAULTS =
+        new ReportControlOptions(null, DEFAULT_HTML_FILE_NAME, true);
 
     public ReportControlOptions {
         htmlReportFileName = (htmlReportFileName == null || htmlReportFileName.isBlank())
             ? DEFAULT_HTML_FILE_NAME : htmlReportFileName;
     }
 
+    /** Two-arg shape (component diagram on) — the back-compatible constructor. */
+    public ReportControlOptions(String testRunReportTitle, String htmlReportFileName) {
+        this(testRunReportTitle, htmlReportFileName, true);
+    }
+
     public ReportControlOptions withTestRunReportTitle(String value) {
-        return new ReportControlOptions(value, htmlReportFileName);
+        return new ReportControlOptions(value, htmlReportFileName, generateComponentDiagram);
     }
 
     public ReportControlOptions withHtmlReportFileName(String value) {
-        return new ReportControlOptions(testRunReportTitle, value);
+        return new ReportControlOptions(testRunReportTitle, value, generateComponentDiagram);
+    }
+
+    public ReportControlOptions withGenerateComponentDiagram(boolean value) {
+        return new ReportControlOptions(testRunReportTitle, htmlReportFileName, value);
     }
 
     /** The report title to use given a caller-supplied default: the override when set, else {@code fallback}. */

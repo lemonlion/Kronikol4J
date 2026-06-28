@@ -129,6 +129,9 @@ public interface KronikolExtension {
      *  {@code TestRunReport}). */
     Property<String> getHtmlReportFileName();
 
+    /** Embed the run-level component diagram (the .NET {@code GenerateComponentDiagram}, default true). */
+    Property<Boolean> getGenerateComponentDiagram();
+
     // --- CI summary / artifacts ---
 
     /** Write the markdown run summary to the detected CI platform. */
