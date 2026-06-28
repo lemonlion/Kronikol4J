@@ -107,6 +107,38 @@ class TrackingKafkaConsumerTest {
     }
 
     @Test
+    void subscribeIsTrackedAsALifecycleEvent() {
+        MockConsumer<String, String> mock = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+        Consumer<String, String> tracked = TrackingKafkaConsumer.wrap(mock, tracker(), "order-service");
+
+        // Subscribe runs during setup, under the test's own identity scope (no per-record headers yet).
+        try (var ignored = TestIdentityScope.begin("MyTest", "id-1")) {
+            tracked.subscribe(List.of("orders"));
+        }
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2); // lifecycle event pair, no status
+        assertThat(logs.get(0).method().value()).isEqualTo("Subscribe orders"); // topic from the subscription
+        assertThat(logs.get(0).uri().toString()).isEqualTo("kafka:///orders");
+        assertThat(logs.get(1).statusCode()).isNull();
+    }
+
+    @Test
+    void commitSyncIsTrackedAsALifecycleEvent() {
+        MockConsumer<String, String> mock = mockWith();
+        Consumer<String, String> tracked = TrackingKafkaConsumer.wrap(mock, tracker(), "order-service");
+
+        try (var ignored = TestIdentityScope.begin("MyTest", "id-1")) {
+            tracked.commitSync();
+        }
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2);
+        assertThat(logs.get(0).method().value()).isEqualTo("Commit"); // no topic
+        assertThat(logs.get(0).uri().toString()).isEqualTo("kafka:///");
+    }
+
+    @Test
     void recordWithoutIdentityIsNotTracked() {
         MockConsumer<String, String> mock = mockWith(recordWithIdentity(0L, "v", null));
         Consumer<String, String> tracked = TrackingKafkaConsumer.wrap(mock, tracker(), "order-service");

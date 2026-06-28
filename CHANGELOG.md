@@ -7,6 +7,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Kafka lifecycle-op tracking (Kafka item progress)
+- **`MessageTracker.trackEvent(label, uri)`** + Kafka wrapper wiring (`kronikol4j-messaging`) — the producer
+  now tracks `flush`/`initTransactions`/`beginTransaction`/`commitTransaction`/`abortTransaction`/
+  `sendOffsetsToTransaction` and the consumer tracks `subscribe`/`unsubscribe`/`commitSync`/`commitAsync` as
+  event-styled pairs (no body, no status — the .NET `KafkaTracker.LogOutgoing(op, null)` shape), classified via
+  `KafkaOperationClassifier` (Subscribe carries the subscription topic). Proven by the updated
+  `TrackingKafkaProducerTest`/`TrackingKafkaConsumerTest`. `isCurrentRequestFromMyHost()` is documented N/A
+  (a .NET HTTP-context concept). The Kafka item remains open for `ITrackingComponent` self-registration + the
+  Spring Kafka `BeanPostProcessor` auto-wiring.
+
 ### Completed — Tier-3 Bigtable gRPC interceptor (item [x])
 - **`KronikolBigtableInterceptor`** (`kronikol4j-bigtable`) — a gRPC `ClientInterceptor` (grpc-api
   `compileOnly`) that auto-captures Cloud Bigtable data calls (the `google-cloud-bigtable` client runs on

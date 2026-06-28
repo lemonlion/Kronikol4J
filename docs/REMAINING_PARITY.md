@@ -476,13 +476,22 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `effectiveVerbosity()` — `"Produce → <topic>"` / `"Consume ← <topic>"` (Detailed),
   `"Consume <topic>[partition]@offset"` (Raw, from the consume record), replacing the hardcoded `"Kafka"` /
   `"Consume (Kafka)"` labels. (`MessageTracker.effectiveVerbosity()` is now public for the wrappers.) Proven by
-  the updated `TrackingKafkaProducerTest`/`TrackingKafkaConsumerTest`. **Remaining:** add
-  Subscribe/Commit/Flush/Unsubscribe/Assign lifecycle-op tracking, `isCurrentRequestFromMyHost()`,
-  `ITrackingComponent` self-registration, and a golden proof; plus
-  the **zero-call-site-change auto-wiring** — a Spring `BeanPostProcessor` decorating Spring Kafka's
-  `ConsumerFactory`/`ProducerFactory` (the Java seam analogous to .NET's `ConsumerBuilder.Build()`), which is
-  where the Tier-5 "Kafka build-interception" decision relocated that work (see that item for the rationale on
-  why the .NET Harmony `Build()`-swap has no faithful Java auto-analog).
+  the updated `TrackingKafkaProducerTest`/`TrackingKafkaConsumerTest`.
+  **Lifecycle-op tracking done (2026-06-28):** `MessageTracker.trackEvent(label, uri)` emits the .NET
+  `KafkaTracker.LogOutgoing(op, null)` shape — an event-styled request/response pair with no body and no
+  status. `TrackingKafkaProducer` now intercepts `flush`/`initTransactions`/`beginTransaction`/
+  `commitTransaction`/`abortTransaction`/`sendOffsetsToTransaction`, and `TrackingKafkaConsumer` intercepts
+  `subscribe`/`unsubscribe`/`commitSync`/`commitAsync`, classifying each via `KafkaOperationClassifier`
+  (Subscribe carries the topic from the subscription; Flush/Commit/transactions have none) and emitting through
+  `trackEvent`. Proven by `TrackingKafkaProducerTest.flushIsTrackedAsALifecycleEvent` +
+  `TrackingKafkaConsumerTest` (`subscribeIsTrackedAsALifecycleEvent`, `commitSyncIsTrackedAsALifecycleEvent`).
+  `isCurrentRequestFromMyHost()` is a .NET HTTP-context (multi-WAF) concept with no Kafka analog in Java (the
+  tracker has no `HttpContextAccessor`) — documented N/A. **Remaining (`[~]`):** `ITrackingComponent`
+  self-registration of the tracker (Java's `TrackingComponentRegistry` exists; wire `MessageTracker` to register
+  itself), a golden proof, and the **zero-call-site-change auto-wiring** — a Spring `BeanPostProcessor`
+  decorating Spring Kafka's `ConsumerFactory`/`ProducerFactory` (the Java seam analogous to .NET's
+  `ConsumerBuilder.Build()`; needs spring-kafka), where the Tier-5 "Kafka build-interception" decision relocated
+  that work.
 - [~] **`TrackingProxy` enhancements** (`kronikol4j-proxy`) — `TrackingLogMode` (Immediate **+ Deferred**,
   integrating `PendingRequestResponseLogs`); `ActivitySource`/OTel span lifecycle for InternalFlow span
   production (`InternalFlowSpanStore.complete(...)`); configurable `uriScheme` (hardcoded `proxy://local/`)

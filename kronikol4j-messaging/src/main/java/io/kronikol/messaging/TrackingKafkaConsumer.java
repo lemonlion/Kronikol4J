@@ -42,9 +42,39 @@ public final class TrackingKafkaConsumer {
                 }
                 if ("poll".equals(method.getName()) && result instanceof ConsumerRecords<?, ?> records) {
                     trackPolled(records, tracker, consumerName);
+                } else {
+                    KafkaOperation lifecycle = CONSUMER_LIFECYCLE.get(method.getName());
+                    if (lifecycle != null) {
+                        // Subscribe / Unsubscribe / Commit are self-contained events (the .NET KafkaTracker
+                        // LogSubscribe/LogCommit/LogUnsubscribe), tracked after the real call succeeds.
+                        // Subscribe carries the topic (its label/URI use it); the others do not.
+                        var verbosity = tracker.effectiveVerbosity();
+                        KafkaOperationInfo op = lifecycle == KafkaOperation.SUBSCRIBE
+                            ? new KafkaOperationInfo(lifecycle, firstTopic(args))
+                            : new KafkaOperationInfo(lifecycle);
+                        tracker.trackEvent(KafkaOperationClassifier.getDiagramLabel(op, verbosity),
+                            KafkaOperationClassifier.buildUri(op, verbosity));
+                    }
                 }
                 return result;
             });
+    }
+
+    /** Consumer lifecycle methods that emit a tracked event (the .NET {@code TrackSubscribe}/{@code TrackCommit}). */
+    private static final java.util.Map<String, KafkaOperation> CONSUMER_LIFECYCLE = java.util.Map.of(
+        "subscribe", KafkaOperation.SUBSCRIBE,
+        "unsubscribe", KafkaOperation.UNSUBSCRIBE,
+        "commitSync", KafkaOperation.COMMIT,
+        "commitAsync", KafkaOperation.COMMIT);
+
+    /** The first topic from a {@code subscribe(Collection<String>)} argument, or {@code null}. */
+    private static String firstTopic(Object[] args) {
+        if (args != null && args.length > 0 && args[0] instanceof java.util.Collection<?> topics
+            && !topics.isEmpty()) {
+            Object first = topics.iterator().next();
+            return first == null ? null : first.toString();
+        }
+        return null;
     }
 
     private static void trackPolled(ConsumerRecords<?, ?> records, MessageTracker tracker, String consumerName) {

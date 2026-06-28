@@ -47,6 +47,22 @@ class TrackingKafkaProducerTest {
     }
 
     @Test
+    void flushIsTrackedAsALifecycleEvent() {
+        MockProducer<String, String> mock =
+            new MockProducer<>(true, new StringSerializer(), new StringSerializer());
+        Producer<String, String> tracked =
+            TrackingKafkaProducer.wrap(mock, tracker(), () -> new TestInfo("MyTest", "id-1"));
+
+        tracked.flush();
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2); // event pair, no status
+        assertThat(logs.get(0).method().value()).isEqualTo("Flush");
+        assertThat(logs.get(0).uri().toString()).isEqualTo("kafka:///"); // no topic for a flush
+        assertThat(logs.get(1).statusCode()).isNull();
+    }
+
+    @Test
     void sendStampsHeadersAndTracksThePair() {
         MockProducer<String, String> mock =
             new MockProducer<>(true, new StringSerializer(), new StringSerializer());

@@ -148,6 +148,27 @@ public final class MessageTracker {
         trackConsumeEvent(protocol, consumerName, sourceUri, payload, "Ack");
     }
 
+    /**
+     * Logs a self-contained lifecycle event (e.g. Kafka Flush/Commit/Subscribe/transaction) as an event pair
+     * carrying no body and no status — the .NET {@code KafkaTracker.LogOutgoing(op, null)} shape. {@code label}
+     * is the diagram label (from the operation classifier); {@code uri} the {@code kafka://} URI.
+     */
+    public void trackEvent(String label, URI uri) {
+        if (!PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction())) {
+            return;
+        }
+        TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        if (who == null) {
+            return;
+        }
+        UUID requestResponseId = options.ids().newId();
+        TestPhase phase = TestPhaseContext.current();
+        RequestResponseLogger.log(baseBuilder(who, label, null, uri, options.serviceName(),
+            RequestResponseType.REQUEST, requestResponseId, phase).build());
+        RequestResponseLogger.log(baseBuilder(who, label, null, uri, options.serviceName(),
+            RequestResponseType.RESPONSE, requestResponseId, phase).build());
+    }
+
     private RequestResponseLog.Builder baseBuilder(TestInfo who, String protocol, String content,
                                                    URI uri, String destinationName, RequestResponseType type,
                                                    UUID requestResponseId, TestPhase phase) {

@@ -45,11 +45,31 @@ public final class TrackingKafkaProducer {
                             KafkaOperationClassifier.buildUri(op, verbosity), record.value());
                     }
                 }
+                KafkaOperation lifecycle = PRODUCER_LIFECYCLE.get(method.getName());
+                Object result;
                 try {
-                    return method.invoke(delegate, args);
+                    result = method.invoke(delegate, args);
                 } catch (InvocationTargetException e) {
                     throw e.getCause();
                 }
+                if (lifecycle != null) {
+                    // Flush / transaction ops are self-contained events (no topic, no body) — tracked after
+                    // the real call succeeds, mirroring the .NET KafkaTracker LogFlush/LogTransaction.
+                    var verbosity = tracker.effectiveVerbosity();
+                    KafkaOperationInfo op = new KafkaOperationInfo(lifecycle);
+                    tracker.trackEvent(KafkaOperationClassifier.getDiagramLabel(op, verbosity),
+                        KafkaOperationClassifier.buildUri(op, verbosity));
+                }
+                return result;
             });
     }
+
+    /** Producer lifecycle methods that emit a tracked event (the .NET {@code TrackFlush}/{@code TrackTransactions}). */
+    private static final java.util.Map<String, KafkaOperation> PRODUCER_LIFECYCLE = java.util.Map.of(
+        "flush", KafkaOperation.FLUSH,
+        "initTransactions", KafkaOperation.INIT_TRANSACTIONS,
+        "beginTransaction", KafkaOperation.BEGIN_TRANSACTION,
+        "commitTransaction", KafkaOperation.COMMIT_TRANSACTION,
+        "abortTransaction", KafkaOperation.ABORT_TRANSACTION,
+        "sendOffsetsToTransaction", KafkaOperation.SEND_OFFSETS_TO_TRANSACTION);
 }
