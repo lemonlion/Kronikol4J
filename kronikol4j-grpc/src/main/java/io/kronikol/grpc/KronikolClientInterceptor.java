@@ -53,7 +53,7 @@ public final class KronikolClientInterceptor implements ClientInterceptor {
             @Override
             public void sendMessage(ReqT message) {
                 if (capturePayload) {
-                    requestSummary = String.valueOf(message);
+                    requestSummary = GrpcMessageFormatter.format(message);
                 }
                 super.sendMessage(message);
             }
@@ -71,7 +71,7 @@ public final class KronikolClientInterceptor implements ClientInterceptor {
                         @Override
                         public void onMessage(RespT message) {
                             if (capturePayload) {
-                                responseSummary = String.valueOf(message);
+                                responseSummary = GrpcMessageFormatter.format(message);
                             }
                             super.onMessage(message);
                         }

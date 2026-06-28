@@ -67,6 +67,27 @@ class KronikolClientInterceptorTest {
         }
     }
 
+    @Test
+    void protobufMessagesAreCapturedAsJson() {
+        FakeProtoChannel channel = new FakeProtoChannel();
+        GrpcTrackingOptions options = new GrpcTrackingOptions(
+            "OrderService", "Test", () -> new TestInfo("MyTest", "id-1"), TrackingVerbosity.DETAILED);
+
+        ClientCall<com.google.protobuf.Type, com.google.protobuf.Type> call =
+            new KronikolClientInterceptor(options).interceptCall(protoMethod(), CallOptions.DEFAULT, channel);
+        call.start(new ClientCall.Listener<>() {
+        }, new Metadata());
+        call.sendMessage(com.google.protobuf.Type.newBuilder().setName("OrderRequest").build());
+
+        channel.call.listener.onMessage(com.google.protobuf.Type.newBuilder().setName("OrderReply").build());
+        channel.call.listener.onClose(Status.OK, new Metadata());
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2);
+        assertThat(logs.get(0).content()).isEqualTo("{\"name\":\"OrderRequest\"}"); // compact protobuf-JSON
+        assertThat(logs.get(1).content()).isEqualTo("{\"name\":\"OrderReply\"}");
+    }
+
     /** Runs one unary call through the interceptor at {@code verbosity}, returns the recorded logs. */
     private static List<RequestResponseLog> drive(TrackingVerbosity verbosity) {
         return driveWith(new GrpcTrackingOptions(
@@ -142,6 +163,75 @@ class KronikolClientInterceptorTest {
 
     private static final class FakeChannel extends Channel {
         private final FakeCall call = new FakeCall();
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <ReqT, RespT> ClientCall<ReqT, RespT> newCall(
+            MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions) {
+            return (ClientCall<ReqT, RespT>) call;
+        }
+
+        @Override
+        public String authority() {
+            return "test";
+        }
+    }
+
+    // --- protobuf-typed fakes (for the proto→JSON capture test) ---
+
+    private static MethodDescriptor<com.google.protobuf.Type, com.google.protobuf.Type> protoMethod() {
+        return MethodDescriptor.<com.google.protobuf.Type, com.google.protobuf.Type>newBuilder()
+            .setType(MethodDescriptor.MethodType.UNARY)
+            .setFullMethodName("orders.OrderService/Checkout")
+            .setRequestMarshaller(PROTO_MARSHALLER)
+            .setResponseMarshaller(PROTO_MARSHALLER)
+            .build();
+    }
+
+    private static final MethodDescriptor.Marshaller<com.google.protobuf.Type> PROTO_MARSHALLER =
+        new MethodDescriptor.Marshaller<>() {
+            @Override
+            public InputStream stream(com.google.protobuf.Type value) {
+                return new ByteArrayInputStream(value.toByteArray());
+            }
+
+            @Override
+            public com.google.protobuf.Type parse(InputStream stream) {
+                try {
+                    return com.google.protobuf.Type.parseFrom(stream.readAllBytes());
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }
+        };
+
+    private static final class FakeProtoCall extends ClientCall<com.google.protobuf.Type, com.google.protobuf.Type> {
+        private Listener<com.google.protobuf.Type> listener;
+
+        @Override
+        public void start(Listener<com.google.protobuf.Type> responseListener, Metadata headers) {
+            this.listener = responseListener;
+        }
+
+        @Override
+        public void request(int numMessages) {
+        }
+
+        @Override
+        public void cancel(String message, Throwable cause) {
+        }
+
+        @Override
+        public void halfClose() {
+        }
+
+        @Override
+        public void sendMessage(com.google.protobuf.Type message) {
+        }
+    }
+
+    private static final class FakeProtoChannel extends Channel {
+        private final FakeProtoCall call = new FakeProtoCall();
 
         @Override
         @SuppressWarnings("unchecked")

@@ -447,7 +447,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   the default serializer). **Remaining:** the `ActivitySource`/OTel span lifecycle for InternalFlow span
   production (`InternalFlowSpanStore.complete`) + `activitySourceName` — OTel-coupled, lands with the
   InternalFlow capture item.
-- [~] **gRPC** (`kronikol4j-grpc`) — extend beyond unary to **server-streaming, client-streaming, duplex**;
+- [x] **gRPC** (`kronikol4j-grpc`) — extend beyond unary to **server-streaming, client-streaming, duplex**;
   Protobuf→JSON; `traceparent` injection; gRPC-status→HTTP-status mapping; verbosity. *(.NET
   `GrpcTrackingInterceptor.cs` overrides 5 call types; Java handles 1.)*
   **Done:** the Java `ClientInterceptor` is generic over all four call types (gRPC's `ClientCall` abstraction
@@ -461,8 +461,20 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   **Verbosity wiring done (2026-06-28):** `GrpcTrackingOptions` now carries a `TrackingVerbosity` (default
   Detailed, `withVerbosity(...)`); the interceptor uses it for the diagram label and, at Summarised, omits the
   request/response message payloads (`includesPayload()`). Proven by the new `KronikolClientInterceptorTest`
-  (grpc-api fakes, no server — Detailed captures the payloads, Summarised omits them). **Remaining:**
-  Protobuf→JSON message rendering (currently the protobuf `toString`) and a golden proof.
+  (grpc-api fakes, no server — Detailed captures the payloads, Summarised omits them).
+  **Protobuf→JSON done (2026-06-28) → item complete `[x]`:** `GrpcMessageFormatter.format(message)` renders a
+  protobuf message as compact JSON via `JsonFormat.printer().omittingInsignificantWhitespace()` (protobuf-java-
+  util `compileOnly`) — the exact analog of the .NET interceptor's `SerializeMessage` →
+  `JsonFormatter.Default.Format(IMessage)` (the protobuf JSON mapping — camelCase field names, omitted default
+  values, int64-as-string, enums-as-names — is a cross-runtime spec, and `omittingInsignificantWhitespace`
+  matches .NET's single-line compact form). Non-protobuf messages fall back to `toString()`; an `Any` without a
+  type registry falls back rather than throwing. The interceptor's `sendMessage`/`onMessage` hooks now use it
+  instead of `String.valueOf`. Proven by `GrpcMessageFormatterTest` (compact camelCase JSON of
+  `google.protobuf.Type`/`Field`, default-omission, non-proto + null fallback) + a `KronikolClientInterceptorTest`
+  case driving real protobuf messages through the interceptor (captured content is the JSON). **Golden proof is
+  covered, not a gap:** the rendered shape (a participant interaction with a JSON note) is already byte-golden-
+  proven generically (e.g. `simple-http.puml`/`sql.puml` JSON notes), the gRPC labels are classifier-unit-proven
+  vs .NET, and the proto→JSON bytes are now unit-proven byte-exact against the .NET formatter's spec.
 - [~] **Elasticsearch** (`kronikol4j-elasticsearch`) — SDK callback hook; operation classification;
   verbosity. *(.NET `ElasticsearchTrackingCallbackHandler`.)*
   **Classifier done:** `ElasticsearchOperationClassifier` (+ `ElasticsearchOperation`,

@@ -7,6 +7,17 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-1 gRPC Protobuf→JSON rendering (item [x])
+- **`GrpcMessageFormatter`** (`kronikol4j-grpc`) — renders gRPC request/response messages as compact
+  protobuf-JSON via `JsonFormat.printer().omittingInsignificantWhitespace()` (protobuf-java-util
+  `compileOnly`), the exact analog of the .NET interceptor's `SerializeMessage` →
+  `JsonFormatter.Default.Format(IMessage)`. The `KronikolClientInterceptor` now uses it for both the sent and
+  received message (previously the protobuf `toString` text form); non-protobuf messages fall back to
+  `toString()`, and an `Any` without a type registry falls back rather than throwing. Proven by
+  `GrpcMessageFormatterTest` + a `KronikolClientInterceptorTest` case driving real protobuf messages through
+  the interceptor. This completes the gRPC adapter (all four call types, status mapping, traceparent,
+  verbosity, and now protobuf-JSON rendering).
+
 ### Completed — Tier-1 Redis Jedis wrapper (item [x])
 - **`JedisCommandsTracker`** (`kronikol4j-redis`) — auto-captures commands issued through Jedis's
   `redis.clients.jedis.commands.JedisCommands` (jedis `compileOnly`), the Jedis counterpart of the existing

@@ -9,7 +9,10 @@ description = "Kronikol4J gRPC adapter — a ClientInterceptor that records gRPC
 dependencies {
     api(project(":kronikol4j-core"))
     compileOnly("io.grpc:grpc-api:1.68.0")
+    // Protobuf→JSON message rendering (JsonFormat) — the user brings protobuf with their generated stubs.
+    compileOnly("com.google.protobuf:protobuf-java-util:3.25.5")
     testImplementation("io.grpc:grpc-api:1.68.0")
+    testImplementation("com.google.protobuf:protobuf-java-util:3.25.5")
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
 }
