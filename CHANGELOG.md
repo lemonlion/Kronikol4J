@@ -30,6 +30,11 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   `KronikolReportMojoTest`; wiki page added.
 
 ### Added — Tier-6 helpers & wiring fixes
+- **`TestInfoResolver.createHttpFallbackFetcher`** (`kronikol4j-core`) — the .NET `CreateHttpFallbackFetcher`
+  analog: a static factory returning a `Supplier<TestInfo>` that resolves identity from the request's
+  `test-tracking-current-test-{name,id}` headers first, then a fallback delegate. The HTTP-context accessor
+  is a platform-neutral `UnaryOperator<String>` header lookup (keeps core HTTP-API-free). Proven by
+  `TestInfoResolverTest`.
 - **CLI `merge` title resolution** (`kronikol4j-cli`) — fixed: a merge without `-t` now renders the default
   `"Test Run Report"` instead of leaking the first fragment's carried title, matching .NET (whose
   `MergeableReport` has no title field; the renderer defaults `title ??= "Test Run Report"`). `MergeCommand`

@@ -993,8 +993,16 @@ fixes. Listed for completeness so nothing is silently dropped.
   `PhaseVariantExtensions.cs:24`.)* **Done:** `io.kronikol.core.tracking.PhaseVariantExtensions` (static
   generic helpers, since Java has no extension methods); both no-op guards ported (phase ≠ Unknown → skip;
   no override → skip) and per-override fallback to base verbosity. Proven by `PhaseVariantExtensionsTest`.
-- [ ] **`TestInfoResolver.createHttpFallbackFetcher`** — the static factory producing a combined
+- [x] **`TestInfoResolver.createHttpFallbackFetcher`** — the static factory producing a combined
   "HTTP-headers-first, then delegate" identity fetcher. *(.NET `TestInfoResolver.cs:86`.)*
+  **Done:** `TestInfoResolver.createHttpFallbackFetcher(UnaryOperator<String> headerLookup,
+  Supplier<TestInfo> fallback)` returns a `Supplier<TestInfo>` that reads `CURRENT_TEST_NAME` +
+  `CURRENT_TEST_ID` from the request headers and falls back to the delegate when either is absent — the
+  .NET `CreateHttpFallbackFetcher` analog. .NET's `IHttpContextAccessor` is replaced by a platform-neutral
+  `UnaryOperator<String>` (header name → value) so `kronikol4j-core` stays HTTP/servlet-API-free; adapters
+  bind it to their request (e.g. `request::getHeader`). Mirrors .NET's edge handling: both headers required,
+  and a `null`/throwing lookup swallows and delegates. Proven by `TestInfoResolverTest` (4 new cases:
+  prefers headers, falls back when absent / only one header / null+throwing lookup).
 - [x] **`PhaseConfiguration.resolvePhaseFromStepType`** — expose the Given/And/But→Setup, When/Then→Action
   mapping on `PhaseConfiguration` (the logic exists only inside the Cucumber module's `GherkinPhase`).
   **Done:** `PhaseConfiguration.resolvePhaseFromStepType(String)` ports the .NET stateless mapping verbatim —

@@ -1,6 +1,9 @@
 package io.kronikol.core.context;
 
+import io.kronikol.core.constants.TrackingHeaders;
+import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 /**
  * Resolves the current test identity via the cascade (plan §3.2). Every tracking component calls
@@ -41,5 +44,46 @@ public final class TestInfoResolver {
 
         // Layer 4 — global fallback (serial-only).
         return TestIdentityScope.globalFallback();
+    }
+
+    /**
+     * Builds a {@link Supplier} that resolves test identity from HTTP request headers first, falling back
+     * to {@code fallback} when the headers are absent — the .NET {@code CreateHttpFallbackFetcher} analog.
+     * Eliminates the repetitive "headers-then-delegate" boilerplate when wiring a tracker's
+     * {@code currentTestInfoFetcher}.
+     *
+     * <p>The {@link UnaryOperator} (header name → value, or {@code null}) replaces .NET's
+     * {@code IHttpContextAccessor}, keeping {@code kronikol4j-core} free of any HTTP/servlet API: adapters
+     * supply a lookup bound to their request (e.g. {@code request::getHeader}). Both
+     * {@link TrackingHeaders#CURRENT_TEST_NAME} and {@link TrackingHeaders#CURRENT_TEST_ID} must be present;
+     * a missing/throwing lookup falls through to {@code fallback} (matching .NET's swallow-and-delegate).
+     *
+     * @param headerLookup resolves a request-header value by name; may be {@code null} (treated as "no headers")
+     * @param fallback     invoked when the headers are unavailable; must not be {@code null}
+     */
+    public static Supplier<TestInfo> createHttpFallbackFetcher(
+            UnaryOperator<String> headerLookup, Supplier<TestInfo> fallback) {
+        Objects.requireNonNull(fallback, "fallback");
+        return () -> {
+            TestInfo fromHeaders = resolveFromHeaders(headerLookup);
+            return fromHeaders != null ? fromHeaders : fallback.get();
+        };
+    }
+
+    /** Reads identity from the two tracking headers; {@code null} when absent or the lookup fails. */
+    private static TestInfo resolveFromHeaders(UnaryOperator<String> headerLookup) {
+        if (headerLookup == null) {
+            return null;
+        }
+        try {
+            String name = headerLookup.apply(TrackingHeaders.CURRENT_TEST_NAME);
+            String id = headerLookup.apply(TrackingHeaders.CURRENT_TEST_ID);
+            if (name != null && !name.isEmpty() && id != null && !id.isEmpty()) {
+                return new TestInfo(name, id);
+            }
+        } catch (RuntimeException ignored) {
+            // Header access can fail off a request thread — fall through to the delegate (matches .NET).
+        }
+        return null;
     }
 }
