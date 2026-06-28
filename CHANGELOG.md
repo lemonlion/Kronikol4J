@@ -74,6 +74,14 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Added — Tier-1 Kafka (operation classifier)
+- **`KafkaOperationClassifier`** (`kronikol4j-messaging`) — ports the .NET `KafkaOperationClassifier`:
+  `getDiagramLabel` (Raw `"<Op> <topic>[partition]@offset"`, Detailed directional `"Produce → …"` /
+  `"Consume ← …"` / `"Subscribe …"`, Summarised terse forms) and `buildUri` (the `kafka:///<topic>[/partition]
+  [@offset]` matrix), with a `KafkaOperation` enum + `KafkaOperationInfo` record. Pure logic over the unified
+  `TrackingVerbosity` (no Kafka-client dependency). Proven by `KafkaOperationClassifierTest`. Wiring it into
+  the `TrackingKafkaProducer/Consumer` labels is the Kafka adapter's follow-up.
+
 ### Decisions / boundaries
 - **Kafka build-interception** — decided: no Java equivalent of .NET's `Kronikol.Extensions.Kafka`
   `BuildInterception` package (a Harmony runtime patch of `ConsumerBuilder/ProducerBuilder.Build()`). The
