@@ -38,18 +38,29 @@ public final class KronikolAzureTrackingPolicy implements HttpPipelinePolicy {
     @Override
     public Mono<HttpResponse> process(HttpPipelineCallContext context, HttpPipelineNextPolicy next) {
         HttpRequest request = context.getHttpRequest();
-        String body = readBody(request); // read up-front (the body is consumed once sent)
-        return next.process().map(response -> {
-            track(request, body, response.getStatusCode());
-            return response;
+        String requestBody = readBody(request); // read up-front (the body is consumed once sent)
+        return next.process().flatMap(response -> {
+            // Buffer so the response body can be read for Cosmos write-correlation without consuming it for
+            // the caller (mirrors the .NET handler reading response content).
+            HttpResponse buffered = response.buffer();
+            return buffered.getBodyAsString().defaultIfEmpty("").map(responseBody -> {
+                track(request, requestBody, responseBody.isEmpty() ? null : responseBody,
+                    buffered.getStatusCode());
+                return buffered;
+            });
         });
+    }
+
+    /** Three-arg overload (no response body) — convenience for callers/tests that do not capture a response. */
+    void track(HttpRequest request, String body, int statusCode) {
+        track(request, body, null, statusCode);
     }
 
     /**
      * The recording core: detect the Azure service from {@code request} and emit via the matching
      * {@link AzureTracking} recorder. Package-private so it can be unit-tested with a real {@link HttpRequest}.
      */
-    void track(HttpRequest request, String body, int statusCode) {
+    void track(HttpRequest request, String requestBody, String responseBody, int statusCode) {
         URI uri;
         try {
             uri = request.getUrl().toURI();
@@ -62,11 +73,11 @@ public final class KronikolAzureTrackingPolicy implements HttpPipelinePolicy {
         if (host.contains(".documents.azure.com")) {
             boolean isQuery = "true".equalsIgnoreCase(headerValue(request, IS_QUERY));
             boolean isUpsert = "true".equalsIgnoreCase(headerValue(request, IS_UPSERT));
-            AzureTracking.cosmos(options, method, uri, isQuery, isUpsert, body, statusCode);
+            AzureTracking.cosmos(options, method, uri, isQuery, isUpsert, requestBody, statusCode, responseBody);
         } else if (host.contains(".blob.core.windows.net")) {
-            AzureTracking.blob(options, method, uri, body, statusCode);
+            AzureTracking.blob(options, method, uri, requestBody, statusCode);
         } else if (host.contains(".queue.core.windows.net")) {
-            AzureTracking.storageQueue(options, method, uri, body, statusCode);
+            AzureTracking.storageQueue(options, method, uri, requestBody, statusCode);
         }
         // else: not a recognised Azure service host — passed through untracked
     }

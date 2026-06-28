@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Azure adapter (item [x])
+- **Cosmos write-correlation** (`kronikol4j-azure`) closes the Azure adapter. `AzureTrackingOptions` gained
+  `autoCorrelateWrites` + a `changeFeedKeyExtractor` (`BiFunction<serviceName,documentId,key>`); the
+  `AzureTracking.cosmos(...)` recorder ports the .NET `AutoCorrelateIfWrite` — a successful Create/Upsert/Replace
+  seeds `TestCorrelationStore` keyed by the document id (path, else the response body's `"id"`). The pipeline
+  policy buffers the response so its body is readable for id extraction without consuming it for the caller.
+  Proven by `KronikolAzureTrackingPolicyTest`. With the HTTP policy (Cosmos/Blob/StorageQueue) and the Service
+  Bus AMQP wrappers, **all four Azure services now auto-capture** — the Azure item is complete.
+
 ### Added — Azure Service Bus tracking (Azure item progress)
 - **`ServiceBusInteractionRecorder`** + **`TrackingServiceBusSender`/`TrackingServiceBusReceiver`**
   (`kronikol4j-azure`) — Service Bus is AMQP (not HTTP), so it uses client-decorator wrappers

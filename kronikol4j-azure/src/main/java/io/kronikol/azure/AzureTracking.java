@@ -11,7 +11,10 @@ import io.kronikol.core.tracking.StatusCode;
 import io.kronikol.core.tracking.TrackingDefaults;
 import io.kronikol.core.tracking.TrackingVerbosity;
 import java.net.URI;
+import io.kronikol.core.context.CorrelationKeys;
+import io.kronikol.core.context.TestCorrelationStore;
 import java.util.Locale;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 /**
@@ -87,10 +90,12 @@ public final class AzureTracking {
      * the reusable core an Azure pipeline policy delegates to (the .NET {@code CosmosTrackingMessageHandler}).
      * Request/response shape on the {@code CosmosDB} category; the clean URI rewrites the original request
      * URI's path to {@code /colls/<coll>[/docs|sprocs/<id>]} (Detailed) or {@code /<coll>} (Summarised),
-     * keeping the host (the raw request URI at Raw).
+     * keeping the host (the raw request URI at Raw). When {@code autoCorrelateWrites} is on, a successful
+     * Create/Upsert/Replace seeds {@code TestCorrelationStore} keyed by the document id (from the path or the
+     * {@code responseBody}'s {@code "id"} field) so background change-feed processing can attribute the test.
      */
     public static void cosmos(AzureTrackingOptions options, String httpMethod, URI requestUri,
-                              boolean isQuery, boolean isUpsert, String body, int statusCode) {
+                              boolean isQuery, boolean isUpsert, String body, int statusCode, String responseBody) {
         if (suppressedByPhase(options)) {
             return;
         }
@@ -109,6 +114,47 @@ public final class AzureTracking {
         String content = verbosity == TrackingVerbosity.SUMMARISED ? null : body;
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.COSMOS_DB, method, uri, content, StatusCode.of(statusCode), null);
+        autoCorrelateCosmosWrite(options, info, statusCode, responseBody, who);
+    }
+
+    /** Six-arg overload (no response body / no write-correlation) — back-compatible. */
+    public static void cosmos(AzureTrackingOptions options, String httpMethod, URI requestUri,
+                              boolean isQuery, boolean isUpsert, String body, int statusCode) {
+        cosmos(options, httpMethod, requestUri, isQuery, isUpsert, body, statusCode, null);
+    }
+
+    /** Seeds {@code TestCorrelationStore} for a successful Cosmos write, mirroring .NET {@code AutoCorrelateIfWrite}. */
+    private static void autoCorrelateCosmosWrite(AzureTrackingOptions options, CosmosOperationInfo info,
+                                                 int statusCode, String responseBody, TestInfo who) {
+        if (!options.autoCorrelateWrites() || statusCode < 200 || statusCode >= 300) {
+            return;
+        }
+        boolean isWrite = info.operation() == CosmosOperation.CREATE
+            || info.operation() == CosmosOperation.UPSERT
+            || info.operation() == CosmosOperation.REPLACE;
+        if (!isWrite) {
+            return;
+        }
+        String documentId = info.documentId() != null ? info.documentId() : extractJsonId(responseBody);
+        if (documentId == null) {
+            return;
+        }
+        String key = options.changeFeedKeyExtractor() != null
+            ? options.changeFeedKeyExtractor().apply(options.serviceName(), documentId)
+            : CorrelationKeys.cosmos(options.serviceName(), documentId);
+        TestCorrelationStore.correlate(key, who.name(), who.id());
+    }
+
+    private static final java.util.regex.Pattern JSON_ID =
+        java.util.regex.Pattern.compile("\"id\"\\s*:\\s*\"(?<id>[^\"]*)\"");
+
+    /** Extracts the top-level {@code "id"} string from a JSON body (the .NET {@code ExtractIdFromResponseContent}). */
+    private static String extractJsonId(String json) {
+        if (json == null || json.isEmpty()) {
+            return null;
+        }
+        java.util.regex.Matcher m = JSON_ID.matcher(json);
+        return m.find() ? m.group("id") : null;
     }
 
     /**
@@ -214,10 +260,21 @@ public final class AzureTracking {
     public record AzureTrackingOptions(String serviceName, String callerName,
                                        Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
                                        boolean trackDuringSetup, boolean trackDuringAction,
-                                       TrackingVerbosity setupVerbosity, TrackingVerbosity actionVerbosity) {
+                                       TrackingVerbosity setupVerbosity, TrackingVerbosity actionVerbosity,
+                                       boolean autoCorrelateWrites,
+                                       BiFunction<String, String, String> changeFeedKeyExtractor) {
 
         public AzureTrackingOptions {
             verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
+        }
+
+        /** Eight-arg shape (no Cosmos write-correlation) — back-compatible. */
+        public AzureTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher,
+                                    TrackingVerbosity verbosity, boolean trackDuringSetup,
+                                    boolean trackDuringAction, TrackingVerbosity setupVerbosity,
+                                    TrackingVerbosity actionVerbosity) {
+            this(serviceName, callerName, testInfoFetcher, verbosity, trackDuringSetup, trackDuringAction,
+                setupVerbosity, actionVerbosity, false, null);
         }
 
         /** Three-arg shape (default verbosity, both phases tracked) — back-compatible. */
@@ -247,37 +304,59 @@ public final class AzureTracking {
         /** A copy with the given verbosity (Summarised omits the Cosmos document / Service Bus message). */
         public AzureTrackingOptions withVerbosity(TrackingVerbosity value) {
             return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, value,
-                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity,
+                autoCorrelateWrites, changeFeedKeyExtractor);
         }
 
         /** A copy with the given test-identity fetcher (the .NET {@code CurrentTestInfoFetcher}). */
         public AzureTrackingOptions withTestInfoFetcher(Supplier<TestInfo> value) {
             return new AzureTrackingOptions(serviceName, callerName, value, verbosity,
-                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity,
+                autoCorrelateWrites, changeFeedKeyExtractor);
         }
 
         /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
         public AzureTrackingOptions withTrackDuringSetup(boolean value) {
             return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                value, trackDuringAction, setupVerbosity, actionVerbosity);
+                value, trackDuringAction, setupVerbosity, actionVerbosity,
+                autoCorrelateWrites, changeFeedKeyExtractor);
         }
 
         /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
         public AzureTrackingOptions withTrackDuringAction(boolean value) {
             return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                trackDuringSetup, value, setupVerbosity, actionVerbosity);
+                trackDuringSetup, value, setupVerbosity, actionVerbosity,
+                autoCorrelateWrites, changeFeedKeyExtractor);
         }
 
         /** A copy with a Setup-phase verbosity override (the .NET {@code SetupVerbosity}; {@code null} = base). */
         public AzureTrackingOptions withSetupVerbosity(TrackingVerbosity value) {
             return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                trackDuringSetup, trackDuringAction, value, actionVerbosity);
+                trackDuringSetup, trackDuringAction, value, actionVerbosity,
+                autoCorrelateWrites, changeFeedKeyExtractor);
         }
 
         /** A copy with an Action-phase verbosity override (the .NET {@code ActionVerbosity}; {@code null} = base). */
         public AzureTrackingOptions withActionVerbosity(TrackingVerbosity value) {
             return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
-                trackDuringSetup, trackDuringAction, setupVerbosity, value);
+                trackDuringSetup, trackDuringAction, setupVerbosity, value,
+                autoCorrelateWrites, changeFeedKeyExtractor);
+        }
+
+        /** A copy that seeds {@code TestCorrelationStore} for successful Cosmos writes (the .NET
+         *  {@code AutoCorrelateWrites}) — so background change-feed processing can attribute to the test. */
+        public AzureTrackingOptions withAutoCorrelateWrites(boolean value) {
+            return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity,
+                value, changeFeedKeyExtractor);
+        }
+
+        /** A copy with a custom correlation-key extractor {@code (serviceName, documentId) -> key} (the .NET
+         *  {@code ChangeFeedKeyExtractor}; {@code null} = the default {@code CorrelationKeys.cosmos}). */
+        public AzureTrackingOptions withChangeFeedKeyExtractor(BiFunction<String, String, String> value) {
+            return new AzureTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity,
+                autoCorrelateWrites, value);
         }
     }
 }

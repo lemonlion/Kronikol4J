@@ -7,6 +7,7 @@ import com.azure.core.http.HttpMethod;
 import com.azure.core.http.HttpRequest;
 import io.kronikol.azure.AzureTracking.AzureTrackingOptions;
 import io.kronikol.core.constants.DependencyCategories;
+import io.kronikol.core.context.TestInfo;
 import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseLogger;
 import io.kronikol.core.tracking.StatusCode;
@@ -93,5 +94,27 @@ class KronikolAzureTrackingPolicyTest {
     void unrecognisedHostIsNotTracked() {
         policy().track(new HttpRequest(HttpMethod.GET, "https://example.com/api"), null, 200);
         assertThat(RequestResponseLogger.getAllLogs()).isEmpty();
+    }
+
+    @Test
+    void cosmosWriteAutoCorrelatesByResponseDocumentId() {
+        io.kronikol.core.context.TestCorrelationStore.clear();
+        try {
+            var withCorrelation = new KronikolAzureTrackingPolicy(
+                AzureTrackingOptions.forService("OrdersDb")
+                    .withTestInfoFetcher(() -> new TestInfo("MyTest", "id-1"))
+                    .withAutoCorrelateWrites(true));
+            // POST to a docs collection → Create; the new id comes from the response body.
+            HttpRequest request = new HttpRequest(HttpMethod.POST,
+                "https://acct.documents.azure.com/dbs/shop/colls/orders/docs");
+
+            withCorrelation.track(request, "{}", "{\"id\":\"o-1\"}", 201);
+
+            String key = io.kronikol.core.context.CorrelationKeys.cosmos("OrdersDb", "o-1");
+            assertThat(io.kronikol.core.context.TestCorrelationStore.resolve(key))
+                .isEqualTo(new TestInfo("MyTest", "id-1"));
+        } finally {
+            io.kronikol.core.context.TestCorrelationStore.clear();
+        }
     }
 }

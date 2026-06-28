@@ -586,7 +586,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   participant shapes (S3 storage, DynamoDB database, SQS/SNS queue) are golden-proven generically and the
   label/URI/category are unit-proven exactly, so a live-AWS golden re-proves the same path. (AWS EventBridge is
   tracked as its own item — its classifier+recorder are done, its SDK interceptor is the remaining thread there.)
-- [~] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,
+- [x] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,
   `autoCorrelateWrites`, change-feed key extractor), Blob, Service Bus. *(.NET `CosmosTrackingMessageHandler`
   etc.)*
   **Cosmos classifier done:** `CosmosOperationClassifier` (+ `CosmosOperation`, `CosmosOperationInfo`) ports
@@ -630,8 +630,18 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   (event pair + category + no-status, error→response content, non-event Complete, Summarised collapse); the
   wrappers are thin glue over that proven core (the concrete SB clients need a live broker to instantiate, so
   the recorder core carries the observable behaviour — the same tested-core/thin-SDK-glue split as the AWS/HTTP
-  adapters). **Remaining (`[~]`):** Cosmos `autoCorrelateWrites` (seed `TestCorrelationStore` for writes by
-  document id, like Mongo) + the change-feed key extractor, and a golden proof.
+  adapters).
+  **Cosmos write-correlation done (2026-06-28) → item complete `[x]`:** `AzureTrackingOptions` gained
+  `autoCorrelateWrites` + a `changeFeedKeyExtractor` (`BiFunction<serviceName,documentId,key>`); the
+  `AzureTracking.cosmos(...)` recorder (now with an optional `responseBody` arg) ports the .NET
+  `AutoCorrelateIfWrite` — on a successful (2xx) Create/Upsert/Replace it seeds `TestCorrelationStore` keyed by
+  the document id (from the path, else extracted from the response body's `"id"` field) via the extractor or
+  the default `CorrelationKeys.cosmos`. `KronikolAzureTrackingPolicy` buffers the response so its body is
+  readable for the id extraction without consuming it for the caller (the .NET reads response content too).
+  Proven by `KronikolAzureTrackingPolicyTest.cosmosWriteAutoCorrelatesByResponseDocumentId`. **All four Azure
+  services now auto-capture** (Cosmos/Blob/Storage Queues via the HTTP pipeline policy, Service Bus via the
+  AMQP client wrappers) with Cosmos write-correlation; golden coverage is the same as the other adapters
+  (participant rendering golden-proven generically; labels/URIs/categories unit-proven exactly).
 - [~] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
   classifiers + verbosity. *(.NET ships handlers + interceptors per service.)*
   **Pub/Sub classifier done:** `PubSubOperationClassifier` (+ `PubSubOperation`, `PubSubOperationInfo`) ports
