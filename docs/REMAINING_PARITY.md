@@ -501,7 +501,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   (fake factories via proxies: a created producer auto-tracks its send, a created consumer auto-tracks subscribe,
   non-factory beans pass through). Golden coverage is the same as the other adapters (queue rendering
   golden-proven generically; labels/URIs unit-proven). The Kafka adapter is complete.
-- [~] **`TrackingProxy` enhancements** (`kronikol4j-proxy`) — `TrackingLogMode` (Immediate **+ Deferred**,
+- [x] **`TrackingProxy` enhancements** (`kronikol4j-proxy`) — `TrackingLogMode` (Immediate **+ Deferred**,
   integrating `PendingRequestResponseLogs`); `ActivitySource`/OTel span lifecycle for InternalFlow span
   production (`InternalFlowSpanStore.complete(...)`); configurable `uriScheme` (hardcoded `proxy://local/`)
   and `activitySourceName`; `TrackingSafeSerializer` options. *(.NET `TrackingProxy.cs:25,53-116`.)*
@@ -511,9 +511,18 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   ids; and a pluggable `payloadSerializer` (default `String.valueOf`, plug a `TrackingSafeSerializer`-backed
   function for JSON). `ProxyOptions` gained the matching `withUriScheme`/`withLogMode`/`withIds`/`withSerializer`/
   `withTestInfoFetcher` builders. Proven by `TrackingProxyEnhancementsTest` (existing e2e test stays green via
-  the default serializer). **Remaining:** the `ActivitySource`/OTel span lifecycle for InternalFlow span
-  production (`InternalFlowSpanStore.complete`) + `activitySourceName` — OTel-coupled, lands with the
-  InternalFlow capture item.
+  the default serializer).
+  **OTel span lifecycle done (2026-06-28) → item complete `[x]`:** `ProxyOptions.activitySourceName` (+
+  `withActivitySourceName`) + `ProxyOtelSpan` — when set, each tracked call opens an OpenTelemetry span on the
+  named tracer (`GlobalOpenTelemetry.getTracer(activitySourceName).spanBuilder(<iface>.<method>)`), makes it
+  current, and ends it in a `finally` around the invoke (the .NET `ActivitySource` analog). opentelemetry-api
+  is `compileOnly` and all OTel access is isolated + guarded in `ProxyOtelSpan` (a classpath without OTel, or
+  no SDK, silently no-ops). InternalFlow span *production* happens via this span being captured by the
+  already-done `KronikolSpanProcessor` → `InternalFlowSpanStore` (the proper layering — the proxy emits an OTel
+  span, it does not reach into the report module's store). Proven by `TrackingProxyOtelSpanTest` (real
+  in-memory OTel SDK: one `Calculator.add` span from the `kronikol.proxy` tracer per call; none when
+  `activitySourceName` is unset). With the earlier `TrackingLogMode`/`uriScheme`/`ids`/serializer work, the
+  TrackingProxy enhancements item is complete.
 - [x] **gRPC** (`kronikol4j-grpc`) — extend beyond unary to **server-streaming, client-streaming, duplex**;
   Protobuf→JSON; `traceparent` injection; gRPC-status→HTTP-status mapping; verbosity. *(.NET
   `GrpcTrackingInterceptor.cs` overrides 5 call types; Java handles 1.)*

@@ -64,6 +64,20 @@ public final class TrackingProxy {
             String methodName = method.getName();
             URI uri = URI.create(options.uriScheme() + "/" + iface.getSimpleName() + "/" + methodName);
 
+            // Optional: open an OpenTelemetry span around the call (the .NET ActivitySource) so the
+            // KronikolSpanProcessor captures it for InternalFlow. No-ops when OTel is absent.
+            AutoCloseable span = options.activitySourceName() != null
+                ? ProxyOtelSpan.start(options.activitySourceName(), iface.getSimpleName() + "." + methodName)
+                : null;
+            try {
+                return invokeTracked(method, args, methodName, uri);
+            } finally {
+                closeQuietly(span);
+            }
+        }
+
+        private Object invokeTracked(java.lang.reflect.Method method, Object[] args, String methodName, URI uri)
+            throws Throwable {
             // Deferred: capture the interaction into the pending queue (no identity needed yet); a flush
             // handler emits it once the test identity is known.
             if (options.logMode() == TrackingLogMode.DEFERRED) {
@@ -99,6 +113,16 @@ public final class TrackingProxy {
                 log(who, methodName, uri, RequestResponseType.RESPONSE,
                     String.valueOf(t), StatusCode.of("Error"), trace, rr);
                 throw t;
+            }
+        }
+
+        private static void closeQuietly(AutoCloseable closeable) {
+            if (closeable != null) {
+                try {
+                    closeable.close();
+                } catch (Exception ignored) {
+                    // span end failure must not affect the call
+                }
             }
         }
 

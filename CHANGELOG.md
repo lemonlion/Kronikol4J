@@ -7,6 +7,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — TrackingProxy OTel span lifecycle (item [x])
+- **`ProxyOptions.activitySourceName`** + **`ProxyOtelSpan`** (`kronikol4j-proxy`) — when set, each tracked
+  proxy call opens an OpenTelemetry span on the named tracer (`<iface>.<method>`) and ends it around the
+  invoke (the .NET `ActivitySource` analog), so the `KronikolSpanProcessor` captures it into the InternalFlow
+  span store. opentelemetry-api is `compileOnly` and all access is isolated + guarded (no OTel / no SDK →
+  silent no-op). Proven by `TrackingProxyOtelSpanTest` (real in-memory OTel SDK). Completes the TrackingProxy
+  enhancements item.
+
 ### Completed — Kafka adapter (item [x])
 - **`KronikolKafkaFactoryBeanPostProcessor`** (`kronikol4j-messaging`) — a Spring `BeanPostProcessor`
   (spring-kafka + spring-beans `compileOnly`) that decorates Spring Kafka's `ProducerFactory`/`ConsumerFactory`
