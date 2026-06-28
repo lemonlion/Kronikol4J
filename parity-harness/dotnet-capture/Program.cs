@@ -28,6 +28,12 @@ CaptureSqlClassification();
 // Cross-runtime Redis-classifier parity (cache hit/miss + operation labels). Env-free.
 CaptureRedisClassification();
 
+// Cross-runtime Redis END-TO-END capture parity: drive the REAL .NET RedisTrackingDatabase (StackExchange)
+// against a live Redis (KRON_REDIS, default localhost:16379) and dump the emitted RequestResponseLog pairs.
+// The Java side drives the real Jedis adapter (Testcontainers) and byte-diffs. Gated on the env var so the
+// rest of the harness still runs without a Redis.
+if (Environment.GetEnvironmentVariable("KRON_REDIS_E2E") == "1") { CaptureRedisInteractions(); }
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1917,6 +1923,42 @@ void CaptureSqlClassification()
     }
     File.WriteAllText(Path.Combine(outDir, "sql-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
     Console.WriteLine($"=== sql-classification.txt ({battery.Length} cases) ===");
+}
+
+void CaptureRedisInteractions()
+{
+    var cs = Environment.GetEnvironmentVariable("KRON_REDIS") ?? "localhost:16379";
+    var mux = StackExchange.Redis.ConnectionMultiplexer.Connect(cs);
+    var inner = mux.GetDatabase(0);
+    foreach (var k in new[] { "k", "c", "h" }) { inner.KeyDelete(k); } // deterministic starting state
+    var options = new Kronikol.Extensions.Redis.RedisTrackingDatabaseOptions
+    {
+        ServiceName = "CartCache",
+        CurrentTestInfoFetcher = () => ("MyTest", "t1"),
+    };
+    var db = Kronikol.Extensions.Redis.RedisTrackingDatabase.Create(inner, options);
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    db.StringSet("k", "v");
+    db.StringGet("k");          // hit
+    db.StringGet("missing");    // miss
+    db.KeyDelete("k");
+    db.StringIncrement("c");
+    db.HashSet("h", "f", "v");
+    db.HashGet("h", "f");       // hit
+    db.HashGet("h", "absent");  // miss
+    var sb = new System.Text.StringBuilder();
+    foreach (var log in Kronikol.Tracking.RequestResponseLogger.RequestAndResponseLogs)
+    {
+        sb.Append(log.Type).Append('|')
+          .Append(log.Method.Value?.ToString() ?? "~null~").Append('|')
+          .Append(log.Uri?.ToString() ?? "~null~").Append('|')
+          .Append(log.Content ?? "~null~").Append('|')
+          .Append(log.StatusCode?.Value?.ToString() ?? "~null~").Append('\n');
+    }
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    mux.Dispose();
+    File.WriteAllText(Path.Combine(outDir, "redis-interactions.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== redis-interactions.txt ===\n{sb}");
 }
 
 void CaptureRedisClassification()

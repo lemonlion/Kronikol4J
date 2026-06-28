@@ -1834,3 +1834,14 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   This converts the capture-side classification/URI logic from "unit-proven against the spec" to "byte-proven
   against .NET's actual output." The full drive-a-real-service end-to-end check (Layer B, Testcontainers ↔ the
   .NET extension) is the next step, pending a running container engine.
+
+### Added — Redis end-to-end cross-runtime capture parity (Layer B, vs a live server)
+- `RedisInteractionParityTest` drives the **real Jedis adapter** against a live Redis and byte-diffs the emitted
+  `RequestResponseLog`s against the **real .NET StackExchange adapter** output (golden `redis-interactions.txt`
+  captured by the harness with `KRON_REDIS_E2E=1` against a container). `type | method-label | uri | status` are
+  byte-identical on every line and read-op content (hit value / miss null) matches. The check surfaced real
+  cross-client differences invisible to the fake-proxy unit tests: write-op response content differs by client
+  (Jedis `SET`→`OK`/`DEL`→count vs StackExchange→bool), and a genuine Java gap — the Jedis `HashSet` tracker
+  captures no `field=value` request content where .NET captures `f=v` (flagged for follow-up). The test takes a
+  configurable `kron.redis.endpoint` and skips when no Redis is reachable (Testcontainers couldn't negotiate
+  Rancher's Windows npipe from the JDK-25 test JVM).

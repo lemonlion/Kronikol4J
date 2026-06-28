@@ -14,10 +14,22 @@
 >    `ReportFinalizer` skips `TestRunReport.html` when off (data/specs/component still run). Proven by
 >    `ReportFinalizerTest`.
 >
-> **Byte-parity honest note:** report *rendering* is golden byte-proven (incl. the new standalone component
-> report). Capture-side adapters are unit-proven (classification/URI); their end-to-end "drive a real
-> service & diff against .NET" goldens are deferred as environment-dependent — not a tricky-skip, but not
-> byte-proven end-to-end either. `./gradlew clean build` + full suite + Playwright green.
+> **Byte-parity — capture side (updated after audit follow-up):** report *rendering* is golden byte-proven.
+> Capture-side parity is now also being byte-proven cross-runtime, not just unit-tested:
+> - **Classifiers (env-free):** `SqlClassificationParityTest` (19 cases) and `RedisClassificationParityTest`
+>   (15 cases, incl. cache hit/miss) byte-diff the Java classifiers against goldens captured from the **real
+>   .NET classifiers** (`parity-harness/dotnet-capture`). Both pass.
+> - **End-to-end vs a live service:** `RedisInteractionParityTest` drives the **real Jedis adapter** against a
+>   running Redis and byte-diffs the emitted `RequestResponseLog`s against the **real .NET StackExchange
+>   adapter** driven against a live Redis (golden `redis-interactions.txt`, harness `KRON_REDIS_E2E=1`).
+>   **Result:** `type | method-label | uri | status` are byte-identical on every line, and read-op content
+>   (hit value / miss null) matches. This **found real differences** the fake-proxy unit tests miss:
+>   write-op response content differs by client library (Jedis `SET`→`OK`/`DEL`→count vs StackExchange→bool),
+>   and a genuine **Java gap** — the Jedis `HashSet` tracker captures no `field=value` request content where
+>   .NET captures `f=v` (flagged for follow-up). Remaining adapters (Postgres/Mongo/Kafka/Elasticsearch +
+>   cloud emulators) follow the same recipe. Caveat: Testcontainers couldn't self-manage the container from the
+>   JDK-25 test JVM via Rancher's Windows npipe, so the e2e test takes a configurable `kron.redis.endpoint`
+>   (skips when no Redis is reachable). `./gradlew clean build` + full suite + Playwright green.
 
 **Purpose.** A prioritized, checklist-style breakdown of what is left to reach the stated goal:
 **Kronikol4J as a fully ported, usable port of Kronikol with every single feature / full functional

@@ -1,0 +1,16 @@
+Request|Set|redis://db0/k|v|~null~
+Response|Set|redis://db0/k|True|OK
+Request|Get|redis://db0/k|~null~|~null~
+Response|Get (Hit)|redis://db0/k|v|OK
+Request|Get|redis://db0/missing|~null~|~null~
+Response|Get (Miss)|redis://db0/missing|~null~|OK
+Request|Delete|redis://db0/k|~null~|~null~
+Response|Delete|redis://db0/k|True|OK
+Request|Increment|redis://db0/c|~null~|~null~
+Response|Increment|redis://db0/c|1|OK
+Request|HashSet|redis://db0/h|f=v|~null~
+Response|HashSet|redis://db0/h|True|OK
+Request|HashGet|redis://db0/h|~null~|~null~
+Response|HashGet (Hit)|redis://db0/h|v|OK
+Request|HashGet|redis://db0/h|~null~|~null~
+Response|HashGet (Miss)|redis://db0/h|~null~|OK
