@@ -337,10 +337,22 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   **Spring `WebClient` done:** `KronikolWebClientFilter` (an `ExchangeFilterFunction`, spring-webflux
   `compileOnly`) — gating, identity/trace + traceparent injection, service-name resolution, and response-body
   capture via buffer-and-re-supply (the caller still reads the body). Proven by `KronikolWebClientFilterTest`
-  (JDK connector + MockWebServer). **Remaining (2 small bits):** (a) WebClient *request*-body capture — its
-  body is a write-only reactive `BodyInserter`, readable only at the `ClientHttpConnector` layer (OkHttp/JDK
-  capture both bodies); (b) arbitrary `headersToForward` propagation from an incoming request context
-  (servlet-coupled; overlaps the Tier-2 `TestTrackingMessageHandlerOptions` item).
+  (JDK connector + MockWebServer).
+  **WebClient request-body capture done (2026-06-28):** `KronikolWebClientConnector` — a `ClientHttpConnector`
+  decorator (the transport layer, where the otherwise write-only `BodyInserter` is readable) that captures
+  **both** bodies, the WebClient analog of the OkHttp/JDK both-body capture and the .NET `DelegatingHandler`.
+  It tees the request body (`ClientHttpRequestDecorator.writeWith`/`writeAndFlushWith`, peek-copy without
+  advancing the read position) and the response body (`ClientHttpResponseDecorator.getBody`, emit-on-finally),
+  injects the identity/trace + W3C `traceparent` headers via `beforeCommit` (the supported connector-decorator
+  hook — eager header sets are dropped at commit), and reuses the shared `ServiceNameResolver`/`ExcludedHosts`/
+  phase-gating/`TrackingVerbosity` infra. The existing `KronikolWebClientFilter` stays as the lighter
+  response-only option. Proven by `KronikolWebClientConnectorTest` (JDK connector + MockWebServer: both bodies
+  captured + caller still reads the response, identity/traceparent on the wire, no-test-context pass-through).
+  **Remaining (`[~]`):** only (b) arbitrary `headersToForward` propagation — copying named headers from the
+  *incoming* server request onto the outgoing call. It needs an ambient incoming-request-header source (the
+  .NET `HttpContextAccessor` analog); the `TestTrackingServerBridge` reads identity from a request but there is
+  no ambient per-request header accessor yet, and adding one couples to the servlet/Spring request context.
+  This is the one genuinely blocked HTTP bit (a small SPI seam + servlet-filter wiring + per-adapter copy).
 - [x] **SQL / JDBC** (`kronikol4j-jdbc`) — wrap `DataSource`/`Connection`/`Statement`/`ResultSet`; multi-
   dialect `UnifiedSqlClassifier` (table extraction, CTE stripping, upsert variants, stored-proc detection);
   response capture (`TrackingDbDataReader` → row count / columns / rows); per-driver `DependencyCategory`;

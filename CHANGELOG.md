@@ -7,6 +7,17 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — KronikolWebClientConnector: WebClient both-body capture (HTTP item progress)
+- **`KronikolWebClientConnector`** (`kronikol4j-spring`) — a `ClientHttpConnector` decorator that captures
+  **both** the request and response bodies of a `WebClient` exchange (the filter could only read the response,
+  since a WebClient request body is a write-only reactive `BodyInserter` readable only at the connector layer).
+  Tees the request body (`ClientHttpRequestDecorator.writeWith`/`writeAndFlushWith`, peek-copy) and the
+  response body (`ClientHttpResponseDecorator.getBody`), injects identity/trace + W3C `traceparent` headers via
+  `beforeCommit`, and reuses the shared service-resolution / excluded-hosts / phase-gating / verbosity infra.
+  The lighter response-only `KronikolWebClientFilter` remains. Proven by `KronikolWebClientConnectorTest`
+  (JDK connector + MockWebServer). HTTP stays open only for `headersToForward` (needs an ambient
+  incoming-request-header source — the `HttpContextAccessor` analog).
+
 ### Added — Track.attachment via core→report SPI seam (Assertion-fidelity progress)
 - **`Track.attachment(filePath)`** / **`Track.attachment(filePath, name)`** (the .NET `Track.Attachment`) —
   resolve the test id and forward a file attachment to `StepCollector.addAttachment` across the core→report
