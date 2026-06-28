@@ -1,14 +1,23 @@
 # Kronikol4J — Remaining Parity Roadmap
 
-> ## ✅ COMPLETE (2026-06-28)
-> **Every item in this roadmap is now `[x]`.** Kronikol4J has reached full functional parity with the .NET
-> Kronikol — capture/instrumentation adapters, configuration surface, step tracking, assertion fidelity,
-> internal-flow capture, component diagram, and build-time-weaving auto-wiring are all done and tested
-> (`./gradlew clean build` + the full suite + Playwright green). The only deliberate exclusions are documented
-> design boundaries, not gaps: **server-side PlantUML image rendering** (Java renders in-browser via
-> PlantUML-WASM) and the **C#-IL / Roslyn-source compile-time rewriters** (the runtime ByteBuddy agents are the
-> IL-weaver analog; closure-value resolution from unnamed Java lambda fields is structurally impossible without
-> a compile-time pass). Per-item details remain below as the implementation record.
+> ## ✅ COMPLETE — incl. 2 audit-found gaps now fixed (2026-06-28)
+> An independent re-audit against the .NET source (not trusting this ledger) **confirmed** the dead-config /
+> boundary closes were correct and the full `ReportConfigurationOptions` surface is covered — and found **two
+> real gaps that had been wrongly closed, now fixed:**
+> 1. **Standalone `ComponentDiagram.html` report** — `.NET ReportGenerator` emits a *separate* component-diagram
+>    HTML file (gated by `GenerateComponentDiagram`, default true); its `useBrowserJs` path is in-scope. **Fixed:**
+>    new `io.kronikol.report.ComponentDiagramReportGenerator` (browserJs self-contained page, reusing the
+>    golden-proven assets), written by `ReportFinalizer`, and **byte-for-byte golden-proven** vs real .NET
+>    (`ComponentDiagramReportGoldenTest`, captured via a new `CaptureComponentDiagramReport` harness case). Flag
+>    semantics realigned: `generateComponentDiagram` → standalone file; `embedInTestRunReport` → embedding.
+> 2. **`GenerateTestRunReport`** (HTML master switch, default true). **Fixed:** added to `ReportControlOptions`;
+>    `ReportFinalizer` skips `TestRunReport.html` when off (data/specs/component still run). Proven by
+>    `ReportFinalizerTest`.
+>
+> **Byte-parity honest note:** report *rendering* is golden byte-proven (incl. the new standalone component
+> report). Capture-side adapters are unit-proven (classification/URI); their end-to-end "drive a real
+> service & diff against .NET" goldens are deferred as environment-dependent — not a tricky-skip, but not
+> byte-proven end-to-end either. `./gradlew clean build` + full suite + Playwright green.
 
 **Purpose.** A prioritized, checklist-style breakdown of what is left to reach the stated goal:
 **Kronikol4J as a fully ported, usable port of Kronikol with every single feature / full functional
@@ -805,16 +814,22 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   timestamps (empty stats). Proven by `ComponentRelationshipStatsTest` (percentiles/error-rate/coverage/pairing)
   + `ComponentDiagramGeneratorOptionsTest` (stats label, error part, hotspot colours, low-coverage dashed); full
   build + goldens green.
-  **Final fields resolved (2026-06-28) → item complete `[x]`.** A close read of the .NET callers settled the
-  remaining fields:
-  - **`embedInTestRunReport`** — now consumed: `HtmlReportGenerator` embeds the run-level component diagram only
-    when `generateComponentDiagram() && componentDiagram().embedInTestRunReport()` (the .NET
-    `ShouldEmbedComponentDiagram = ComponentDiagramOptions.EmbedInTestRunReport`). Proven by
-    `HtmlReportGeneratorTest.omitsTheComponentDiagramWhenEmbedDisabled`.
-  - **`fileName`** — the standalone *rendered-image* component-diagram file (`{FileName}.html` + image), written
-    only by `ComponentDiagramReportGenerator` via the PlantUML server / local image renderer. That is the
-    **server-side PlantUML image rendering explicitly excluded from the port** (Java renders in-browser via
-    PlantUML-WASM, no separate file) — a documented N/A boundary, not a gap.
+  **✅ AUDIT-FOUND GAP FIXED (2026-06-28): the standalone component-diagram report.** `fileName` is NOT purely a
+  server-render boundary — `.NET ComponentDiagramReportGenerator.GenerateComponentDiagramReport` emits a
+  **standalone `{FileName}.html`** and in `useBrowserJs` mode (the Java rendering mode) that HTML is a
+  self-contained PlantUML-WASM page (in-scope); `.NET ReportGenerator` calls it whenever `GenerateComponentDiagram`
+  is true (default). **Fixed:** new `io.kronikol.report.ComponentDiagramReportGenerator.generateHtml(logs, opts)`
+  reproduces the .NET browserJs page exactly (favicon + `context-menu-styles.css`+`inline-svg-styles.css` +
+  `plantuml-browser-render-script.js`+`context-menu-script.js` + the gzip `data-plantuml-z` div), reusing the
+  golden-proven `asset()`/`compressToBase64`/`PLANTUML_CDN_BASE`/`FAVICON_DATA_URI`. `ReportFinalizer` writes
+  `<fileName>.html` when `generateComponentDiagram()`. **Byte-for-byte golden-proven** against real .NET by
+  `ComponentDiagramReportGoldenTest` (fixture from the new `CaptureComponentDiagramReport` harness case;
+  data-plantuml-z asserted decoded, with CRLF/trailing-newline normalised per §6.5).
+  - **`fileName`** — now consumed (the standalone report's base name). The server-rendered *image* variants
+    (`Server`/`Local`/`NodeJs` `PlantUmlRendering`) remain the excluded server-side rendering.
+  - **`embedInTestRunReport`** — now the *sole* gate for embedding in the test-run report (the .NET
+    `ShouldEmbedComponentDiagram = EmbedInTestRunReport`), independent of `generateComponentDiagram` (which gates
+    the standalone file) — semantics realigned. Proven by `HtmlReportGeneratorTest` + `ReportFinalizerTest`.
   - **`showRelationshipFlows` / `relationshipFlowStyle` / `showSystemFlameChart` / `maxFlameChartTests`** —
     **verified .NET dead-config**: declared on `ComponentDiagramOptions` but read **nowhere** else; both .NET
     report callers invoke `GeneratePlantUml(...)` *without* the `stats` arg (stats always null), so the

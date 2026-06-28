@@ -27,78 +27,97 @@ package io.kronikol.report;
  * @param expectedTestCount  guard against partial runs: when set and the run produced fewer scenarios than
  *                            this, the Specifications report/data are suppressed (the .NET
  *                            {@code ExpectedTestCount}, default {@code null} = no guard)
+ * @param generateTestRunReport  master switch for the HTML test-run report itself (the .NET
+ *                            {@code GenerateTestRunReport}, default {@code true}); when {@code false} the
+ *                            finalizer skips writing {@code TestRunReport.html} (data/specs/component still run)
  */
 public record ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
                                    boolean generateComponentDiagram, boolean generateMergeableData,
-                                   boolean generateTestRunReportData, Integer expectedTestCount) {
+                                   boolean generateTestRunReportData, Integer expectedTestCount,
+                                   boolean generateTestRunReport) {
 
     /** The .NET-default file name (without extension). */
     public static final String DEFAULT_HTML_FILE_NAME = "TestRunReport";
 
     /** The .NET defaults: no title override (caller's title used), {@code "TestRunReport"} file name,
-     *  component diagram on, no standalone mergeable fragment, test-run data on, no expected-count guard. */
+     *  component diagram on, no standalone mergeable fragment, test-run data on, no expected-count guard,
+     *  HTML test-run report on. */
     public static final ReportControlOptions DEFAULTS =
-        new ReportControlOptions(null, DEFAULT_HTML_FILE_NAME, true, false, true, null);
+        new ReportControlOptions(null, DEFAULT_HTML_FILE_NAME, true, false, true, null, true);
 
     public ReportControlOptions {
         htmlReportFileName = (htmlReportFileName == null || htmlReportFileName.isBlank())
             ? DEFAULT_HTML_FILE_NAME : htmlReportFileName;
     }
 
-    /** Two-arg shape (component diagram on, no mergeable data, data on, no guard) — back-compatible. */
+    /** Two-arg shape (component diagram on, no mergeable data, data on, no guard, HTML report on). */
     public ReportControlOptions(String testRunReportTitle, String htmlReportFileName) {
-        this(testRunReportTitle, htmlReportFileName, true, false, true, null);
+        this(testRunReportTitle, htmlReportFileName, true, false, true, null, true);
     }
 
-    /** Three-arg shape (no mergeable data, data on, no guard) — back-compatible. */
+    /** Three-arg shape — back-compatible. */
     public ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
                                 boolean generateComponentDiagram) {
-        this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, false, true, null);
+        this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, false, true, null, true);
     }
 
-    /** Four-arg shape (data on, no guard) — back-compatible. */
+    /** Four-arg shape — back-compatible. */
     public ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
                                 boolean generateComponentDiagram, boolean generateMergeableData) {
         this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, generateMergeableData, true,
-            null);
+            null, true);
     }
 
-    /** Five-arg shape (no guard) — back-compatible. */
+    /** Five-arg shape — back-compatible. */
     public ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
                                 boolean generateComponentDiagram, boolean generateMergeableData,
                                 boolean generateTestRunReportData) {
         this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, generateMergeableData,
-            generateTestRunReportData, null);
+            generateTestRunReportData, null, true);
+    }
+
+    /** Six-arg shape (HTML test-run report on) — back-compatible with the pre-{@code generateTestRunReport} record. */
+    public ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
+                                boolean generateComponentDiagram, boolean generateMergeableData,
+                                boolean generateTestRunReportData, Integer expectedTestCount) {
+        this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, generateMergeableData,
+            generateTestRunReportData, expectedTestCount, true);
     }
 
     public ReportControlOptions withTestRunReportTitle(String value) {
         return new ReportControlOptions(value, htmlReportFileName, generateComponentDiagram,
-            generateMergeableData, generateTestRunReportData, expectedTestCount);
+            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport);
     }
 
     public ReportControlOptions withHtmlReportFileName(String value) {
         return new ReportControlOptions(testRunReportTitle, value, generateComponentDiagram,
-            generateMergeableData, generateTestRunReportData, expectedTestCount);
+            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport);
     }
 
     public ReportControlOptions withGenerateComponentDiagram(boolean value) {
         return new ReportControlOptions(testRunReportTitle, htmlReportFileName, value,
-            generateMergeableData, generateTestRunReportData, expectedTestCount);
+            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport);
     }
 
     public ReportControlOptions withGenerateMergeableData(boolean value) {
         return new ReportControlOptions(testRunReportTitle, htmlReportFileName, generateComponentDiagram,
-            value, generateTestRunReportData, expectedTestCount);
+            value, generateTestRunReportData, expectedTestCount, generateTestRunReport);
     }
 
     public ReportControlOptions withGenerateTestRunReportData(boolean value) {
         return new ReportControlOptions(testRunReportTitle, htmlReportFileName, generateComponentDiagram,
-            generateMergeableData, value, expectedTestCount);
+            generateMergeableData, value, expectedTestCount, generateTestRunReport);
     }
 
     public ReportControlOptions withExpectedTestCount(Integer value) {
         return new ReportControlOptions(testRunReportTitle, htmlReportFileName, generateComponentDiagram,
-            generateMergeableData, generateTestRunReportData, value);
+            generateMergeableData, generateTestRunReportData, value, generateTestRunReport);
+    }
+
+    /** Master switch for the HTML test-run report (the .NET {@code GenerateTestRunReport}). */
+    public ReportControlOptions withGenerateTestRunReport(boolean value) {
+        return new ReportControlOptions(testRunReportTitle, htmlReportFileName, generateComponentDiagram,
+            generateMergeableData, generateTestRunReportData, expectedTestCount, value);
     }
 
     /** The report title to use given a caller-supplied default: the override when set, else {@code fallback}. */

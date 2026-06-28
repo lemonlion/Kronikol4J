@@ -7,6 +7,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Fixed — 2 parity gaps found by independent audit (2026-06-28)
+- **Standalone component-diagram report** (`ComponentDiagramReportGenerator`, `kronikol4j-report`) — the .NET
+  `ComponentDiagramReportGenerator.GenerateComponentDiagramReport` browserJs page was missing (Java only
+  embedded the diagram). Now generated and written by `ReportFinalizer` as `ComponentDiagram.html` (gated by
+  `generateComponentDiagram`), **byte-for-byte golden-proven** against real .NET via a new
+  `CaptureComponentDiagramReport` harness case + `ComponentDiagramReportGoldenTest`. Flag semantics realigned to
+  .NET: `generateComponentDiagram` → standalone file; `embedInTestRunReport` → embedding.
+- **`GenerateTestRunReport`** master switch (`ReportControlOptions.generateTestRunReport`, default true) — added;
+  `ReportFinalizer` now skips `TestRunReport.html` when off (data/specs/component still run). Proven by
+  `ReportFinalizerTest`.
+- The audit otherwise confirmed the dead-config/boundary closes and the full `ReportConfigurationOptions`
+  surface; capture-side adapters remain unit-proven (end-to-end live-service goldens are environment-deferred).
+
 ### Resolved — Assertion fidelity item complete (last roadmap item) 🎉
 - The two remaining pieces are verified C#-specific boundaries with the Java-appropriate equivalent already
   shipped: **closure-value resolution** needs source variable names emitted by the C# AssertionWeaver (Java

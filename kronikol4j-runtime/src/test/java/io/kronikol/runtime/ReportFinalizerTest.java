@@ -345,16 +345,43 @@ class ReportFinalizerTest {
     }
 
     @Test
-    void finalizeOmitsComponentDiagramWhenDisabled(@TempDir Path dir) throws IOException {
+    void finalizeWritesStandaloneComponentDiagramReportWhenEnabled(@TempDir Path dir) throws IOException {
         trackCheckout(); // a Test -> OrderService HTTP interaction → a run-level component diagram
         RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
 
+        // Default: embedded in the test-run report AND a standalone ComponentDiagram.html written (the .NET
+        // GenerateComponentDiagram standalone report + EmbedInTestRunReport embedding, both default true).
         var on = ReportFinalizer.finalizeRun(dir.resolve("on"), "Run", ReportOptions.defaults());
-        assertThat(Files.readString(on.htmlFile())).contains("id=\"component-diagram\""); // default: present
+        assertThat(Files.readString(on.htmlFile())).contains("id=\"component-diagram\""); // embedded
+        assertThat(dir.resolve("on/ComponentDiagram.html")).exists();                     // standalone file
 
+        // generateComponentDiagram=false → no standalone file; embedding is independent (still present).
         var off = ReportFinalizer.finalizeRun(dir.resolve("off"), "Run",
             ReportOptions.defaults().withGenerateComponentDiagram(false));
-        assertThat(Files.readString(off.htmlFile())).doesNotContain("id=\"component-diagram\"");
+        assertThat(dir.resolve("off/ComponentDiagram.html")).doesNotExist();
+        assertThat(Files.readString(off.htmlFile())).contains("id=\"component-diagram\""); // embed unaffected
+
+        // embedInTestRunReport=false → no embed; standalone file still written (generateComponentDiagram true).
+        var noEmbed = ReportFinalizer.finalizeRun(dir.resolve("noembed"), "Run",
+            ReportOptions.defaults().withComponentDiagramOptions(
+                io.kronikol.report.component.ComponentDiagramOptions.builder().embedInTestRunReport(false).build()));
+        assertThat(Files.readString(noEmbed.htmlFile())).doesNotContain("id=\"component-diagram\"");
+        assertThat(dir.resolve("noembed/ComponentDiagram.html")).exists();
+    }
+
+    @Test
+    void finalizeSkipsHtmlReportWhenGenerateTestRunReportIsOff(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        // .NET GenerateTestRunReport=false → no TestRunReport.html; data/component still produced.
+        var result = ReportFinalizer.finalizeRun(dir, "Run",
+            ReportOptions.defaults().withGenerateTestRunReport(false));
+
+        assertThat(result).isNull();                                      // no HTML report returned
+        assertThat(dir.resolve("TestRunReport.html")).doesNotExist();     // not written
+        assertThat(dir.resolve("ComponentDiagram.html")).exists();        // component report still written
+        assertThat(dir.resolve("TestRunReport.json")).exists();           // data still written
     }
 
     @Test

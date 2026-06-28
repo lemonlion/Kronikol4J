@@ -60,11 +60,11 @@ public final class HtmlReportGenerator {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }
         }
-        // Embed the run-level component diagram when generation is on AND it is to be embedded in the test-run
-        // report (the .NET ShouldEmbedComponentDiagram = ComponentDiagramOptions.EmbedInTestRunReport).
-        String componentDiagram =
-            options.generateComponentDiagram() && options.componentDiagram().embedInTestRunReport()
-                ? componentDiagram(logs, options.componentDiagram()) : null;
+        // Embed the run-level component diagram when it is to be embedded in the test-run report — the .NET
+        // ShouldEmbedComponentDiagram = ComponentDiagramOptions.EmbedInTestRunReport (independent of
+        // GenerateComponentDiagram, which gates the *standalone* ComponentDiagram.html written by the finalizer).
+        String componentDiagram = options.componentDiagram().embedInTestRunReport()
+            ? componentDiagram(logs, options.componentDiagram()) : null;
         return generateFromDiagrams(features, diagramByTestId, componentDiagram, outputDir,
             options.control().resolveTitle(title), options.customization(),
             options.control().htmlReportFileName());

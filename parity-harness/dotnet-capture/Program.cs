@@ -17,6 +17,9 @@ Directory.CreateDirectory(outDir);
 // Component diagram (browser path → useC4:false), default options (DependencyType arrow colours).
 CaptureComponent("component", FanOut());
 
+// Standalone component-diagram HTML report (browserJs self-contained page).
+CaptureComponentDiagramReport();
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1859,6 +1862,19 @@ void CaptureComponent(string name, List<RequestResponseLog> logs)
     Console.WriteLine($"=== {name} ({puml.Length} chars) ===");
     Console.WriteLine(puml);
     Console.WriteLine();
+}
+
+void CaptureComponentDiagramReport()
+{
+    // Standalone component-diagram HTML report in the default browserJs mode (self-contained PlantUML-WASM page).
+    var options = new ReportConfigurationOptions
+    {
+        ComponentDiagramOptions = new ComponentDiagramOptions { Title = "Component Diagram" }
+    };
+    var result = ComponentDiagramReportGenerator.GenerateComponentDiagramReport(FanOut(), options);
+    var html = File.ReadAllText(result.HtmlFilePath).ReplaceLineEndings("\n");
+    File.WriteAllText(Path.Combine(outDir, "component-diagram-report.html"), html);
+    Console.WriteLine($"=== component-diagram-report.html ({html.Length} chars) ===");
 }
 
 Capture("simple-http", SimpleHttp(), arrowColors: false);

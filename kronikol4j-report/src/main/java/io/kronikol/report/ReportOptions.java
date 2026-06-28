@@ -366,6 +366,16 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return control.generateComponentDiagram();
     }
 
+    /** Master switch for the HTML test-run report (the .NET {@code GenerateTestRunReport}). */
+    public ReportOptions withGenerateTestRunReport(boolean value) {
+        return withControl(control.withGenerateTestRunReport(value));
+    }
+
+    /** Whether the HTML test-run report is written (delegates to {@link #control()}). */
+    public boolean generateTestRunReport() {
+        return control.generateTestRunReport();
+    }
+
     /** Writes the standalone mergeable fragment for {@code kronikol merge} (the .NET {@code GenerateMergeableData}). */
     public ReportOptions withGenerateMergeableData(boolean value) {
         return withControl(control.withGenerateMergeableData(value));

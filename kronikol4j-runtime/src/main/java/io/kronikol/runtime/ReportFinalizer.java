@@ -4,6 +4,7 @@ import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseLogger;
 import io.kronikol.diagram.model.PlantUmlForTest;
 import io.kronikol.diagram.plantuml.PlantUmlCreator;
+import io.kronikol.report.ComponentDiagramReportGenerator;
 import io.kronikol.report.HtmlReportGenerator;
 import io.kronikol.report.HtmlReportGenerator.GeneratedReport;
 import io.kronikol.report.ReportOptions;
@@ -88,7 +89,20 @@ public final class ReportFinalizer {
         }
         List<Feature> features = RunResults.toFeatures();
         List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
-        GeneratedReport report = HtmlReportGenerator.generate(features, logs, outputDir, title, options);
+        // .NET GenerateTestRunReport master switch: skip the HTML test-run report when off (data / specs /
+        // component diagram still run). Returns null in that case.
+        GeneratedReport report = options.generateTestRunReport()
+            ? HtmlReportGenerator.generate(features, logs, outputDir, title, options)
+            : null;
+        if (options.generateComponentDiagram()) {
+            // .NET GenerateComponentDiagram: write the standalone ComponentDiagram.html (browserJs self-contained
+            // page) — distinct from embedding the diagram in the test-run report (gated by embedInTestRunReport).
+            Files.createDirectories(outputDir);
+            Files.writeString(
+                outputDir.resolve(options.componentDiagram().fileName() + ".html"),
+                ComponentDiagramReportGenerator.generateHtml(logs, options.componentDiagram()),
+                StandardCharsets.UTF_8);
+        }
         writeReportData(outputDir, features, logs, options);
         writeCiOutputs(outputDir, features, logs, options);
         if (options.diagnosticMode()) {

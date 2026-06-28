@@ -72,7 +72,7 @@ public final class DotNetHtmlReportRenderer {
         "https://cdn.jsdelivr.net/gh/lemonlion/plantuml-js-plantuml_limit_size_98304@v1.2026.3beta6-patched";
 
     /** The .NET {@code Constants.DefaultFavicon.DataUri} (compile-time concatenation, verbatim). */
-    private static final String FAVICON_DATA_URI =
+    static final String FAVICON_DATA_URI =
         "data:image/svg+xml;base64,"
         + "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjgg"
         + "MTI4IiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCI+DQogIDxkZWZzPg0KICAgIDxsaW5lYXJHcmFk"
