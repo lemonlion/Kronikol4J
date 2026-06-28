@@ -7,6 +7,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Azure Service Bus tracking (Azure item progress)
+- **`ServiceBusInteractionRecorder`** + **`TrackingServiceBusSender`/`TrackingServiceBusReceiver`**
+  (`kronikol4j-azure`) — Service Bus is AMQP (not HTTP), so it uses client-decorator wrappers
+  (azure-messaging-servicebus `compileOnly`) over a recorder that ports the .NET `ServiceBusTracker`:
+  event-styled request/response pair on the `ServiceBus` category, `servicebus://<queue>[/<sub>]` URI, `EVENT`
+  meta for send/receive/schedule/peek (no HTTP status, matching .NET), per-phase verbosity. The sender/receiver
+  wrappers track `sendMessage`/`sendMessages`/`receiveMessages`/`peekMessage`. Proven by
+  `ServiceBusInteractionRecorderTest`. With the earlier HTTP policy (Cosmos/Blob/StorageQueue), all four Azure
+  services now auto-capture; the Azure item remains open only for Cosmos `autoCorrelateWrites` + change-feed.
+
 ### Added — Azure Cosmos/Blob HTTP pipeline policy (Azure item progress)
 - **`KronikolAzureTrackingPolicy`** (`kronikol4j-azure`) — a unified Azure SDK `HttpPipelinePolicy` (azure-core
   `compileOnly`) auto-capturing the HTTP-based Azure services: Cosmos (`*.documents.azure.com`, reading the

@@ -10,6 +10,8 @@ dependencies {
     api(project(":kronikol4j-core"))
     // The Azure SDK HttpPipelinePolicy SPI + HttpRequest/HttpResponse (the user brings the Azure SDK).
     compileOnly("com.azure:azure-core:1.52.0")
+    // The Service Bus (AMQP) client types the TrackingServiceBusSender/Receiver wrappers decorate.
+    compileOnly("com.azure:azure-messaging-servicebus:7.17.0")
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
     testImplementation("com.azure:azure-core:1.52.0")

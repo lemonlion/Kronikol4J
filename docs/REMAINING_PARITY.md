@@ -618,10 +618,20 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   MessageQueue), per-phase verbosity (Raw → raw method + URI; Summarised → drop body + skip Other). Proven by
   `KronikolAzureTrackingPolicyTest` (Cosmos read + query-header, Blob query-strip, StorageQueue routing,
   unrecognised-host skip) with real `com.azure.core.http.HttpRequest`s. (`KronikolAzureStorageQueuePolicy`
-  remains a focused queue-only alternative.) **Remaining (`[~]`):** the **Service Bus** tracking — .NET uses
-  AMQP client wrappers (`TrackingServiceBusSender`/`Receiver`), not an HTTP policy, so it is a separate
-  client-decorator mechanism (the `ServiceBusOperationClassifier` is already done); plus `autoCorrelateWrites`/
-  change-feed key extractor for Cosmos, and a golden proof.
+  remains a focused queue-only alternative.)
+  **Service Bus done (2026-06-28):** `ServiceBusInteractionRecorder` (+ `ServiceBusTrackerOptions`) ports the
+  .NET `ServiceBusTracker` — an event-styled request/response pair on the `ServiceBus` category with the
+  classifier's label, the `servicebus://<queue>[/<sub>]` URI, `EVENT` meta for send/receive/schedule/peek (no
+  HTTP status, matching .NET), per-phase verbosity (Summarised body-drop) + variants. The AMQP client
+  decorators `TrackingServiceBusSender`/`TrackingServiceBusReceiver` (azure-messaging-servicebus `compileOnly`;
+  the Java SB clients are concrete classes, so explicit decorators not subclasses) wrap a real
+  `ServiceBusSenderClient`/`ServiceBusReceiverClient` and track `sendMessage`/`sendMessages`/`receiveMessages`/
+  `peekMessage` (recording the failure message on error). Proven by `ServiceBusInteractionRecorderTest`
+  (event pair + category + no-status, error→response content, non-event Complete, Summarised collapse); the
+  wrappers are thin glue over that proven core (the concrete SB clients need a live broker to instantiate, so
+  the recorder core carries the observable behaviour — the same tested-core/thin-SDK-glue split as the AWS/HTTP
+  adapters). **Remaining (`[~]`):** Cosmos `autoCorrelateWrites` (seed `TestCorrelationStore` for writes by
+  document id, like Mongo) + the change-feed key extractor, and a golden proof.
 - [~] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
   classifiers + verbosity. *(.NET ships handlers + interceptors per service.)*
   **Pub/Sub classifier done:** `PubSubOperationClassifier` (+ `PubSubOperation`, `PubSubOperationInfo`) ports
