@@ -82,6 +82,19 @@ class TrackingProxyEnhancementsTest {
     }
 
     @Test
+    void actionPhaseSuppressionPassesThroughUntracked() {
+        Calculator calc = TrackingProxy.wrap(Calculator.class, Integer::sum,
+            baseOptions().withTrackDuringAction(false));
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);
+        try {
+            assertThat(calc.add(2, 3)).isEqualTo(5); // call still runs (pass-through)
+            assertThat(RequestResponseLogger.getAllLogs()).isEmpty(); // but untracked in the Action phase
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void customSerializerControlsContent() {
         Calculator calc = TrackingProxy.wrap(Calculator.class, Integer::sum,
             baseOptions().withSerializer(value -> "<" + value + ">"));

@@ -20,52 +20,75 @@ import java.util.function.Supplier;
  * @param payloadSerializer  serialises a call argument / return value to note content (default
  *                           {@code String.valueOf}; plug a {@code TrackingSafeSerializer}-backed function for
  *                           JSON).
+ * @param trackDuringSetup   track calls made during the Setup phase (the .NET {@code TrackDuringSetup}, default {@code true}).
+ * @param trackDuringAction  track calls made during the Action phase (the .NET {@code TrackDuringAction}, default {@code true}).
  */
 public record ProxyOptions(String serviceName, String callerName, String dependencyCategory,
                            Supplier<TestInfo> testInfoFetcher, String uriScheme, TrackingLogMode logMode,
-                           IdGenerator ids, Function<Object, String> payloadSerializer) {
+                           IdGenerator ids, Function<Object, String> payloadSerializer,
+                           boolean trackDuringSetup, boolean trackDuringAction) {
 
     /** The default serialiser: the value's {@code String.valueOf} (preserving the original proxy behaviour). */
     public static final Function<Object, String> DEFAULT_SERIALIZER =
         value -> value == null ? null : String.valueOf(value);
 
+    /** Eight-arg shape (both phases tracked) — the back-compatible constructor. */
+    public ProxyOptions(String serviceName, String callerName, String dependencyCategory,
+                        Supplier<TestInfo> testInfoFetcher, String uriScheme, TrackingLogMode logMode,
+                        IdGenerator ids, Function<Object, String> payloadSerializer) {
+        this(serviceName, callerName, dependencyCategory, testInfoFetcher, uriScheme, logMode, ids,
+            payloadSerializer, true, true);
+    }
+
     public static ProxyOptions forService(String serviceName) {
         return new ProxyOptions(serviceName, TrackingDefaults.CALLER_NAME, null, null,
-            "proxy://local", TrackingLogMode.IMMEDIATE, IdGenerator.random(), DEFAULT_SERIALIZER);
+            "proxy://local", TrackingLogMode.IMMEDIATE, IdGenerator.random(), DEFAULT_SERIALIZER, true, true);
     }
 
     public ProxyOptions withCategory(String category) {
         return new ProxyOptions(serviceName, callerName, category, testInfoFetcher,
-            uriScheme, logMode, ids, payloadSerializer);
+            uriScheme, logMode, ids, payloadSerializer, trackDuringSetup, trackDuringAction);
     }
 
     public ProxyOptions withCallerName(String caller) {
         return new ProxyOptions(serviceName, caller, dependencyCategory, testInfoFetcher,
-            uriScheme, logMode, ids, payloadSerializer);
+            uriScheme, logMode, ids, payloadSerializer, trackDuringSetup, trackDuringAction);
     }
 
     public ProxyOptions withTestInfoFetcher(Supplier<TestInfo> fetcher) {
         return new ProxyOptions(serviceName, callerName, dependencyCategory, fetcher,
-            uriScheme, logMode, ids, payloadSerializer);
+            uriScheme, logMode, ids, payloadSerializer, trackDuringSetup, trackDuringAction);
     }
 
     public ProxyOptions withUriScheme(String scheme) {
         return new ProxyOptions(serviceName, callerName, dependencyCategory, testInfoFetcher,
-            scheme, logMode, ids, payloadSerializer);
+            scheme, logMode, ids, payloadSerializer, trackDuringSetup, trackDuringAction);
     }
 
     public ProxyOptions withLogMode(TrackingLogMode mode) {
         return new ProxyOptions(serviceName, callerName, dependencyCategory, testInfoFetcher,
-            uriScheme, mode, ids, payloadSerializer);
+            uriScheme, mode, ids, payloadSerializer, trackDuringSetup, trackDuringAction);
     }
 
     public ProxyOptions withIds(IdGenerator idGenerator) {
         return new ProxyOptions(serviceName, callerName, dependencyCategory, testInfoFetcher,
-            uriScheme, logMode, idGenerator, payloadSerializer);
+            uriScheme, logMode, idGenerator, payloadSerializer, trackDuringSetup, trackDuringAction);
     }
 
     public ProxyOptions withSerializer(Function<Object, String> serializer) {
         return new ProxyOptions(serviceName, callerName, dependencyCategory, testInfoFetcher,
-            uriScheme, logMode, ids, serializer);
+            uriScheme, logMode, ids, serializer, trackDuringSetup, trackDuringAction);
+    }
+
+    /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
+    public ProxyOptions withTrackDuringSetup(boolean value) {
+        return new ProxyOptions(serviceName, callerName, dependencyCategory, testInfoFetcher,
+            uriScheme, logMode, ids, payloadSerializer, value, trackDuringAction);
+    }
+
+    /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
+    public ProxyOptions withTrackDuringAction(boolean value) {
+        return new ProxyOptions(serviceName, callerName, dependencyCategory, testInfoFetcher,
+            uriScheme, logMode, ids, payloadSerializer, trackDuringSetup, value);
     }
 }

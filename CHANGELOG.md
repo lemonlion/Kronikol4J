@@ -98,6 +98,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
+### Added — Tier-1 TrackingProxy (phase suppression)
+- **`TrackingProxy` phase suppression** (`kronikol4j-proxy`) — `ProxyOptions` gained `trackDuringSetup`/
+  `trackDuringAction` (default true); `TrackingProxy.invoke` now passes calls through untracked in a suppressed
+  phase. This completes the `TrackDuringSetup/Action` on/off dimension across **every** tracking execution
+  path. Proven by `TrackingProxyEnhancementsTest`. (Per-phase `Setup/ActionVerbosity` overrides remain.)
+
 ### Added — Tier-1 messaging facade (phase suppression)
 - **`MessageTracking` phase suppression** (`kronikol4j-messaging`) — `MessageTrackingOptions` gained
   `trackDuringSetup`/`trackDuringAction` (default true); `publish`/`consume` now consult

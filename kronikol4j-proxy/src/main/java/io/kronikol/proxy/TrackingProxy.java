@@ -1,5 +1,6 @@
 package io.kronikol.proxy;
 
+import io.kronikol.core.context.PhaseConfiguration;
 import io.kronikol.core.context.TestInfo;
 import io.kronikol.core.context.TestInfoResolver;
 import io.kronikol.core.context.TestPhaseContext;
@@ -52,6 +53,11 @@ public final class TrackingProxy {
         @Override
         public Object invoke(Object proxy, java.lang.reflect.Method method, Object[] args) throws Throwable {
             if (method.getDeclaringClass() == Object.class) {
+                return invokeTarget(method, args);
+            }
+            // Phase suppression: when the current phase is excluded, pass through untracked (the .NET
+            // TrackDuringSetup/TrackDuringAction analog).
+            if (!PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction())) {
                 return invokeTarget(method, args);
             }
 

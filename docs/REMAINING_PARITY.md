@@ -188,12 +188,17 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   **gRPC done (2026-06-28):** `GrpcTrackingOptions` gained `trackDuringSetup/Action`; `GrpcTracking.record`
   guards on `shouldTrack(...)`. Proven by `GrpcTrackingTest`. **Already phase-aware** (verified): the richer
   two-phase `InteractionRecorder`s — Redis, Mongo, SQL/JDBC, Bigtable, EventHubs, EventBus — and the
-  `MessageTracker` (so the Kafka producer/consumer wrappers inherit it). **MessageTracking facade done
-  (2026-06-28):** `MessageTrackingOptions` gained `trackDuringSetup/Action`; `publish`/`consume` guard on
-  `shouldTrack(...)`. Proven by `MessageTrackingTest`. **Remaining:** `TrackingProxy` (the last on/off path),
-  plus the second dimension — `Setup/ActionVerbosity` per-phase verbosity overrides (a distinct feature: each
-  adapter would resolve `effectiveVerbosity(default, setup, action)`); box flips `[x]` once `TrackingProxy`
-  consults phase and per-phase verbosity is wired.
+  `MessageTracker` (so the Kafka producer/consumer wrappers inherit it). **MessageTracking facade + TrackingProxy
+  done (2026-06-28):** `MessageTrackingOptions`/`ProxyOptions` gained `trackDuringSetup/Action`;
+  `publish`/`consume` and `TrackingProxy.invoke` guard on `shouldTrack(...)`. Proven by
+  `MessageTrackingTest`/`TrackingProxyEnhancementsTest`.
+  **The `TrackDuringSetup/Action` on/off dimension is now wired into every tracking execution path** (HTTP,
+  JDBC/Hibernate, Redis, Mongo, AWS, Azure, GCP, Cassandra, Elasticsearch, gRPC, MessageTracker + Kafka
+  wrappers, MessageTracking, Bigtable, EventHubs, EventBus, TrackingProxy). **Remaining (the only thing left
+  before `[x]`):** the second dimension — `Setup/ActionVerbosity` per-phase verbosity overrides. The primitive
+  (`PhaseConfiguration.effectiveVerbosity(default, setup, action)`) exists; adapters currently carry a single
+  `verbosity`, so each would add `setupVerbosity`/`actionVerbosity` options and resolve the effective level
+  per phase. That per-phase-verbosity sweep is the remaining work; this box flips `[x]` once it lands.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)
