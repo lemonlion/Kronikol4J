@@ -45,26 +45,42 @@ public final class RedisCommandsTracker {
         return wrap(delegate, options, "localhost");
     }
 
-    private record Handler(RedisCommands<?, ?> delegate, RedisInteractionRecorder recorder)
-        implements InvocationHandler {
+    private static final class Handler implements InvocationHandler {
+
+        private final RedisCommands<?, ?> delegate;
+        private final RedisInteractionRecorder recorder;
+        /** The connection's current database, updated by {@code SELECT} so URIs reflect it (default 0). */
+        private volatile int currentDb;
+
+        Handler(RedisCommands<?, ?> delegate, RedisInteractionRecorder recorder) {
+            this.delegate = delegate;
+            this.recorder = recorder;
+        }
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             String name = method.getName();
+            // SELECT is connection-management (not a tracked interaction), but it changes which database
+            // subsequent commands hit — capture the new db so their URIs are attributed correctly.
+            if ("select".equals(name) && args != null && args.length > 0 && args[0] instanceof Integer db) {
+                currentDb = db;
+                return invokeDirect(method, args);
+            }
             if (method.getDeclaringClass() == Object.class || INFRA_METHODS.contains(name)) {
                 return invokeDirect(method, args);
             }
 
+            int db = currentDb;
             String command = name.toUpperCase(Locale.ROOT);
             String key = args != null && args.length > 0 && args[0] instanceof String s ? s : null;
-            Optional<RedisInteractionRecorder.Correlation> corr = recorder.logRequest(command, key, 0, null);
+            Optional<RedisInteractionRecorder.Correlation> corr = recorder.logRequest(command, key, db, null);
             try {
                 Object result = invokeDirect(method, args);
-                corr.ifPresent(c -> recorder.logResponse(command, key, 0, result != null, c,
+                corr.ifPresent(c -> recorder.logResponse(command, key, db, result != null, c,
                     result != null ? String.valueOf(result) : null));
                 return result;
             } catch (Throwable t) {
-                corr.ifPresent(c -> recorder.logResponse(command, key, 0, false, c, null));
+                corr.ifPresent(c -> recorder.logResponse(command, key, db, false, c, null));
                 throw t;
             }
         }

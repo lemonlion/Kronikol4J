@@ -35,6 +35,7 @@ class RedisCommandsTrackerTest {
                 case "get" -> "absent".equals(args[0]) ? null : "cached-value";
                 case "set" -> "OK";
                 case "del" -> 1L;
+                case "select" -> "OK";
                 case "toString" -> "fake";
                 case "hashCode" -> 0;
                 case "equals" -> proxy == args[0];
@@ -81,6 +82,19 @@ class RedisCommandsTrackerTest {
         List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
         assertThat(logs).hasSize(2);
         assertThat(logs.get(0).method().value()).isEqualTo("Set");
+    }
+
+    @Test
+    void selectChangesTheTrackedDatabaseButIsNotItselfTracked() {
+        RedisCommands<String, String> redis = tracked();
+
+        redis.select(3);          // connection management — not a tracked interaction
+        redis.get("user:1");      // now hits db 3
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2); // only the GET pair — SELECT produced no logs
+        assertThat(logs.get(0).method().value()).isEqualTo("Get");
+        assertThat(logs.get(0).uri().toString()).isEqualTo("redis://db3/user:1"); // db from SELECT
     }
 
     @Test

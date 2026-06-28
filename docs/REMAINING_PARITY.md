@@ -322,8 +322,12 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   Lettuce's `RedisCommands` (lettuce `compileOnly`) — a command method's name is the Redis command, its first
   `String` arg the key, a non-null return drives hit/miss; connection-management + `Object` methods pass
   through untracked. Proven by `RedisCommandsTrackerTest` (fake `RedisCommands` proxy — no server needed:
-  GET hit/miss, SET, Object-method pass-through). **Remaining:** a Jedis wrapper, per-connection database-
-  number extraction (currently 0), and a golden-rendered proof.
+  GET hit/miss, SET, Object-method pass-through).
+  **Per-connection db number done (2026-06-28):** the wrapper now intercepts `SELECT <db>` (still untracked —
+  it is connection management) to update a per-connection current-database, and uses it in subsequent commands'
+  `redis://db<n>/key` URIs instead of the hard-coded 0. Proven by
+  `RedisCommandsTrackerTest.selectChangesTheTrackedDatabaseButIsNotItselfTracked`. **Remaining:** a Jedis
+  wrapper and a golden-rendered proof.
 - [~] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
   analog) for true two-phase correlation; operation classification; filter extraction; response document
   preview; `autoCorrelateWrites`; `ignoredCommands`; change-stream support. *(.NET

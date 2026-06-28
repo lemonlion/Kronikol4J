@@ -74,6 +74,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Added — Tier-1 Redis (per-connection database)
+- **`SELECT`-aware database tracking** (`kronikol4j-redis`) — the Lettuce `RedisCommandsTracker` now
+  intercepts `SELECT <db>` (still untracked — it's connection management) to update a per-connection current
+  database, so subsequent commands render `redis://db<n>/key` with the real db instead of the hard-coded `0`.
+  Proven by `RedisCommandsTrackerTest`.
+
 ### Added — Tier-1 JDBC (untyped execute + batch)
 - **`execute(...)` and `executeBatch()`/`executeLargeBatch()` tracking** (`kronikol4j-jdbc`) —
   `StatementInvocationHandler` now records the untyped `execute(...)` (response row count via
