@@ -20,6 +20,8 @@ import io.kronikol.report.data.ReportDataFormat;
 import io.kronikol.report.merge.FragmentJson;
 import io.kronikol.report.merge.ReportFragment;
 import io.kronikol.report.model.Feature;
+import io.kronikol.report.spec.SpecificationsOptions;
+import io.kronikol.report.spec.SpecificationsReport;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -62,6 +64,17 @@ public final class ReportFinalizer {
      *  the requested machine-readable {@code TestRunReport.<ext>} data files alongside the HTML. */
     public static GeneratedReport finalizeRun(Path outputDir, String title, ReportOptions options)
             throws IOException {
+        return finalizeRun(outputDir, title, options, SpecificationsOptions.defaults());
+    }
+
+    /**
+     * As {@link #finalizeRun(Path, String, ReportOptions)}, additionally emitting the Specifications report
+     * ({@code Specifications.html} + {@code Specifications.<ext>}) per {@code specs} — the .NET
+     * {@code GenerateSpecificationsReport}/{@code GenerateSpecificationsData} path. Defaults emit both;
+     * disable via {@link SpecificationsOptions#withGenerateReport}/{@code withGenerateData}.
+     */
+    public static GeneratedReport finalizeRun(Path outputDir, String title, ReportOptions options,
+                                              SpecificationsOptions specs) throws IOException {
         if (RunResults.isEmpty()) {
             // .NET parity: when logs were recorded but no test contexts were enqueued, the main report would
             // be empty — emit the diagnostic report (when enabled) to explain why, then skip the empty report.
@@ -89,7 +102,23 @@ public final class ReportFinalizer {
             Files.writeString(outputDir.resolve("TestRunReport.mergeable.json"),
                 FragmentJson.toJson(fragment), StandardCharsets.UTF_8);
         }
+        if (specs != null && (specs.generateReport() || specs.generateData())) {
+            // .NET GenerateSpecificationsReport/Data: the separate "living documentation" Specifications.html
+            // + Specifications.<ext>, re-rendering the same scenarios/diagrams with spec styling.
+            SpecificationsReport.write(outputDir, features, diagramByTestId(logs, options), specs);
+        }
         return report;
+    }
+
+    /** The per-test diagram map (one diagram per test, client-side splitting) for the specifications report. */
+    private static Map<String, String> diagramByTestId(List<RequestResponseLog> logs, ReportOptions options) {
+        Map<String, String> diagrams = new LinkedHashMap<>();
+        for (PlantUmlForTest p : PlantUmlCreator.create(logs, options.diagram())) {
+            if (!p.diagrams().isEmpty()) {
+                diagrams.put(p.testId(), p.diagrams().get(0));
+            }
+        }
+        return diagrams;
     }
 
     /**
@@ -236,7 +265,7 @@ public final class ReportFinalizer {
             writeFragment(Path.of(System.getProperty(RUN_DIR_PROPERTY)), fragmentFileName(), title, options);
             return null;
         }
-        return finalizeRun(resolveOutputDir(), title, options);
+        return finalizeRun(resolveOutputDir(), title, options, SpecificationsOptions.fromSystemProperties());
     }
 
     /** As {@link #writeFragment(Path, String, String, ReportOptions)} with default colour options. */

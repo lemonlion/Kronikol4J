@@ -18,9 +18,52 @@ public record SpecificationsOptions(String title, String htmlFileName, String da
                                     ReportDataFormat dataFormat, boolean showStepNumbers,
                                     boolean generateReport, boolean generateData, String customStyleSheet) {
 
+    /** System property (string) for the specifications title (default {@code "Service Specifications"}). */
+    public static final String TITLE_PROPERTY = "kronikol.spec.title";
+    /** System property (string) for the specifications HTML file name without extension. */
+    public static final String HTML_FILE_NAME_PROPERTY = "kronikol.spec.htmlFileName";
+    /** System property (string) for the specifications data file name without extension. */
+    public static final String DATA_FILE_NAME_PROPERTY = "kronikol.spec.dataFileName";
+    /** System property ({@code yaml}/{@code json}/{@code xml}) for the specifications data format. */
+    public static final String DATA_FORMAT_PROPERTY = "kronikol.spec.dataFormat";
+    /** System property (boolean) showing 1-based step numbers in the specifications HTML. */
+    public static final String SHOW_STEP_NUMBERS_PROPERTY = "kronikol.spec.showStepNumbers";
+    /** System property (boolean) emitting the specifications HTML report (default {@code true}). */
+    public static final String GENERATE_REPORT_PROPERTY = "kronikol.spec.generateReport";
+    /** System property (boolean) emitting the specifications data file (default {@code true}). */
+    public static final String GENERATE_DATA_PROPERTY = "kronikol.spec.generateData";
+
     public static SpecificationsOptions defaults() {
         return new SpecificationsOptions("Service Specifications", "Specifications", "Specifications",
             ReportDataFormat.YAML, true, true, true, null);
+    }
+
+    /**
+     * Reads the specifications options from system properties (each falling back to {@link #defaults()}),
+     * so a listener-driven run configures them with e.g. {@code -Dkronikol.spec.generateReport=false} and no
+     * code change. The custom stylesheet is not a system property (it stays the default).
+     */
+    public static SpecificationsOptions fromSystemProperties() {
+        SpecificationsOptions d = defaults();
+        return new SpecificationsOptions(
+            stringProperty(TITLE_PROPERTY, d.title()),
+            stringProperty(HTML_FILE_NAME_PROPERTY, d.htmlFileName()),
+            stringProperty(DATA_FILE_NAME_PROPERTY, d.dataFileName()),
+            ReportDataFormat.parse(System.getProperty(DATA_FORMAT_PROPERTY, "")).orElse(d.dataFormat()),
+            boolProperty(SHOW_STEP_NUMBERS_PROPERTY, d.showStepNumbers()),
+            boolProperty(GENERATE_REPORT_PROPERTY, d.generateReport()),
+            boolProperty(GENERATE_DATA_PROPERTY, d.generateData()),
+            d.customStyleSheet());
+    }
+
+    private static String stringProperty(String name, String fallback) {
+        String value = System.getProperty(name);
+        return value == null || value.isBlank() ? fallback : value.strip();
+    }
+
+    private static boolean boolProperty(String name, boolean fallback) {
+        String value = System.getProperty(name);
+        return value == null || value.isBlank() ? fallback : Boolean.parseBoolean(value);
     }
 
     public SpecificationsOptions withTitle(String v) {

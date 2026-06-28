@@ -140,6 +140,20 @@ public interface KronikolExtension {
      *  {@code GenerateTestRunReportData}, default true → a default run emits {@code TestRunReport.json}). */
     Property<Boolean> getGenerateTestRunReportData();
 
+    // --- specifications report ---
+
+    /** Emit the Specifications HTML report (the .NET {@code GenerateSpecificationsReport}, default true). */
+    Property<Boolean> getGenerateSpecificationsReport();
+
+    /** Emit the Specifications data file (the .NET {@code GenerateSpecificationsData}, default true). */
+    Property<Boolean> getGenerateSpecificationsData();
+
+    /** Specifications report title (default {@code "Service Specifications"}). */
+    Property<String> getSpecificationsTitle();
+
+    /** Specifications data format ({@code yaml}/{@code json}/{@code xml}; default {@code yaml}). */
+    Property<String> getSpecificationsDataFormat();
+
     // --- CI summary / artifacts ---
 
     /** Write the markdown run summary to the detected CI platform. */

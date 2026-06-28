@@ -234,6 +234,45 @@ class ReportFinalizerTest {
     }
 
     @Test
+    void finalizeEmitsSpecificationsByDefault(@TempDir Path dir) throws IOException {
+        // .NET parity: GenerateSpecificationsReport/Data default true → Specifications.html + .yaml emitted.
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run");
+
+        assertThat(dir.resolve("Specifications.html")).exists();
+        assertThat(Files.readString(dir.resolve("Specifications.yaml"))).contains("Checkout succeeds");
+    }
+
+    @Test
+    void finalizeSkipsSpecificationsWhenDisabled(@TempDir Path dir) throws IOException {
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults(),
+            io.kronikol.report.spec.SpecificationsOptions.defaults()
+                .withGenerateReport(false).withGenerateData(false));
+
+        assertThat(dir.resolve("Specifications.html")).doesNotExist();
+        assertThat(dir.resolve("Specifications.yaml")).doesNotExist();
+        assertThat(dir.resolve("TestRunReport.html")).exists(); // main report still written
+    }
+
+    @Test
+    void finalizeRunToDefaultReadsSpecificationsSystemProperties(@TempDir Path dir) throws IOException {
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+        System.setProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY, dir.toString());
+        System.setProperty(io.kronikol.report.spec.SpecificationsOptions.GENERATE_REPORT_PROPERTY, "false");
+        try {
+            ReportFinalizer.finalizeRunToDefault("Run");
+            assertThat(dir.resolve("Specifications.html")).doesNotExist();   // report disabled
+            assertThat(dir.resolve("Specifications.yaml")).exists();          // data still on by default
+        } finally {
+            System.clearProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY);
+            System.clearProperty(io.kronikol.report.spec.SpecificationsOptions.GENERATE_REPORT_PROPERTY);
+        }
+    }
+
+    @Test
     void finalizeEmitsTestRunReportJsonByDefault(@TempDir Path dir) throws IOException {
         // .NET parity: GenerateTestRunReportData defaults true + TestRunReportDataFormat defaults JSON,
         // so a default run emits TestRunReport.json (no explicit dataFormats needed).

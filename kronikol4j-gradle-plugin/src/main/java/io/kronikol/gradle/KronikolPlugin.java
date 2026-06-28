@@ -116,6 +116,15 @@ public class KronikolPlugin implements Plugin<Project> {
         forwardBool(test, ReportOptions.GENERATE_MERGEABLE_DATA_PROPERTY, ext.getGenerateMergeableData());
         forwardBool(test, ReportOptions.GENERATE_TEST_RUN_REPORT_DATA_PROPERTY,
             ext.getGenerateTestRunReportData());
+        // specifications report
+        forwardBool(test, io.kronikol.report.spec.SpecificationsOptions.GENERATE_REPORT_PROPERTY,
+            ext.getGenerateSpecificationsReport());
+        forwardBool(test, io.kronikol.report.spec.SpecificationsOptions.GENERATE_DATA_PROPERTY,
+            ext.getGenerateSpecificationsData());
+        forwardString(test, io.kronikol.report.spec.SpecificationsOptions.TITLE_PROPERTY,
+            ext.getSpecificationsTitle());
+        forwardString(test, io.kronikol.report.spec.SpecificationsOptions.DATA_FORMAT_PROPERTY,
+            ext.getSpecificationsDataFormat());
         // CI summary / artifacts
         forwardBool(test, ReportOptions.WRITE_CI_SUMMARY_PROPERTY, ext.getWriteCiSummary());
         forwardInt(test, ReportOptions.MAX_CI_SUMMARY_DIAGRAMS_PROPERTY, ext.getMaxCiSummaryDiagrams());

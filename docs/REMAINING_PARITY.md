@@ -852,9 +852,16 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `GenerateHtmlReport`) plus `Specifications.<ext>`. `SpecificationsOptions` carries the named options
   (`title`/`htmlFileName`/`dataFileName`/`dataFormat`/`showStepNumbers`/`generateReport`/`generateData`/
   `customStyleSheet`). Proven by `SpecificationsReportTest` (YAML/JSON/XML ordering + structure + sanitise,
-  end-to-end `write` of html+data, toggle + format honouring) + wiki page. **Note:** auto-invocation from the
-  default end-of-run path (the `generateSpecificationsReport` toggle in `ReportFinalizer`) lands with the
-  deferred Tier-2 report-control-flags wiring; a byte-golden capture against real .NET is the usual follow-up.
+  end-to-end `write` of html+data, toggle + format honouring) + wiki page.
+  **Auto-invocation done (2026-06-28):** `ReportFinalizer` now emits the Specifications report at end-of-run.
+  A new `finalizeRun(outputDir, title, ReportOptions, SpecificationsOptions)` overload writes
+  `Specifications.html` + `Specifications.<ext>` (the standalone `finalizeRun(...,ReportOptions)` delegates
+  with `SpecificationsOptions.defaults()`, and `finalizeRunToDefault` reads `SpecificationsOptions.
+  fromSystemProperties()`), honouring the `generateReport`/`generateData` toggles — matching .NET's
+  default-on `GenerateSpecificationsReport`/`GenerateSpecificationsData`. Configurable via the new
+  `kronikol.spec.*` system properties + the Gradle DSL. Proven by `ReportFinalizerTest` (emitted by default /
+  skipped when disabled / system-property read). A byte-golden capture against real .NET remains the usual
+  follow-up. **This unblocks the `expectedTestCount` guard** (Tier-2 report-control flags).
 - [~] **InternalFlow CAPTURE side** — `ActivityListener` (subscribe to OTel `ActivitySource`s, excluding the
   AppInsights-conflict set) + `SpanStore` + `SpanCollector` (granularity filtering) + `ActivitySourceDiscovery`
   + DI/eager-start registration. The *rendering* is done; nothing currently captures spans. Plus the ~12

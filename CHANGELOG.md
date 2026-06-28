@@ -29,6 +29,17 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   forked JVMs emit fragments when `kronikol.run.dir` is set on Surefire/Failsafe. Proven by
   `KronikolReportMojoTest`; wiki page added.
 
+### Added — Tier-4 features
+- **Specifications report auto-invocation** (`kronikol4j-runtime` + `kronikol4j-report` +
+  `kronikol4j-gradle-plugin`) — `ReportFinalizer` now emits the Specifications report (`Specifications.html` +
+  `Specifications.<ext>`) at end-of-run, matching .NET's default-on `GenerateSpecificationsReport` /
+  `GenerateSpecificationsData`. New `finalizeRun(outputDir, title, ReportOptions, SpecificationsOptions)`
+  overload (the 3-arg form delegates with `SpecificationsOptions.defaults()`; `finalizeRunToDefault` reads
+  `SpecificationsOptions.fromSystemProperties()`), honouring the `generateReport`/`generateData` toggles.
+  Configurable via the new `kronikol.spec.*` system properties and the Gradle DSL
+  (`generateSpecificationsReport`/`generateSpecificationsData`/`specificationsTitle`/`specificationsDataFormat`).
+  The specs module existed but was never invoked from the finalization path. Proven by `ReportFinalizerTest`.
+
 ### Added — Tier-2 options
 - **Report control flags — title, HTML file name, component-diagram toggle, mergeable-data toggle**
   (`kronikol4j-report` + `kronikol4j-runtime` + `kronikol4j-gradle-plugin`) — new nested
