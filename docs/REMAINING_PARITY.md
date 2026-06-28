@@ -280,15 +280,24 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `resolve` time against the live `defaultTtl`, so shrinking the TTL retroactively expires existing entries
   (the old Java code computed `expiresAt` at write time and ignored later TTL changes). Proven by the
   expanded `TestCorrelationStoreTest`.
-- [~] **Deferred flush** — `DeferredLogFlushHandler` + `PendingRequestResponseLogs`: queue logs emitted
+- [x] **Deferred flush** — `DeferredLogFlushHandler` + `PendingRequestResponseLogs`: queue logs emitted
   before identity is known, flush once it resolves. (.NET `Tracking/DeferredLogFlushHandler.cs`.)
   **Mechanism done:** `io.kronikol.core.tracking.PendingRequestResponseLogs` (thread-safe queue:
   `enqueue`/`count`/`flushAll`/`clear`) + `PendingLogEntry` (record + builder). `flushAll(name, id, ids)`
   drains the queue, emitting each entry as a request+response pair sharing one trace/request-response id
   (from the `IdGenerator` determinism seam) through `RequestResponseLogger`. Proven by
-  `PendingRequestResponseLogsTest`. **Remaining:** the `DeferredLogFlushHandler` itself is an HTTP-client
-  `DelegatingHandler` (flushes after each response) — HTTP-specific, so it lands with the Tier-1 HTTP adapter
-  (and the proxy's deferred `TrackingLogMode` consumes the same queue).
+  `PendingRequestResponseLogsTest`. **HTTP flush handler done (2026-06-28) → item complete `[x]`:**
+  `io.kronikol.http.DeferredLogFlushInterceptor` is an OkHttp `Interceptor` (okhttp `compileOnly`) — the
+  faithful analog of the .NET `DeferredLogFlushHandler` `DelegatingHandler`: after each exchange it drains
+  `PendingRequestResponseLogs` (the point where ambient identity is reliably resolvable), attributing the
+  deferred entries to the resolved test; when no test context resolves the flush is skipped and entries remain
+  queued for the next exchange (mirroring .NET swallowing a throwing fetcher). Two constructors mirror .NET
+  (`Supplier<TestInfo>` + `IdGenerator`, or an `HttpTrackingConfig`), and the Javadoc documents the
+  install-outside-the-tracking-interceptor ordering (the .NET "place OUTSIDE TestTrackingMessageHandler"
+  guidance). Proven by `DeferredLogFlushInterceptorTest` (MockWebServer: flush-after-response attributed to
+  the test, no-context leaves entries queued, nothing-pending no-op). The proxy's deferred `TrackingLogMode`
+  consumes the same queue (the `TrackingProxy` item), so both .NET consumers of `PendingRequestResponseLogs`
+  now have Java analogs.
 
 ---
 

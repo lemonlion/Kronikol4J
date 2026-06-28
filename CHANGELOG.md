@@ -7,6 +7,17 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Cross-cutting deferred flush HTTP handler (item [x])
+- **`DeferredLogFlushInterceptor`** (`kronikol4j-http`) — an OkHttp `Interceptor` (okhttp `compileOnly`), the
+  Java analog of the .NET `DeferredLogFlushHandler` `DelegatingHandler`: after each HTTP exchange it drains
+  `PendingRequestResponseLogs` and attributes the deferred entries to the resolved test (entries captured
+  before the owning test was known). When no test context resolves, the flush is skipped and entries remain
+  queued for the next exchange (mirroring .NET swallowing a throwing fetcher). Two constructors mirror .NET
+  (`Supplier<TestInfo>` + `IdGenerator`, or an `HttpTrackingConfig`); install it outside the tracking
+  interceptor in the chain. Proven by `DeferredLogFlushInterceptorTest` (MockWebServer). This completes the
+  deferred-flush item — both .NET consumers of the pending queue (HTTP handler + proxy deferred mode) now have
+  Java analogs.
+
 ### Completed — Tier-1 MongoDB document-preview + change-stream (item [x])
 - **MongoDB adapter** (`kronikol4j-mongodb`) is now fully closed. The cursor `firstBatch` document preview is
   proven byte-for-byte against .NET: the recorder renders it via the MongoDB driver's
