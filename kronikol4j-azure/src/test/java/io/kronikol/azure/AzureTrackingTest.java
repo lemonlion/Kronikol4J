@@ -40,6 +40,20 @@ class AzureTrackingTest {
     }
 
     @Test
+    void actionPhaseSuppressionSkipsRecording() {
+        var options = AzureTrackingOptions.forService("OrdersDb").withTrackDuringAction(false);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);
+        try {
+            AzureTracking.cosmos(options, "Upsert", "orders", "{}");
+            AzureTracking.blob(options, "PUT", "files", "a.txt");
+            AzureTracking.serviceBus(options, "orders", "msg");
+            assertThat(RequestResponseLogger.getAllLogs()).isEmpty();
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
+
+    @Test
     void summarisedVerbosityOmitsCosmosDocumentButKeepsContainer() {
         var options = AzureTrackingOptions.forService("OrdersDb")
             .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);

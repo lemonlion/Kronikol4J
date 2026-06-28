@@ -179,8 +179,11 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   (`SqlTrackingOptions`, reused by Hibernate) already consult phase. AWS now does too — `AwsTrackingOptions`
   gained `trackDuringSetup`/`trackDuringAction` (default true, `withTrackDuringSetup/Action`) and the s3/
   dynamoDb/sqs/sns recorders guard on `PhaseConfiguration.shouldTrack(...)`. Proven by `AwsTrackingTest`
-  (Action-phase suppression skips all three; Setup unaffected). **Remaining:** the same per-adapter wiring for
-  Azure/GCP/Cassandra/Elasticsearch/Bigtable/messaging recorders (identical pattern) + `Setup/ActionVerbosity`
+  (Action-phase suppression skips all three; Setup unaffected). **Azure + GCP done (2026-06-28):** same wiring
+  — `AzureTrackingOptions`/`GcpTrackingOptions` gained `trackDuringSetup/Action` and their cosmos/blob/
+  serviceBus and bigQuery/storage/pubSub recorders guard on `shouldTrack(...)`. Proven by
+  `AzureTrackingTest`/`GcpTrackingTest`. **Remaining:** the same per-adapter wiring for
+  Cassandra/Elasticsearch/Bigtable/messaging recorders (identical pattern) + `Setup/ActionVerbosity`
   per-phase overrides; box flips `[x]` once every recorder consults phase.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.

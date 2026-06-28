@@ -98,6 +98,13 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
+### Added — Tier-1 Azure + GCP (phase suppression)
+- **Recorder phase suppression** (`kronikol4j-azure`, `kronikol4j-gcp`) — both options records gained
+  `trackDuringSetup`/`trackDuringAction` (default true, `withTrackDuringSetup/Action`); the Cosmos/Blob/
+  ServiceBus and BigQuery/Storage/PubSub recorders now consult `PhaseConfiguration.shouldTrack(...)` and skip
+  in a suppressed phase (the .NET `TrackDuringSetup`/`TrackDuringAction` analog). Proven by
+  `AzureTrackingTest`/`GcpTrackingTest`.
+
 ### Added — Tier-1 AWS (verbosity + phase wiring)
 - **Recorder verbosity** (`kronikol4j-aws`) — `AwsTrackingOptions` gained a `TrackingVerbosity` (default
   Detailed, `withVerbosity(...)`); at Summarised the recorders drop the payload (the DynamoDB item, the
