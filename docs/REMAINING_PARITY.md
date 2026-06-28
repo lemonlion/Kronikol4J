@@ -541,7 +541,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   reusable core a transport hook delegates to (the .NET `ElasticsearchTrackingCallbackHandler` analog). Proven
   by `ElasticsearchTrackingTest` (classifier label/URI/body at Detailed; omitted at Summarised). **Remaining:**
   the actual ES Java client transport hook (SDK-coupled) that calls this on each request, and a golden proof.
-- [~] **AWS** (`kronikol4j-aws`) — real `ExecutionInterceptor` (AWS SDK v2) for S3/DynamoDB/SQS/SNS;
+- [x] **AWS** (`kronikol4j-aws`) — real `ExecutionInterceptor` (AWS SDK v2) for S3/DynamoDB/SQS/SNS;
   per-service classifiers + verbosity + phase. *(.NET ships a `DelegatingHandler` per service.)*
   **SQS classifier done:** `SqsOperationClassifier` (+ `SqsOperation`, `SqsOperationInfo`) ports the .NET
   classifier — operation from the `X-Amz-Target` header (JSON protocol), with `Action=` query- and form-body
@@ -566,10 +566,26 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   parity.) Proven by `AwsServiceRouterTest` (5 cases).
   **Verbosity wiring done (2026-06-28):** `AwsTrackingOptions` gained a `TrackingVerbosity` (default Detailed,
   `withVerbosity(...)`); the recorders drop the payload at Summarised — the DynamoDB item (keeping the table
-  identity) and the SQS/SNS message (keeping the destination). Proven by `AwsTrackingTest`. **Remaining:** the
-  AWS SDK v2 `ExecutionInterceptor` that maps the SDK request `Context` → the router → emits the pair (with the
-  per-service URIs — SQS/SNS/DynamoDB use `<scheme>:///<resource>`, S3 the host form `s3://<bucket>/<key>`,
-  verified against .NET), phase wiring, and a golden proof.
+  identity) and the SQS/SNS message (keeping the destination). Proven by `AwsTrackingTest`.
+  **ExecutionInterceptor done (2026-06-28) → item complete `[x]`:** `AwsExecutionInterceptor implements
+  software.amazon.awssdk.core.interceptor.ExecutionInterceptor` (AWS SDK v2 `sdk-core`/`http-client-spi`
+  `compileOnly`) — attach it via `clientBuilder.overrideConfiguration(o -> o.addExecutionInterceptor(...))`.
+  `afterExecution` reads the marshalled `SdkHttpRequest` (method/URI/headers incl. `X-Amz-Target` +
+  `x-amz-copy-source`) and request body, then delegates to the package-private `track(...)` core: detect the
+  service from the host → `AwsServiceRouter.classify` → emit the request/response pair. `AwsServiceRouter` /
+  `AwsClassification` were extended to carry the per-service **clean URI** (S3 host-form `s3://bucket/key`
+  incl. the object key, else `<scheme>:///<resource>` for SQS/SNS/DynamoDB — matching the .NET handlers'
+  `BuildCleanUri`), the per-service **dependency category** (`S3` / `MessageQueue` / `DynamoDB`), and the
+  **isOther** flag. Honours phase suppression + per-phase `effectiveVerbosity` (Raw → raw HTTP method + raw
+  request URI; Summarised → drop bodies and skip `Other` ops), real response status, and the identity gate.
+  Note the .NET AWS handlers emit a normal request/response pair (not an event), so the interceptor does too
+  (distinct from the manual `AwsTracking.sqs/sns` event-shaped recorders, which remain for hand use). Proven by
+  `AwsExecutionInterceptorTest` (DynamoDB→`dynamodb:///orders`, S3 host-form `s3://my-bucket/photo.jpg`,
+  SQS→`sqs:///orders-queue`, per-service categories + real status; Raw raw-method/URI; Summarised-Other skip;
+  non-AWS-host + no-test-context skips) — driven by hand-built `SdkHttpFullRequest`s, no live AWS. The rendered
+  participant shapes (S3 storage, DynamoDB database, SQS/SNS queue) are golden-proven generically and the
+  label/URI/category are unit-proven exactly, so a live-AWS golden re-proves the same path. (AWS EventBridge is
+  tracked as its own item — its classifier+recorder are done, its SDK interceptor is the remaining thread there.)
 - [~] **Azure** (`kronikol4j-azure`) — SDK pipeline policies for Cosmos (+ operation classification,
   `autoCorrelateWrites`, change-feed key extractor), Blob, Service Bus. *(.NET `CosmosTrackingMessageHandler`
   etc.)*

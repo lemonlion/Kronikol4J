@@ -7,6 +7,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-1 AWS ExecutionInterceptor (item [x])
+- **`AwsExecutionInterceptor`** (`kronikol4j-aws`) — a real AWS SDK v2 `ExecutionInterceptor` (sdk-core /
+  http-client-spi `compileOnly`) that auto-captures S3 / DynamoDB / SQS / SNS calls, the Java analog of the
+  .NET per-service `*TrackingMessageHandler`s. `afterExecution` reads the marshalled `SdkHttpRequest`
+  (method/URI/`X-Amz-Target`/`x-amz-copy-source`) + request body and delegates to a package-private `track(...)`
+  core: detect the service from the host → `AwsServiceRouter.classify` → emit the request/response pair.
+  `AwsServiceRouter`/`AwsClassification` now also yield the per-service clean URI (S3 host-form
+  `s3://bucket/key`, else `<scheme>:///<resource>`), the dependency category (S3 / MessageQueue / DynamoDB),
+  and the is-Other flag. Honours phase suppression, per-phase verbosity (Raw → raw method + URI; Summarised →
+  drop bodies + skip Other), real response status, and the identity gate. AWS calls could previously be
+  classified/recorded only by hand. Proven by `AwsExecutionInterceptorTest` (hand-built `SdkHttpFullRequest`s,
+  no live AWS). Attach via `clientBuilder.overrideConfiguration(o -> o.addExecutionInterceptor(...))`.
+
 ### Completed — Tier-3 ORM / Hibernate adapter (item [x])
 - **ORM / EF-Core analog** (`kronikol4j-hibernate`) marked complete. The `KronikolStatementInspector`, the
   Spring-Data auto-registration (`HibernatePropertiesCustomizer`), and full two-phase capture via

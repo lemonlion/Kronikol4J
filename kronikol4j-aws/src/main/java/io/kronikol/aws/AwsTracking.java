@@ -162,6 +162,12 @@ public final class AwsTracking {
                 trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 
+        /** A copy with the given test-identity fetcher (the .NET {@code CurrentTestInfoFetcher}). */
+        public AwsTrackingOptions withTestInfoFetcher(Supplier<TestInfo> value) {
+            return new AwsTrackingOptions(serviceName, callerName, value, verbosity,
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
+        }
+
         /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
         public AwsTrackingOptions withTrackDuringSetup(boolean value) {
             return new AwsTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
