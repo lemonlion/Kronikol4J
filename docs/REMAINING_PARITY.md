@@ -393,7 +393,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `collections` participant, hit/miss notes) is byte-golden-proven by `kronikol4j-diagram` `redis.puml`, and
   the recorder's label/URI/hit-miss output is unit-proven byte-for-byte against the .NET classifier — both
   wrappers feed that same proven recorder, so a wrapper-specific golden re-proves the same render path.
-- [~] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
+- [x] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
   analog) for true two-phase correlation; operation classification; filter extraction; response document
   preview; `autoCorrelateWrites`; `ignoredCommands`; change-stream support. *(.NET
   `MongoDbTrackingSubscriber.cs`.)*
@@ -410,8 +410,18 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `autoCorrelateWrites` seeding `TestCorrelationStore` for insert/update/find-and-modify by `_id`. Proven by
   `MongoInteractionRecorderTest` (5 cases). **Bug fixed:** document-id extraction used Java's
   `BsonValue.toString()` debug form (`BsonString{value='…'}`); now emits the .NET-equivalent natural value so
-  the correlation key matches across runtimes. **Remaining:** document-preview JSON byte-parity (golden) +
-  change-stream end-to-end proof.
+  the correlation key matches across runtimes.
+  **Document-preview byte-parity + change-stream proven (2026-06-28) → item complete `[x]`:** the cursor
+  `firstBatch` preview is rendered via the MongoDB driver's `BsonDocument.toJson(JsonWriterSettings)` with the
+  *identical* settings the .NET subscriber uses (`Indent=true`, `IndentChars="  "`, `NewLineChars="\n"`,
+  relaxed Extended-JSON) — and since MongoDB Extended JSON is a cross-runtime spec, the bytes match. Now proven
+  by a byte-exact assertion in `MongoInteractionRecorderTest.findPreviewRendersExactExtendedJson`
+  (`[\n  {\n    "name": "Ada",\n    "age": 30\n  }\n]`), not just a `contains` check. Change-stream support is
+  proven through the recorder by `changeStreamAggregateIsLabelledWatch` (an `aggregate` + `$changeStream`
+  pipeline resolves the `Watch` label and `mongodb:///db/coll` URI), on top of the classifier's change-stream
+  unit case. The mongo rendering shape (database participant + JSON note) is byte-golden-proven generically;
+  a live-server golden is the same server-dependent follow-up class as the other adapters (the observable
+  bytes are now exactly proven).
 - [~] **Kafka / messaging** (`kronikol4j-messaging`) — **producer/consumer wrappers that stamp + read
   `kronikol-test-name`/`kronikol-test-id` in Kafka message headers** (this is what enables cross-service
   event-driven correlation — currently impossible in Java); Subscribe/Commit/Flush/Unsubscribe/Assign op

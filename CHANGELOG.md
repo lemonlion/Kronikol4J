@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-1 MongoDB document-preview + change-stream (item [x])
+- **MongoDB adapter** (`kronikol4j-mongodb`) is now fully closed. The cursor `firstBatch` document preview is
+  proven byte-for-byte against .NET: the recorder renders it via the MongoDB driver's
+  `BsonDocument.toJson(JsonWriterSettings)` using the identical settings the .NET `MongoDbTrackingSubscriber`
+  uses (`Indent=true`, `IndentChars="  "`, `NewLineChars="\n"`, relaxed Extended-JSON — a cross-runtime spec),
+  now asserted byte-exact in `MongoInteractionRecorderTest` rather than via a `contains` check. Change-stream
+  support is proven through the recorder (an `aggregate` + `$changeStream` pipeline resolves the `Watch` label).
+  No production code change — this adds the missing parity proofs that gated the checkbox.
+
 ### Completed — Tier-1 SQL/JDBC FULL_ROWS cell capture (item [x])
 - **`SqlResponseDetail.FULL_ROWS`** (`kronikol4j-jdbc`) now captures cell-level data. As a result set is read,
   `ResultSetInvocationHandler` captures each row's cells (up to `maxResponseRows`, mirroring .NET

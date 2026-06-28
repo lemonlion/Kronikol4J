@@ -90,6 +90,35 @@ class MongoInteractionRecorderTest {
     }
 
     @Test
+    void findPreviewRendersExactExtendedJson() {
+        MongoInteractionRecorder rec = new MongoInteractionRecorder(opts().build());
+        rec.logStarted(8, "find", "shop", new BsonDocument("find", new BsonString("users")));
+        BsonDocument doc = new BsonDocument("name", new BsonString("Ada")).append("age", new BsonInt32(30));
+        BsonDocument reply = new BsonDocument("cursor",
+            new BsonDocument("firstBatch", new BsonArray(List.of(doc))));
+        rec.logSucceeded(8, reply);
+
+        // Byte-exact MongoDB Extended JSON (relaxed, 2-space indent, "\n") — identical settings + spec on both
+        // runtimes, so the document-preview content matches .NET's MongoDbTrackingSubscriber.
+        String content = RequestResponseLogger.getAllLogs().get(1).content();
+        assertThat(content).isEqualTo("[\n  {\n    \"name\": \"Ada\",\n    \"age\": 30\n  }\n]");
+    }
+
+    @Test
+    void changeStreamAggregateIsLabelledWatch() {
+        MongoInteractionRecorder rec = new MongoInteractionRecorder(opts().build());
+        // aggregate + a $changeStream pipeline stage → the classifier resolves the Watch operation.
+        BsonDocument aggregate = new BsonDocument("aggregate", new BsonString("orders"))
+            .append("pipeline", new BsonArray(List.of(
+                new BsonDocument("$changeStream", new BsonDocument()))));
+        rec.logStarted(12, "aggregate", "shop", aggregate);
+
+        RequestResponseLog req = RequestResponseLogger.getAllLogs().get(0);
+        assertThat(req.method().value()).contains("Watch");      // change-stream label
+        assertThat(req.uri().toString()).isEqualTo("mongodb:///shop/orders");
+    }
+
+    @Test
     void insertWithIdAutoCorrelatesTheWrite() {
         MongoInteractionRecorder rec = new MongoInteractionRecorder(opts().build());
         // update by _id is a write carrying a document id -> correlation seeded on success
