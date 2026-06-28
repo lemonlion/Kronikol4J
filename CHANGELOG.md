@@ -37,6 +37,14 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Decisions / boundaries
+- **Kafka build-interception** — decided: no Java equivalent of .NET's `Kronikol.Extensions.Kafka`
+  `BuildInterception` package (a Harmony runtime patch of `ConsumerBuilder/ProducerBuilder.Build()`). The
+  Apache Kafka Java client has no builder seam and JVM constructors can't return a substitute, so the
+  return-swap technique has no faithful analog. Supported paths: the explicit `TrackingKafkaProducer/Consumer`
+  wrappers (present) or a Spring `ConsumerFactory`/`ProducerFactory` `BeanPostProcessor` decorator (the DI
+  idiom; tracked under the Tier-1 Kafka adapter). Documented in the wiki.
+
 ### Added — Tier-6 helpers & wiring fixes
 - **Diagnostic report wiring** (`kronikol4j-report` + `kronikol4j-runtime` + `kronikol4j-gradle-plugin`) —
   added the `diagnosticMode` toggle to `ReportOptions` (`withDiagnosticMode`, the

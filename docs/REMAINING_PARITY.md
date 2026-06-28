@@ -355,7 +355,11 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   cross-service correlation loop (producer stamps → consumer reads → attribution). Proven by
   `TrackingKafkaConsumerTest` (MockConsumer, no broker: header-attributed consume, untracked-without-headers,
   records still returned, no scope leakage). **Remaining:** Subscribe/Commit/Flush/Unsubscribe/Assign op
-  tracking, `isCurrentRequestFromMyHost()`, `ITrackingComponent` self-registration, and a golden proof.
+  tracking, `isCurrentRequestFromMyHost()`, `ITrackingComponent` self-registration, and a golden proof; plus
+  the **zero-call-site-change auto-wiring** — a Spring `BeanPostProcessor` decorating Spring Kafka's
+  `ConsumerFactory`/`ProducerFactory` (the Java seam analogous to .NET's `ConsumerBuilder.Build()`), which is
+  where the Tier-5 "Kafka build-interception" decision relocated that work (see that item for the rationale on
+  why the .NET Harmony `Build()`-swap has no faithful Java auto-analog).
 - [~] **`TrackingProxy` enhancements** (`kronikol4j-proxy`) — `TrackingLogMode` (Immediate **+ Deferred**,
   integrating `PendingRequestResponseLogs`); `ActivitySource`/OTel span lifecycle for InternalFlow span
   production (`InternalFlowSpanStore.complete(...)`); configurable `uriScheme` (hardcoded `proxy://local/`)
@@ -977,8 +981,28 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   source-AST boundary already documented at the assertion/diagnostic items (the runtime ByteBuddy agent is the
   IL-weaver analog; closure-value resolution / readable-assertion substitution stays a documented gap). Maven
   has no equivalent auto-attach task yet (Surefire `argLine` wiring) — tracked under the Maven-plugin item.
-- [ ] **Kafka build-interception package** — `Kronikol.Extensions.Kafka.BuildInterception` (MSBuild
-  interception targets that auto-wire Kafka tracking). Decide Gradle/Maven equivalent.
+- [x] **Kafka build-interception package** — `Kronikol.Extensions.Kafka.BuildInterception`. Decide
+  Gradle/Maven equivalent.
+  **Premise corrected by reading the source:** it is **not** MSBuild interception targets — it is a **Harmony
+  runtime monkey-patch** (`KafkaBuildInterceptor.cs`, `Lib.Harmony` dependency) that postfix-patches
+  `ConsumerBuilder<TKey,TValue>.Build()` / `ProducerBuilder<TKey,TValue>.Build()` so each returns a
+  tracking-wrapped `IConsumer`/`IProducer` — zero-production-code-change Kafka tracking (the runtime swaps the
+  builder's return value).
+  **Decision (documented boundary):** there is **no faithful Java auto-swap analog**, for two structural
+  reasons: (1) the Apache Kafka *Java* client has no `ConsumerBuilder`/`ProducerBuilder` with a `.Build()` —
+  consumers/producers are constructed directly (`new KafkaConsumer<>(props)`); and (2) a JVM constructor
+  cannot return a substitute instance, so the "swap the return value" technique Harmony uses on `Build()`
+  cannot be reproduced on a constructor even with ByteBuddy (the project's Harmony/IL-weaver analog). The
+  supported Java paths instead are: **(a)** the explicit `TrackingKafkaProducer`/`TrackingKafkaConsumer`
+  decorators in `kronikol4j-messaging` (already present — the `KafkaTrackingInterceptor.WrapConsumer/
+  WrapProducer` analog, zero SDK dependency); and **(b)** for zero-call-site-change wiring, decorating Spring
+  Kafka's `ConsumerFactory`/`ProducerFactory` (whose `createConsumer()`/`createProducer()` return the
+  `Consumer`/`Producer` *interfaces* — the real Java seam the .NET builder occupies) via a Spring
+  `BeanPostProcessor`. This is the same "Spring DI decoration replaces .NET build/IL interception" idiom
+  already locked in for `ServiceCollectionDecoratorExtensions`. **No separate build-interception package /
+  Gradle/Maven task is warranted.** The Spring-Kafka factory-decorator auto-config itself is auto-capture
+  wiring and is tracked under the Tier-1 **Kafka / messaging** adapter's standing `[~]` follow-up (so it is
+  not skipped — only relocated to its proper home). Documented in the wiki Kafka section.
 - [x] **CLI distribution form** — fat-jar is built; decide on `jbang` / `jreleaser` packaging and a
   `dotnet tool install`-equivalent one-line install (PORT_PLAN Appendix B).
   **Done:** the fat-jar wasn't actually wired (only a `Main` class existed) — added a `fatJar` Gradle task to
