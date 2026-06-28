@@ -35,4 +35,30 @@ class ElasticsearchTrackingTest {
             .contains("database \"SearchCluster\" as searchCluster")
             .contains("test -[#E74C3C]> searchCluster: SEARCH: /");
     }
+
+    @Test
+    void classifierDrivenRecordUsesClassifierLabelUriAndBody() {
+        ElasticsearchTracking.record(ElasticsearchTrackingOptions.forCluster("SearchCluster"),
+            "GET", java.net.URI.create("http://es:9200/products/_search"), "{\"query\":{}}", "3 hits");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2);
+        assertThat(logs.get(0).method().value()).isEqualTo("Search → products"); // classifier Detailed label
+        assertThat(logs.get(0).uri().toString()).isEqualTo("elasticsearch:///products");
+        assertThat(logs.get(0).content()).isEqualTo("{\"query\":{}}");
+        assertThat(logs.get(1).content()).isEqualTo("3 hits");
+    }
+
+    @Test
+    void summarisedVerbosityOmitsBodyAndUsesSchemeOnlyUri() {
+        var options = ElasticsearchTrackingOptions.forCluster("SearchCluster")
+            .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        ElasticsearchTracking.record(options,
+            "GET", java.net.URI.create("http://es:9200/products/_search"), "{\"query\":{}}", "3 hits");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs.get(0).method().value()).isEqualTo("Search");        // terse summarised label
+        assertThat(logs.get(0).uri().toString()).isEqualTo("elasticsearch:///");
+        assertThat(logs.get(0).content()).isNull();                          // body omitted at Summarised
+    }
 }

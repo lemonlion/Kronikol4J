@@ -420,8 +420,15 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   index create/delete/exists, `_cluster/health`, `_cat`, `_msearch`, `_reindex`, `_index_template`,
   scroll), with index/document-id extraction, directional-arrow diagram labels, and the
   `elasticsearch:///index` URI builder. Pure logic (no ES SDK dep). Proven by
-  `ElasticsearchOperationClassifierTest` (6 cases). **Remaining:** the ES Java client callback/transport hook
-  that feeds the classifier + emits the log pair, verbosity wiring, and a golden proof.
+  `ElasticsearchOperationClassifierTest` (6 cases).
+  **Classifier-driven recorder + verbosity done (2026-06-28):** added a `record(options, httpMethod, URI, body,
+  resultSummary)` overload to `ElasticsearchTracking` that classifies the request (method + URI →
+  `ElasticsearchOperationInfo`) and emits the pair with the classifier's diagram label +
+  `elasticsearch:///<index>` URI, honouring `ElasticsearchTrackingOptions.verbosity` (new field, default
+  Detailed, `withVerbosity(...)`; Summarised omits the body + collapses the URI to `elasticsearch:///`) — the
+  reusable core a transport hook delegates to (the .NET `ElasticsearchTrackingCallbackHandler` analog). Proven
+  by `ElasticsearchTrackingTest` (classifier label/URI/body at Detailed; omitted at Summarised). **Remaining:**
+  the actual ES Java client transport hook (SDK-coupled) that calls this on each request, and a golden proof.
 - [~] **AWS** (`kronikol4j-aws`) — real `ExecutionInterceptor` (AWS SDK v2) for S3/DynamoDB/SQS/SNS;
   per-service classifiers + verbosity + phase. *(.NET ships a `DelegatingHandler` per service.)*
   **SQS classifier done:** `SqsOperationClassifier` (+ `SqsOperation`, `SqsOperationInfo`) ports the .NET

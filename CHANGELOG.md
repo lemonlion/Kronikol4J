@@ -74,6 +74,14 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Added — Tier-1 Elasticsearch (classifier-driven recorder + verbosity)
+- **Classifier-driven `record` + verbosity** (`kronikol4j-elasticsearch`) — added a
+  `record(options, httpMethod, URI, body, resultSummary)` overload that classifies the request via
+  `ElasticsearchOperationClassifier` and emits the pair with the classifier's diagram label +
+  `elasticsearch:///<index>` URI, honouring the new `ElasticsearchTrackingOptions.verbosity` (default Detailed;
+  Summarised omits the body and collapses the URI). The reusable core an ES transport hook delegates to.
+  Proven by `ElasticsearchTrackingTest`. The SDK transport hook + a golden proof remain.
+
 ### Added — Tier-1 gRPC (verbosity wiring)
 - **Interceptor verbosity** (`kronikol4j-grpc`) — `GrpcTrackingOptions` now carries a `TrackingVerbosity`
   (default Detailed, `withVerbosity(...)`); `KronikolClientInterceptor` uses it for the diagram label and, at
