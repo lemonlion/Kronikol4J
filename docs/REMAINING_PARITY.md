@@ -188,9 +188,12 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   **gRPC done (2026-06-28):** `GrpcTrackingOptions` gained `trackDuringSetup/Action`; `GrpcTracking.record`
   guards on `shouldTrack(...)`. Proven by `GrpcTrackingTest`. **Already phase-aware** (verified): the richer
   two-phase `InteractionRecorder`s — Redis, Mongo, SQL/JDBC, Bigtable, EventHubs, EventBus — and the
-  `MessageTracker` (so the Kafka producer/consumer wrappers inherit it). **Remaining:** the static
-  `MessageTracking` publish facade + `TrackingProxy`, plus `Setup/ActionVerbosity` per-phase overrides; box
-  flips `[x]` once those two consult phase too.
+  `MessageTracker` (so the Kafka producer/consumer wrappers inherit it). **MessageTracking facade done
+  (2026-06-28):** `MessageTrackingOptions` gained `trackDuringSetup/Action`; `publish`/`consume` guard on
+  `shouldTrack(...)`. Proven by `MessageTrackingTest`. **Remaining:** `TrackingProxy` (the last on/off path),
+  plus the second dimension — `Setup/ActionVerbosity` per-phase verbosity overrides (a distinct feature: each
+  adapter would resolve `effectiveVerbosity(default, setup, action)`); box flips `[x]` once `TrackingProxy`
+  consults phase and per-phase verbosity is wired.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)

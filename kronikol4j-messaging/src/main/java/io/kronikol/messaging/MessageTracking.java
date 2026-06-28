@@ -1,6 +1,7 @@
 package io.kronikol.messaging;
 
 import io.kronikol.core.constants.DependencyCategories;
+import io.kronikol.core.context.PhaseConfiguration;
 import io.kronikol.core.context.TestInfo;
 import io.kronikol.core.context.TestInfoResolver;
 import io.kronikol.core.tracking.Interactions;
@@ -34,6 +35,9 @@ public final class MessageTracking {
     }
 
     private static void event(MessageTrackingOptions options, String verb, String topic, String message) {
+        if (!PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction())) {
+            return;
+        }
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         String content = "topic: " + topic + "\n" + (message == null ? "" : message);
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
@@ -43,9 +47,29 @@ public final class MessageTracking {
 
     /** Configuration for messaging tracking. */
     public record MessageTrackingOptions(String serviceName, String callerName,
-                                         Supplier<TestInfo> testInfoFetcher) {
+                                         Supplier<TestInfo> testInfoFetcher,
+                                         boolean trackDuringSetup, boolean trackDuringAction) {
+
+        /** Three-arg shape (both phases tracked) — the back-compatible constructor. */
+        public MessageTrackingOptions(String serviceName, String callerName,
+                                      Supplier<TestInfo> testInfoFetcher) {
+            this(serviceName, callerName, testInfoFetcher, true, true);
+        }
+
         public static MessageTrackingOptions forBroker(String serviceName) {
-            return new MessageTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null);
+            return new MessageTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null, true, true);
+        }
+
+        /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
+        public MessageTrackingOptions withTrackDuringSetup(boolean value) {
+            return new MessageTrackingOptions(serviceName, callerName, testInfoFetcher,
+                value, trackDuringAction);
+        }
+
+        /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
+        public MessageTrackingOptions withTrackDuringAction(boolean value) {
+            return new MessageTrackingOptions(serviceName, callerName, testInfoFetcher,
+                trackDuringSetup, value);
         }
     }
 }

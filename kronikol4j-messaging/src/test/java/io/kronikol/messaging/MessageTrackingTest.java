@@ -38,4 +38,17 @@ class MessageTrackingTest {
             .contains("queue \"Kafka\" as kafka")
             .contains("test -[#9B59B6]> kafka: PUBLISH: /");
     }
+
+    @Test
+    void actionPhaseSuppressionSkipsPublishAndConsume() {
+        var options = MessageTrackingOptions.forBroker("Kafka").withTrackDuringAction(false);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);
+        try {
+            MessageTracking.publish(options, "orders", "{}");
+            MessageTracking.consume(options, "orders", "{}");
+            assertThat(RequestResponseLogger.getAllLogs()).isEmpty();
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
 }

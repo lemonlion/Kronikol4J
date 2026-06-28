@@ -98,6 +98,11 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
+### Added — Tier-1 messaging facade (phase suppression)
+- **`MessageTracking` phase suppression** (`kronikol4j-messaging`) — `MessageTrackingOptions` gained
+  `trackDuringSetup`/`trackDuringAction` (default true); `publish`/`consume` now consult
+  `PhaseConfiguration.shouldTrack(...)` and skip in a suppressed phase. Proven by `MessageTrackingTest`.
+
 ### Added — Tier-1 gRPC (phase suppression)
 - **Interceptor/recorder phase suppression** (`kronikol4j-grpc`) — `GrpcTrackingOptions` gained
   `trackDuringSetup`/`trackDuringAction` (default true); `GrpcTracking.record` now consults
