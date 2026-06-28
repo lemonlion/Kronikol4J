@@ -7,6 +7,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Maven assertion-agent auto-attach (Build-time weaving auto-wiring complete)
+- **`prepare-assertion-agent`** goal (`PrepareAssertionAgentMojo`, `kronikol4j-maven-plugin`) — the Maven mirror
+  of the Gradle plugin's assertion-agent auto-attach. Bound to `initialize`, it resolves the agent jar from
+  `${plugin.artifactMap}` (default `io.github.lemonlion:kronikol4j-assertj-agent`, now a declared plugin
+  dependency) and prepends `-javaagent:<jar> -Dnet.bytebuddy.experimental=true` to the `argLine` property
+  Surefire/Failsafe read (the `jacoco:prepare-agent` pattern). Opt out with `-Dkronikol.skipAssertionAgent=true`.
+  Pure arg-line logic in `AssertionAgentArgLine`. Proven by `AssertionAgentArgLineTest` +
+  `PrepareAssertionAgentMojoTest`. Completes the Build-time-weaving auto-wiring item (agent now auto-attached on
+  both Gradle and Maven; the compile-time rewriters remain the documented C#-IL/source-AST boundary).
+
 ### Resolved — ComponentDiagramOptions item complete
 - **`embedInTestRunReport`** is now consumed: `HtmlReportGenerator` embeds the run-level component diagram only
   when `generateComponentDiagram() && componentDiagram().embedInTestRunReport()` (the .NET

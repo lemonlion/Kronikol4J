@@ -53,5 +53,53 @@
         <title implementation="java.lang.String" default-value="Test Run Report">${kronikol.title}</title>
       </configuration>
     </mojo>
+    <mojo>
+      <goal>prepare-assertion-agent</goal>
+      <description>Attaches the Kronikol4J assertion-tracking agent to the test JVM by prepending
+        -javaagent to the argLine property (the Maven analog of the Gradle plugin's auto-attach).</description>
+      <requiresDependencyResolution>none</requiresDependencyResolution>
+      <requiresProject>true</requiresProject>
+      <threadSafe>true</threadSafe>
+      <phase>initialize</phase>
+      <implementation>io.kronikol.maven.PrepareAssertionAgentMojo</implementation>
+      <language>java</language>
+      <instantiationStrategy>per-lookup</instantiationStrategy>
+      <executionStrategy>once-per-session</executionStrategy>
+      <parameters>
+        <parameter>
+          <name>assertionAgentArtifact</name>
+          <type>java.lang.String</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>The agent artifact key (groupId:artifactId) to resolve from the plugin dependencies.</description>
+        </parameter>
+        <parameter>
+          <name>skipAssertionAgent</name>
+          <type>boolean</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>When true, skip attaching the agent (leaves argLine untouched).</description>
+        </parameter>
+        <parameter>
+          <name>argLineProperty</name>
+          <type>java.lang.String</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>The argLine property name Surefire/Failsafe read.</description>
+        </parameter>
+      </parameters>
+      <configuration>
+        <assertionAgentArtifact implementation="java.lang.String"
+            default-value="io.github.lemonlion:kronikol4j-assertj-agent">${kronikol.assertionAgentArtifact}</assertionAgentArtifact>
+        <skipAssertionAgent implementation="boolean" default-value="false">${kronikol.skipAssertionAgent}</skipAssertionAgent>
+        <argLineProperty implementation="java.lang.String" default-value="argLine">${kronikol.argLineProperty}</argLineProperty>
+      </configuration>
+      <requirements>
+        <requirement>
+          <role>org.apache.maven.project.MavenProject</role>
+          <field-name>project</field-name>
+        </requirement>
+      </requirements>
+    </mojo>
   </mojos>
 </plugin>
