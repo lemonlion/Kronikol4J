@@ -7,6 +7,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Resolved — ComponentDiagramOptions item complete
+- **`embedInTestRunReport`** is now consumed: `HtmlReportGenerator` embeds the run-level component diagram only
+  when `generateComponentDiagram() && componentDiagram().embedInTestRunReport()` (the .NET
+  `ShouldEmbedComponentDiagram`). Proven by `HtmlReportGeneratorTest.omitsTheComponentDiagramWhenEmbedDisabled`.
+- **Parity fix:** reverted the previous auto-stats wiring — the report no longer auto-computes/passes
+  relationship stats to the component diagram, matching .NET (both .NET report callers invoke `GeneratePlantUml`
+  without the `stats` arg). The `ComponentRelationshipStats` + 3-arg `generatePlantUml` capability remains for
+  programmatic use (the faithful port of .NET's likewise-unwired `ComputeRelationshipStats`).
+- Remaining `ComponentDiagramOptions` fields resolved as boundaries: `fileName` is the standalone
+  rendered-image file = the excluded server-side PlantUML rendering (Java renders in-browser); and
+  `showRelationshipFlows`/`relationshipFlowStyle`/`showSystemFlameChart`/`maxFlameChartTests` are verified .NET
+  dead-config (declared, read nowhere; no system flame-chart renderer exists). Closes the item.
+
 ### Added — component-diagram relationship stats (ComponentDiagramOptions progress)
 - **`ComponentRelationshipStats`** (`kronikol4j-diagram`) — the component-diagram-consumed core of the .NET
   `RelationshipStats`: pairs requests/responses by id+timestamp and computes call/test counts, latency

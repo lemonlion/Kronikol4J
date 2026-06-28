@@ -4,7 +4,6 @@ import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.diagram.component.ComponentDiagramGenerator;
 import io.kronikol.diagram.component.ComponentDiagramRenderOptions;
 import io.kronikol.diagram.component.ComponentRelationship;
-import io.kronikol.diagram.component.ComponentRelationshipStats;
 import io.kronikol.diagram.model.PlantUmlForTest;
 import io.kronikol.diagram.plantuml.PlantUmlCreator;
 import io.kronikol.report.component.ComponentDiagramOptions;
@@ -61,8 +60,11 @@ public final class HtmlReportGenerator {
                 diagramByTestId.put(p.testId(), p.diagrams().get(0)); // one per test (client-side splitting)
             }
         }
-        String componentDiagram = options.generateComponentDiagram()
-            ? componentDiagram(logs, options.componentDiagram()) : null;
+        // Embed the run-level component diagram when generation is on AND it is to be embedded in the test-run
+        // report (the .NET ShouldEmbedComponentDiagram = ComponentDiagramOptions.EmbedInTestRunReport).
+        String componentDiagram =
+            options.generateComponentDiagram() && options.componentDiagram().embedInTestRunReport()
+                ? componentDiagram(logs, options.componentDiagram()) : null;
         return generateFromDiagrams(features, diagramByTestId, componentDiagram, outputDir,
             options.control().resolveTitle(title), options.customization(),
             options.control().htmlReportFileName());
@@ -86,13 +88,11 @@ public final class HtmlReportGenerator {
             .arrowColorMode(opts.arrowColorMode())
             .dependencyColors(opts.dependencyColors())
             .build();
-        // When relationship flows are enabled, compute per-relationship latency stats (no-op for logs without
-        // timestamps → empty map → unchanged output) so labels gain P50/P95/P99 and PERFORMANCE mode can
-        // hotspot-colour. A custom label formatter supersedes stats labels (handled in the generator).
-        var stats = opts.showRelationshipFlows()
-            ? ComponentRelationshipStats.compute(relationships, logs, opts.lowCoverageThreshold())
-            : java.util.Map.<String, ComponentRelationshipStats>of();
-        return ComponentDiagramGenerator.generatePlantUml(relationships, render, stats);
+        // No per-relationship stats are passed here — matching .NET, whose report callers always invoke
+        // GeneratePlantUml without the stats arg (so ShowRelationshipFlows/RelationshipFlowStyle never affect the
+        // embedded diagram). The stats capability (ComponentRelationshipStats + the 3-arg generatePlantUml
+        // overload) is the faithful port of .NET's likewise-unwired ComputeRelationshipStats — for programmatic use.
+        return ComponentDiagramGenerator.generatePlantUml(relationships, render);
     }
 
     /** Renders from pre-computed diagrams — used by the merge path, where fragments already carry

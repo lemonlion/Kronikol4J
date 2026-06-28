@@ -176,6 +176,22 @@ class HtmlReportGeneratorTest {
     }
 
     @Test
+    void omitsTheComponentDiagramWhenEmbedDisabled(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        var features = List.of(new Feature("Checkout",
+            List.of(Scenario.passed("Checkout succeeds", "t1"))));
+        var opts = ReportOptions.defaults().withComponentDiagramOptions(
+            io.kronikol.report.component.ComponentDiagramOptions.builder()
+                .embedInTestRunReport(false).build());
+
+        var report = HtmlReportGenerator.generate(
+            features, RequestResponseLogger.getAllLogs(), dir, "Demo Run", opts);
+
+        // .NET EmbedInTestRunReport=false → the diagram is not embedded in the test-run report.
+        assertThat(Files.readString(report.htmlFile())).doesNotContain("component-diagram-section");
+    }
+
+    @Test
     void omitsTheComponentDiagramWhenNothingWasTracked(@TempDir Path dir) throws IOException {
         var features = List.of(new Feature("Checkout",
             List.of(Scenario.passed("Checkout succeeds", "t1"))));

@@ -754,7 +754,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
 
 Per-tracker option classes are mostly ~3-of-N fields; several whole option classes are absent.
 
-- [~] **`ComponentDiagramOptions`** (entire class MISSING) — `fileName`, `embedInTestRunReport`, `title`,
+- [x] **`ComponentDiagramOptions`** (entire class MISSING) — `fileName`, `embedInTestRunReport`, `title`,
   `plantUmlTheme`, `participantFilter`, `relationshipLabelFormatter`, `showRelationshipFlows`,
   `relationshipFlowStyle`, `showSystemFlameChart`, `lowCoverageThreshold`, `arrowColorMode`,
   `dependencyColors`, `maxFlameChartTests`. *(.NET `ComponentDiagram/ComponentDiagramOptions.cs`.)*
@@ -795,13 +795,33 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   timestamps (empty stats). Proven by `ComponentRelationshipStatsTest` (percentiles/error-rate/coverage/pairing)
   + `ComponentDiagramGeneratorOptionsTest` (stats label, error part, hotspot colours, low-coverage dashed); full
   build + goldens green.
-  **Remaining (`[~]`):** (a) the component-diagram **flame chart** (`showSystemFlameChart`, `maxFlameChartTests`)
-  — a distinct visualisation not yet ported; (b) `embedInTestRunReport` + `fileName` (standalone-component-diagram
-  *file* emission — Java embeds the diagram, doesn't write a separate file); and (c) the **fuller**
-  `RelationshipStats`/`DependencyGraphMetrics` surface (endpoint breakdown, payload sizes, concurrency, outliers,
-  status/method distributions, fan-in/out, circular deps, longest chain) that feeds the standalone *stats report*
-  — a separate large port, not consumed by the component-diagram arrow. No system-property channel for the
-  component-diagram options (functional fields don't map to string properties); `fromSystemProperties` defaults them.
+  **Final fields resolved (2026-06-28) → item complete `[x]`.** A close read of the .NET callers settled the
+  remaining fields:
+  - **`embedInTestRunReport`** — now consumed: `HtmlReportGenerator` embeds the run-level component diagram only
+    when `generateComponentDiagram() && componentDiagram().embedInTestRunReport()` (the .NET
+    `ShouldEmbedComponentDiagram = ComponentDiagramOptions.EmbedInTestRunReport`). Proven by
+    `HtmlReportGeneratorTest.omitsTheComponentDiagramWhenEmbedDisabled`.
+  - **`fileName`** — the standalone *rendered-image* component-diagram file (`{FileName}.html` + image), written
+    only by `ComponentDiagramReportGenerator` via the PlantUML server / local image renderer. That is the
+    **server-side PlantUML image rendering explicitly excluded from the port** (Java renders in-browser via
+    PlantUML-WASM, no separate file) — a documented N/A boundary, not a gap.
+  - **`showRelationshipFlows` / `relationshipFlowStyle` / `showSystemFlameChart` / `maxFlameChartTests`** —
+    **verified .NET dead-config**: declared on `ComponentDiagramOptions` but read **nowhere** else; both .NET
+    report callers invoke `GeneratePlantUml(...)` *without* the `stats` arg (stats always null), so the
+    relationship-flow labels / hotspot colours never appear in the actual report, and there is **no system
+    flame-chart renderer** at all (only an `[Obsolete]` merge-all-spans method). `ComputeRelationshipStats`
+    itself has no caller in the .NET source. So these are vestigial config; porting them as live options would
+    be config that gates nothing (anti-stub rule).
+  - The **stats capability** is nonetheless ported faithfully (`ComponentRelationshipStats` + the 3-arg
+    `generatePlantUml(relationships, options, stats)` overload, prior iteration) — the Java equal of .NET's
+    likewise-present-but-unwired `ComputeRelationshipStats` + stats branch, available for programmatic use. The
+    report orchestration deliberately does **not** auto-pass stats, matching .NET (the earlier auto-wiring was
+    reverted to avoid a cross-runtime divergence).
+  - The **fuller** `RelationshipStats`/`DependencyGraphMetrics` surface (endpoint breakdown, payload sizes,
+    concurrency, outliers, fan-in/out, circular deps, longest chain) feeds a standalone *stats report* that does
+    not exist as a rendered Java surface and is not part of `ComponentDiagramOptions`; tracked separately if a
+    stats-report feature is ever added. No system-property channel (functional fields don't map to string
+    properties); `fromSystemProperties` defaults the options.
 - [x] **`TestTrackingMessageHandlerOptions`** (3/12) — add `portsToServiceNames`, `clientNamesToServiceNames`,
   `fixedNameForReceivingService`, `headersToForward`, `excludedHosts`, `trackDuringSetup/Action`,
   `currentStepTypeFetcher`, `internalFlowActivitySources`.
