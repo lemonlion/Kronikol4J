@@ -10,6 +10,8 @@ dependencies {
     api(project(":kronikol4j-core"))
     // The google-http-client HttpResponseInterceptor SPI for the BigQuery/Cloud Storage HTTP hook.
     compileOnly("com.google.http-client:google-http-client:1.44.2")
+    // The Pub/Sub (gRPC) client types the TrackingPublisher/TrackingMessageReceiver wrappers decorate.
+    compileOnly("com.google.cloud:google-cloud-pubsub:1.131.0")
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
 }

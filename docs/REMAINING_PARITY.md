@@ -642,7 +642,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   services now auto-capture** (Cosmos/Blob/Storage Queues via the HTTP pipeline policy, Service Bus via the
   AMQP client wrappers) with Cosmos write-correlation; golden coverage is the same as the other adapters
   (participant rendering golden-proven generically; labels/URIs/categories unit-proven exactly).
-- [~] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
+- [x] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
   classifiers + verbosity. *(.NET ships handlers + interceptors per service.)*
   **Pub/Sub classifier done:** `PubSubOperationClassifier` (+ `PubSubOperation`, `PubSubOperationInfo`) ports
   the .NET classifier — SDK method name → one of 8 operations (Publish/PublishBatch when count>1/Pull/
@@ -674,9 +674,19 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   per-phase verbosity (Raw → raw method + URI; Summarised → drop body + skip Other) + real status. Proven by
   `GcpHttpTrackingTest` (BigQuery table-GET → `Read` + rewritten path + BigQuery category; Cloud Storage
   metadata/download → `gcs://` URI + CloudStorage category; non-GCP-path skip) — driven through the router core,
-  no live GCP. **Remaining (`[~]`):** the **Pub/Sub** tracking — .NET uses gRPC client wrappers
-  (`TrackingPublisherClient`/`TrackingSubscriberClient`), a separate client-decorator mechanism (the
-  `PubSubOperationClassifier` + recorder are done) — plus a golden proof.
+  no live GCP.
+  **Pub/Sub done (2026-06-28) → item complete `[x]`:** `PubSubInteractionRecorder` (+ `PubSubTrackerOptions`)
+  ports the .NET `PubSubTracker` — an event-styled request (`MetaType.EVENT`) + plain response pair on the
+  `MessageQueue` category, the `pubsub:///<short-name>` URI (full name at Raw), no HTTP status. The gRPC client
+  decorators `TrackingPublisher` (wraps `com.google.cloud.pubsub.v1.Publisher`, tracking `publish(...)` as
+  `PublishAsync` and recording the broker message-id/error once the `ApiFuture` resolves) and
+  `TrackingMessageReceiver` (a `MessageReceiver` decorator tracking each delivery as `Receive`, then forwarding
+  to the user's receiver) auto-feed it (google-cloud-pubsub `compileOnly`). Proven by
+  `PubSubInteractionRecorderTest` (event/plain pair + category + no-status, short-name URI, Summarised drop);
+  the wrappers are thin glue over that proven core (concrete Pub/Sub clients need a live project — the
+  tested-core/thin-SDK-glue split). **All three GCP services now auto-capture** (BigQuery/Cloud Storage via the
+  google-http-client interceptor, Pub/Sub via the gRPC client wrappers); golden coverage is the same as the
+  other adapters (participant rendering golden-proven generically; labels/URIs/categories unit-proven).
 
 ---
 

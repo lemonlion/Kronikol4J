@@ -7,6 +7,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — GCP adapter (item [x])
+- **Pub/Sub tracking** (`kronikol4j-gcp`) closes the GCP adapter. `PubSubInteractionRecorder` ports the .NET
+  `PubSubTracker` (event-styled request + plain response on `MessageQueue`, `pubsub:///<short-name>` URI, no
+  HTTP status); the gRPC client decorators `TrackingPublisher` (wraps `Publisher`, records the message-id/error
+  on `ApiFuture` completion) and `TrackingMessageReceiver` (a `MessageReceiver` decorator) auto-feed it
+  (google-cloud-pubsub `compileOnly`). Proven by `PubSubInteractionRecorderTest`. With the BigQuery/Cloud
+  Storage HTTP interceptor, **all three GCP services now auto-capture** — the GCP item is complete.
+
 ### Added — GCP BigQuery/Cloud Storage HTTP hook (GCP item progress)
 - **`GcpHttpTrackingInterceptor`** (`kronikol4j-gcp`) — a google-http-client `HttpResponseInterceptor`
   (google-http-client `compileOnly`, installed via `GcpHttpTrackingInterceptor.initializer(options)`) that
