@@ -1,0 +1,133 @@
+in=U0VMRUNUICogRlJPTSBPcmRlcnMgV0hFUkUgaWQgPSAx
+ct=TEXT
+table=Orders
+keyword=SELECT
+detailed=SELECT FROM Orders
+summarised=SELECT
+
+in=U0VMRUNUIG8uKiBGUk9NIG9yZGVycyBvIEpPSU4gY3VzdG9tZXJzIGMgT04gby5jaWQgPSBjLmlk
+ct=TEXT
+table=orders
+keyword=SELECT
+detailed=SELECT FROM orders
+summarised=SELECT
+
+in=SU5TRVJUIElOVE8gT3JkZXJzIChpZCwgbmFtZSkgVkFMVUVTICgxLCAnYScp
+ct=TEXT
+table=Orders
+keyword=INSERT
+detailed=INSERT INTO Orders
+summarised=INSERT
+
+in=SU5TRVJUIElOVE8gT3JkZXJzIChpZCkgVkFMVUVTICgxKSBPTiBDT05GTElDVCAoaWQpIERPIFVQREFURSBTRVQgaWQgPSAx
+ct=TEXT
+table=Orders
+keyword=INSERT
+detailed=UPSERT Orders
+summarised=UPSERT
+
+in=TUVSR0UgSU5UTyBPcmRlcnMgVVNJTkcgc3JjIE9OIChPcmRlcnMuaWQgPSBzcmMuaWQpIFdIRU4gTUFUQ0hFRCBUSEVOIFVQREFURSBTRVQgeCA9IDE=
+ct=TEXT
+table=Orders
+keyword=MERGE
+detailed=MERGE Orders
+summarised=MERGE
+
+in=VVBEQVRFIE9yZGVycyBTRVQgbmFtZSA9ICdiJyBXSEVSRSBpZCA9IDE=
+ct=TEXT
+table=Orders
+keyword=UPDATE
+detailed=UPDATE Orders
+summarised=UPDATE
+
+in=REVMRVRFIEZST00gT3JkZXJzIFdIRVJFIGlkID0gMQ==
+ct=TEXT
+table=Orders
+keyword=DELETE
+detailed=DELETE FROM Orders
+summarised=DELETE
+
+in=Q1JFQVRFIFRBQkxFIE9yZGVycyAoaWQgSU5UKQ==
+ct=TEXT
+table=Orders
+keyword=CREATE
+detailed=CREATE TABLE Orders
+summarised=CREATE TABLE
+
+in=Q1JFQVRFIElOREVYIGl4X29yZGVycyBPTiBPcmRlcnMgKGlkKQ==
+ct=TEXT
+table=ix_orders
+keyword=CREATE
+detailed=CREATE INDEX ix_orders
+summarised=CREATE INDEX
+
+in=QUxURVIgVEFCTEUgT3JkZXJzIEFERCBDT0xVTU4geCBJTlQ=
+ct=TEXT
+table=Orders
+keyword=ALTER
+detailed=ALTER TABLE Orders
+summarised=ALTER TABLE
+
+in=RFJPUCBUQUJMRSBPcmRlcnM=
+ct=TEXT
+table=Orders
+keyword=DROP
+detailed=DROP TABLE Orders
+summarised=DROP TABLE
+
+in=VFJVTkNBVEUgVEFCTEUgT3JkZXJz
+ct=TEXT
+table=Orders
+keyword=TRUNCATE
+detailed=TRUNCATE Orders
+summarised=TRUNCATE
+
+in=V0lUSCByZWNlbnQgQVMgKFNFTEVDVCAqIEZST00gT3JkZXJzKSBTRUxFQ1QgKiBGUk9NIHJlY2VudA==
+ct=TEXT
+table=recent
+keyword=SELECT
+detailed=SELECT FROM recent
+summarised=SELECT
+
+in=U0VMRUNUICogRlJPTSBkYm8uT3JkZXJz
+ct=TEXT
+table=Orders
+keyword=SELECT
+detailed=SELECT FROM Orders
+summarised=SELECT
+
+in=U0VMRUNUICogRlJPTSAiT3JkZXIgSXRlbXMi
+ct=TEXT
+table=Order
+keyword=SELECT
+detailed=SELECT FROM Order
+summarised=SELECT
+
+in=U0VMRUNUICogRlJPTSBbT3JkZXIgSXRlbXNd
+ct=TEXT
+table=Order
+keyword=SELECT
+detailed=SELECT FROM Order
+summarised=SELECT
+
+in=VVBEQVRFIHNob3AuT3JkZXJzIFNFVCB4ID0gMQ==
+ct=TEXT
+table=Orders
+keyword=UPDATE
+detailed=UPDATE Orders
+summarised=UPDATE
+
+in=RVhFQyBzcF9HZXRPcmRlcnM=
+ct=TEXT
+table=sp_GetOrders
+keyword=EXEC
+detailed=EXEC sp_GetOrders
+summarised=EXEC
+
+in=R2V0T3JkZXJzQnlDdXN0b21lcg==
+ct=STORED_PROCEDURE
+table=GetOrdersByCustomer
+keyword=~null~
+detailed=EXEC GetOrdersByCustomer
+summarised=EXEC
+

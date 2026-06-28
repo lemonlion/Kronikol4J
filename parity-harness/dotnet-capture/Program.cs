@@ -20,6 +20,11 @@ CaptureComponent("component", FanOut());
 // Standalone component-diagram HTML report (browserJs self-contained page).
 CaptureComponentDiagramReport();
 
+// Cross-runtime SQL-classifier parity: drive the REAL .NET UnifiedSqlClassifier over a fixed battery and
+// dump {table, keyword, detailed+summarised diagram labels} so the Java classifier is byte-diffed against
+// .NET's actual output (not just the spec). Env-free (pure classification logic).
+CaptureSqlClassification();
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1862,6 +1867,53 @@ void CaptureComponent(string name, List<RequestResponseLog> logs)
     Console.WriteLine($"=== {name} ({puml.Length} chars) ===");
     Console.WriteLine(puml);
     Console.WriteLine();
+}
+
+void CaptureSqlClassification()
+{
+    // (sql, isStoredProc) battery covering the classifier branches: DML, upsert/merge, DDL, CTE, schema-
+    // qualified / quoted / bracketed tables, multi-statement, EXEC, and a CommandType.StoredProcedure case.
+    var battery = new (string Sql, bool Proc)[]
+    {
+        ("SELECT * FROM Orders WHERE id = 1", false),
+        ("SELECT o.* FROM orders o JOIN customers c ON o.cid = c.id", false),
+        ("INSERT INTO Orders (id, name) VALUES (1, 'a')", false),
+        ("INSERT INTO Orders (id) VALUES (1) ON CONFLICT (id) DO UPDATE SET id = 1", false),
+        ("MERGE INTO Orders USING src ON (Orders.id = src.id) WHEN MATCHED THEN UPDATE SET x = 1", false),
+        ("UPDATE Orders SET name = 'b' WHERE id = 1", false),
+        ("DELETE FROM Orders WHERE id = 1", false),
+        ("CREATE TABLE Orders (id INT)", false),
+        ("CREATE INDEX ix_orders ON Orders (id)", false),
+        ("ALTER TABLE Orders ADD COLUMN x INT", false),
+        ("DROP TABLE Orders", false),
+        ("TRUNCATE TABLE Orders", false),
+        ("WITH recent AS (SELECT * FROM Orders) SELECT * FROM recent", false),
+        ("SELECT * FROM dbo.Orders", false),
+        ("SELECT * FROM \"Order Items\"", false),
+        ("SELECT * FROM [Order Items]", false),
+        ("UPDATE shop.Orders SET x = 1", false),
+        ("EXEC sp_GetOrders", false),
+        ("GetOrdersByCustomer", true),
+    };
+    string Null(string? s) => s ?? "~null~";
+    string B64(string s) => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(s));
+    var sb = new System.Text.StringBuilder();
+    foreach (var (sql, proc) in battery)
+    {
+        var ct = proc ? System.Data.CommandType.StoredProcedure : System.Data.CommandType.Text;
+        var info = Kronikol.Sql.UnifiedSqlClassifier.Classify(sql, ct);
+        sb.Append("in=").Append(B64(sql)).Append('\n');
+        sb.Append("ct=").Append(proc ? "STORED_PROCEDURE" : "TEXT").Append('\n');
+        sb.Append("table=").Append(Null(info.TableName)).Append('\n');
+        sb.Append("keyword=").Append(Null(Kronikol.Sql.UnifiedSqlClassifier.GetRawKeyword(sql))).Append('\n');
+        sb.Append("detailed=").Append(Kronikol.Sql.UnifiedSqlClassifier.GetDiagramLabel(
+            info, Kronikol.Sql.SqlTrackingVerbosityLevel.Detailed)).Append('\n');
+        sb.Append("summarised=").Append(Kronikol.Sql.UnifiedSqlClassifier.GetDiagramLabel(
+            info, Kronikol.Sql.SqlTrackingVerbosityLevel.Summarised)).Append('\n');
+        sb.Append('\n');
+    }
+    File.WriteAllText(Path.Combine(outDir, "sql-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== sql-classification.txt ({battery.Length} cases) ===");
 }
 
 void CaptureComponentDiagramReport()
