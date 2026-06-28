@@ -954,8 +954,18 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   or document any as an explicit boundary.
 - [ ] **Kafka build-interception package** — `Kronikol.Extensions.Kafka.BuildInterception` (MSBuild
   interception targets that auto-wire Kafka tracking). Decide Gradle/Maven equivalent.
-- [ ] **CLI distribution form** — fat-jar is built; decide on `jbang` / `jreleaser` packaging and a
+- [x] **CLI distribution form** — fat-jar is built; decide on `jbang` / `jreleaser` packaging and a
   `dotnet tool install`-equivalent one-line install (PORT_PLAN Appendix B).
+  **Done:** the fat-jar wasn't actually wired (only a `Main` class existed) — added a `fatJar` Gradle task to
+  `kronikol4j-cli` (Main-Class `io.kronikol.cli.Main` + all runtime deps bundled, signature files excluded,
+  hooked into `assemble`), producing the runnable `kronikol4j-cli-<version>-all.jar`. **Decision (Appendix B):**
+  **jbang** is the chosen one-line-install form (the `dotnet tool install` analog) — it resolves the published
+  jar + transitive deps and runs the Main-Class, needing no extra release pipeline; added a repo-root
+  `jbang-catalog.json` (`kronikol4j` alias → the `kronikol4j-cli` GAV + Main-Class). jreleaser/native-image
+  was considered but not adopted (documented in the wiki) — needless release infra for a small JVM CLI.
+  Proven by `CliDistributionTest`, which builds the fat-jar (the `test` task depends on `fatJar`) and spawns
+  `java -jar <fatjar>` end-to-end: merges a real fragment → HTML, plus the usage/exit-code contract (0/2/3).
+  Wiki page added.
 
 ---
 

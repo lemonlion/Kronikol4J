@@ -8,6 +8,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
 ### Added — Tier-5 tooling
+- **CLI distribution** (`kronikol4j-cli`) — wired the runnable fat-jar (`fatJar` task: Main-Class +
+  bundled deps → `kronikol4j-cli-<version>-all.jar`, hooked into `assemble`) and chose **jbang** as the
+  one-line-install form (the `dotnet tool install` analog) — added a repo-root `jbang-catalog.json` (resolves
+  the CLI GAV + transitive deps, no fat-jar download needed). jreleaser/native-image considered, not adopted.
+  Proven by `CliDistributionTest` (spawns `java -jar <fatjar>` end-to-end: merge + usage/exit-code contract).
+  Wiki page added.
 - **`kronikol4j-maven-plugin`** (new module) — the Maven mirror of the Gradle plugin: a `kronikol4j:report`
   goal (bound to `verify`) that merges forked-JVM report fragments into one HTML report via the same
   `MergeCommand` engine. Hand-authored `plugin.xml` descriptor (version-filtered by `processResources`);

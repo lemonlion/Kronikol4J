@@ -1,0 +1,9 @@
+{
+  "aliases": {
+    "kronikol4j": {
+      "description": "Kronikol4J CLI — merge parallel test-report fragments from sharded CI runners into one HTML report.",
+      "gav": "io.github.lemonlion:kronikol4j-cli:0.1.25-SNAPSHOT",
+      "main": "io.kronikol.cli.Main"
+    }
+  }
+}
