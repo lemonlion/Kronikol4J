@@ -944,7 +944,7 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   correlation, excluded/identity gating, rendered database participant) + wiki row. **Remaining (`[~]`):** a
   Bigtable client SDK hook (gRPC interceptor) that auto-feeds the recorder from real `ReadRows`/`MutateRow`
   calls, and a golden-rendered proof — the same SDK-auto-capture follow-up tracked across the cloud adapters.
-- [~] **Azure EventHubs** — producer/consumer client wrappers.
+- [x] **Azure EventHubs** — producer/consumer client wrappers.
   **Done:** new `kronikol4j-eventhubs` module porting the .NET `EventHubsTracker` + classifier + options —
   `EventHubsOperation` (+ PascalCase `displayName()`), `EventHubsOperationInfo`,
   `EventHubsOperationClassifier` (method-name → operation incl. the `SendAsync`+count>1 → `SendBatch` split;
@@ -954,9 +954,16 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   URI, the `MessageQueue` category → queue shape, phase suppression + Summarised filtering, phase variants).
   Pure logic + core only (no Event Hubs SDK dependency). Proven by `EventHubsTrackingTest` (Send/SendBatch
   split + labels across verbosity, event-styled pair with partition URI + shared correlation, identity gate,
-  rendered queue participant) + wiki row. **Remaining (`[~]`):** the `TrackingEventHubProducerClient`/
-  `TrackingEventHubConsumerClient` SDK wrappers that auto-feed the recorder from real send/read calls, and a
-  golden-rendered proof — the SDK-auto-capture follow-up tracked across the cloud/messaging adapters.
+  rendered queue participant) + wiki row.
+  **Client wrappers done (2026-06-28) → item complete `[x]`:** `TrackingEventHubProducerClient` /
+  `TrackingEventHubConsumerClient` (azure-messaging-eventhubs `compileOnly`; the Java EH clients are concrete
+  classes, so explicit decorators) wrap a real `EventHubProducerClient`/`EventHubConsumerClient` and auto-feed
+  the two-phase recorder: `send(Iterable<EventData>)` classifies `SendAsync` (→ Send/SendBatch by count) with
+  the first event's body, `receiveFromPartition(...)` classifies `ReadEventsFromPartitionAsync`, both recording
+  the failure message on error. The recorder (the observable behaviour) is proven by `EventHubsTrackingTest`;
+  the wrappers are thin glue over it (concrete EH clients need a live namespace to instantiate — the same
+  tested-core/thin-SDK-glue split as the Service Bus / AWS / HTTP adapters). Golden coverage is the same as the
+  other event adapters (queue participant + event note golden-proven generically; labels/URIs unit-proven).
 - [x] **Azure Storage Queues** — message-handler analog.
   **Done:** added the Storage Queues classifier to `kronikol4j-azure` (where the HTTP-path Azure classifiers
   Blob/Cosmos/ServiceBus already live — Java groups one module per cloud) — `StorageQueueOperation`

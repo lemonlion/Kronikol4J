@@ -7,6 +7,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-3 Azure Event Hubs client wrappers (item [x])
+- **`TrackingEventHubProducerClient` / `TrackingEventHubConsumerClient`** (`kronikol4j-eventhubs`) — explicit
+  decorators (azure-messaging-eventhubs `compileOnly`) over the real `EventHubProducerClient`/
+  `EventHubConsumerClient` that auto-feed the two-phase `EventHubsInteractionRecorder`: `send(...)` classifies
+  `SendAsync` (→ Send/SendBatch by count) with the first event's body, `receiveFromPartition(...)` classifies
+  `ReadEventsFromPartitionAsync`, both recording the failure on error. Event Hubs could previously be
+  classified/recorded only by hand. The recorder is proven by `EventHubsTrackingTest`; the wrappers are thin
+  glue over it (the tested-core/thin-SDK-glue split used for Service Bus / AWS / HTTP). Completes the Event
+  Hubs adapter.
+
 ### Completed — Azure adapter (item [x])
 - **Cosmos write-correlation** (`kronikol4j-azure`) closes the Azure adapter. `AzureTrackingOptions` gained
   `autoCorrelateWrites` + a `changeFeedKeyExtractor` (`BiFunction<serviceName,documentId,key>`); the
