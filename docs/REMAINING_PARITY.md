@@ -1322,11 +1322,20 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   `testIdResolver` static hook (`Supplier<String>`), consulted before the ambient scope in assertion
   resolution (its id used as name+id, matching .NET's override marker, with throwing-resolver fallback); and
   the `@SuppressAssertionTracking` runtime-retained marker (METHOD+TYPE). Proven by `TrackFidelityTest` +
-  `DiagnosticReportGeneratorTest` (assertion-log section renders / omitted). **Remaining (`[~]`):**
-  `Track.attachment(file, name)` is blocked on `StepCollector` (Step-tracking item — `Attachment` delegates to
-  `StepCollector.AddAttachment`); and the closure-value resolution + `AssertionExpressionFormatter` readable-
-  text substitution is the C#-IL-weaver / reflection-closure-field boundary (the Tier-5 AssertionRewriter) —
-  `recordDiagnostic` is the seam those fallbacks will log through.
+  `DiagnosticReportGeneratorTest` (assertion-log section renders / omitted).
+  **`Track.attachment` done (2026-06-28):** `Track.attachment(filePath)` / `Track.attachment(filePath, name)`
+  (the .NET `Track.Attachment`) resolve the test id (the same hook→scope cascade as assertions) and forward to
+  `StepCollector.addAttachment` across the core→report module boundary via a new SPI seam — core's
+  `io.kronikol.core.tracking.AttachmentSink` (functional interface), provided by the report module's
+  `StepCollectorAttachmentSink` (`META-INF/services`, `ServiceLoader`-discovered once); tests may install one
+  explicitly with `Track.attachmentSink(...)`. No-op when no sink/identity resolves. This is the proper Java
+  resolution of the .NET single-assembly direct call (core stays zero-dep). Proven by `TrackAttachmentTest`
+  (core, explicit sink — id/path/name forwarding, null-name passthrough, no-op cases) + `TrackAttachmentWiringTest`
+  (report, real `ServiceLoader` discovery → attachment lands on the active step / on the scenario when none).
+  **Remaining (`[~]`):** only the closure-value resolution + `AssertionExpressionFormatter` readable-text
+  substitution — the C#-IL-weaver / reflection-closure-field boundary (the Tier-5 AssertionRewriter, a Roslyn
+  *source* rewriter with no Java source-AST equivalent shipped); `recordDiagnostic` is the seam those fallbacks
+  log through.
 - [x] **`TrackingTraceContext`** (`beginTrace`/`createParentContext`) — creates a new ambient trace id and
   builds a parent span context for the proxy's `ActivitySource` (the *write* counterpart to the read-only
   `OtelBridge`). Pairs with the `TrackingProxy` span-lifecycle work. *(.NET `Tracking/TrackingTraceContext.cs`.)*

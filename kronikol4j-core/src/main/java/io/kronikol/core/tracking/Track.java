@@ -6,6 +6,7 @@ import io.kronikol.core.context.TestPhaseContext;
 import io.kronikol.core.support.SourceExpression;
 import java.net.URI;
 import java.util.List;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -87,6 +88,62 @@ public final class Track {
         }
         logAssertion(description, true, null);
         return result;
+    }
+
+    // --- attachments (file attached to the active step/scenario; routed to report via the SPI seam) ---
+
+    private static volatile AttachmentSink attachmentSinkOverride;
+    private static volatile AttachmentSink discoveredSink;
+    private static volatile boolean discoveryDone;
+
+    /**
+     * Attaches a file to the current step (or to the scenario if no step is active); rendered as a download
+     * link in the report. The .NET {@code Track.Attachment(filePath, name=null)}. No-op when no attachment
+     * sink is available (report module absent) or no test identity resolves.
+     */
+    public static void attachment(String filePath) {
+        attachment(filePath, null);
+    }
+
+    /** As {@link #attachment(String)} with an explicit display {@code name} ({@code null} → derived from the path). */
+    public static void attachment(String filePath, String name) {
+        AttachmentSink sink = attachmentSink();
+        if (sink == null) {
+            return;
+        }
+        TestInfo who = resolveWho();
+        if (who == null) {
+            return;
+        }
+        sink.addAttachment(who.id(), filePath, name);
+    }
+
+    /** Installs the attachment sink explicitly (tests / programmatic wiring); {@code null} clears the override. */
+    public static void attachmentSink(AttachmentSink sink) {
+        attachmentSinkOverride = sink;
+    }
+
+    /** The explicit override if set, else the {@link ServiceLoader}-discovered sink (discovered once), or null. */
+    private static AttachmentSink attachmentSink() {
+        AttachmentSink override = attachmentSinkOverride;
+        if (override != null) {
+            return override;
+        }
+        if (!discoveryDone) {
+            synchronized (Track.class) {
+                if (!discoveryDone) {
+                    AttachmentSink found = null;
+                    for (AttachmentSink candidate : ServiceLoader.load(
+                            AttachmentSink.class, Track.class.getClassLoader())) {
+                        found = candidate;
+                        break;
+                    }
+                    discoveredSink = found;
+                    discoveryDone = true;
+                }
+            }
+        }
+        return discoveredSink;
     }
 
     // --- diagnostic log (assertion value-resolution fallbacks; rendered by the diagnostic report) ---

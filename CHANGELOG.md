@@ -7,6 +7,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Track.attachment via core→report SPI seam (Assertion-fidelity progress)
+- **`Track.attachment(filePath)`** / **`Track.attachment(filePath, name)`** (the .NET `Track.Attachment`) —
+  resolve the test id and forward a file attachment to `StepCollector.addAttachment` across the core→report
+  module boundary through a new SPI seam: core's `AttachmentSink` (functional interface), provided by the report
+  module's `StepCollectorAttachmentSink` (`META-INF/services`, `ServiceLoader`-discovered once); tests/programs
+  may install one explicitly with `Track.attachmentSink(...)`. No-op when no sink or test identity resolves.
+  Keeps `kronikol4j-core` zero-dependency. Proven by `TrackAttachmentTest` (core) + `TrackAttachmentWiringTest`
+  (report, real ServiceLoader discovery). Assertion fidelity stays open only for the closure-value
+  resolution / AssertionExpressionFormatter (the documented C#-IL/AssertionRewriter boundary).
+
 ### Added — InternalFlowOptions config surface (InternalFlow item complete)
 - **`InternalFlowOptions`** (`kronikol4j-report`) — the consolidated, .NET-defaulted home for the internal-flow
   sub-options (the .NET `ReportConfigurationOptions.InternalFlow*` group): `internalFlowTracking`,
