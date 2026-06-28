@@ -7,6 +7,17 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-1 Redis Jedis wrapper (item [x])
+- **`JedisCommandsTracker`** (`kronikol4j-redis`) — auto-captures commands issued through Jedis's
+  `redis.clients.jedis.commands.JedisCommands` (jedis `compileOnly`), the Jedis counterpart of the existing
+  Lettuce `RedisCommandsTracker`: same dynamic-proxy interception (method name → command, first `String` arg →
+  key, non-null return → GET/HGET hit/miss), delegating to `RedisInteractionRecorder`. The Jedis keyed-command
+  interface has no `select`, so the database number is fixed per connection and supplied via `wrap(...)`; the
+  proxy is published over all the delegate's interfaces so it stays assignable where the user held it. Proven
+  by `JedisCommandsTrackerTest` (fake `JedisCommands` proxy, no server). This completes the Redis adapter
+  (Lettuce + Jedis); the collections-shape rendering is already golden-proven (`redis.puml`) and the
+  recorder/classifier output unit-proven vs .NET.
+
 ### Completed — Tier-3 MassTransit analog (Spring ApplicationEvent binding, item [x])
 - **`KronikolEventBusListener`** (`kronikol4j-eventbus`) — a Spring `ApplicationListener<ApplicationEvent>`
   (Spring `compileOnly`) that binds the `EventBusInteractionRecorder` to Spring's in-process event bus, the

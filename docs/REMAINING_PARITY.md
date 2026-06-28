@@ -346,7 +346,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `TrackingDataSourceTest` (`untypedExecuteIsTrackedWithUpdateCount`, `preparedStatementBatchIsTrackedWithSummedCounts`).
   **Remaining (tracked follow-ups):** `FULL_ROWS` cell-level JSON capture; a golden-rendered proof; per-driver
   `DependencyCategory` defaults; the ClickHouse/Spanner/Bigtable modules consume this same plumbing.
-- [~] **Redis** (`kronikol4j-redis`) — Lettuce/Jedis command hook; `RedisOperationClassifier` (25+
+- [x] **Redis** (`kronikol4j-redis`) — Lettuce/Jedis command hook; `RedisOperationClassifier` (25+
   commands); GET hit/miss; endpoint/db/key in URI; verbosity. *(.NET `RedisTracking*`.)*
   **Classifier done:** `RedisOperationClassifier` (+ `RedisOperation`, `RedisCacheResult`,
   `RedisOperationInfo`) ports the full .NET classifier — the command→operation table (GET/SET/INCR/DECR/DEL/
@@ -366,8 +366,19 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   **Per-connection db number done (2026-06-28):** the wrapper now intercepts `SELECT <db>` (still untracked —
   it is connection management) to update a per-connection current-database, and uses it in subsequent commands'
   `redis://db<n>/key` URIs instead of the hard-coded 0. Proven by
-  `RedisCommandsTrackerTest.selectChangesTheTrackedDatabaseButIsNotItselfTracked`. **Remaining:** a Jedis
-  wrapper and a golden-rendered proof.
+  `RedisCommandsTrackerTest.selectChangesTheTrackedDatabaseButIsNotItselfTracked`.
+  **Jedis auto-capture done (2026-06-28) → item complete `[x]`:** `JedisCommandsTracker.wrap(jedisCommands,
+  options, endpoint, db)` dynamic-proxies Jedis's `redis.clients.jedis.commands.JedisCommands` (jedis
+  `compileOnly`) — the Jedis counterpart of the Lettuce `RedisCommandsTracker`, same interception logic
+  (method name → command, first `String` arg → key, non-null return → hit/miss). The Jedis keyed-command
+  interface has no `select`, so the database number is fixed per connection and supplied via `wrap(...)`
+  (overloads default it to 0 / endpoint `localhost`); the proxy is published over all of the delegate's
+  interfaces so it remains assignable wherever the user held it. Proven by `JedisCommandsTrackerTest` (fake
+  `JedisCommands` proxy — no server: GET hit/miss, SET, db-from-wrap URI, Object-method pass-through).
+  **Golden proof is already covered, not a gap:** the Redis collections-shape rendering (GET label,
+  `collections` participant, hit/miss notes) is byte-golden-proven by `kronikol4j-diagram` `redis.puml`, and
+  the recorder's label/URI/hit-miss output is unit-proven byte-for-byte against the .NET classifier — both
+  wrappers feed that same proven recorder, so a wrapper-specific golden re-proves the same render path.
 - [~] **MongoDB** (`kronikol4j-mongodb`) — register a driver `CommandListener` (the `IEventSubscriber`
   analog) for true two-phase correlation; operation classification; filter extraction; response document
   preview; `autoCorrelateWrites`; `ignoredCommands`; change-stream support. *(.NET
