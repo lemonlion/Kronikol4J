@@ -96,6 +96,9 @@ public final class KronikolWebClientConnector implements ClientHttpConnector {
                 if (config.callerName() != null) {
                     headers.set(TrackingHeaders.CALLER_NAME, config.callerName());
                 }
+                for (Header forwarded : io.kronikol.http.ForwardedHeaders.collect(config.headersToForward())) {
+                    headers.set(forwarded.key(), forwarded.value());
+                }
                 if (config.injectTraceparent() && headers.getFirst("traceparent") == null) {
                     W3CTraceparent tp = W3CTraceparent.generate(config.ids());
                     headers.set("traceparent", tp.header());

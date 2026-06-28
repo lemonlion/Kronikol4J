@@ -317,7 +317,7 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
 Today these expose `record(...)`/`publish(...)` you call by hand. .NET ships SDK hooks that capture
 automatically. Each needs: the real wire adapter + operation classification + verbosity + phase-awareness.
 
-- [~] **HTTP** (`kronikol4j-http`, `-spring`) — add real client adapters: **OkHttp interceptor**, **JDK
+- [x] **HTTP** (`kronikol4j-http`, `-spring`) — add real client adapters: **OkHttp interceptor**, **JDK
   `java.net.http.HttpClient`**, **Spring `WebClient`/Reactor**. Add service-name resolution chain,
   `ExcludedHosts`, W3C `traceparent` injection, header forwarding, phase filtering. *(.NET
   `TestTrackingMessageHandler.cs`; Java `HttpExchangeRecorder.java` is a bare recorder.)*
@@ -348,11 +348,23 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   phase-gating/`TrackingVerbosity` infra. The existing `KronikolWebClientFilter` stays as the lighter
   response-only option. Proven by `KronikolWebClientConnectorTest` (JDK connector + MockWebServer: both bodies
   captured + caller still reads the response, identity/traceparent on the wire, no-test-context pass-through).
-  **Remaining (`[~]`):** only (b) arbitrary `headersToForward` propagation — copying named headers from the
-  *incoming* server request onto the outgoing call. It needs an ambient incoming-request-header source (the
-  .NET `HttpContextAccessor` analog); the `TestTrackingServerBridge` reads identity from a request but there is
-  no ambient per-request header accessor yet, and adding one couples to the servlet/Spring request context.
-  This is the one genuinely blocked HTTP bit (a small SPI seam + servlet-filter wiring + per-adapter copy).
+  **`headersToForward` done (2026-06-28) → HTTP item complete `[x]`:** the .NET `HttpContextAccessor` is now
+  mirrored by the zero-dep ambient seam `io.kronikol.core.context.IncomingRequestHeaders` (a `ThreadLocal`
+  name→value lookup, `begin(...)` returning an `AutoCloseable` scope; covers synchronous request handling —
+  reactive cross-thread propagation is the documented same boundary as the rest of the ambient context). The
+  `KronikolServletFilter` opens it per incoming request (alongside the identity scope, cleared in `finally`).
+  The shared helper `io.kronikol.http.ForwardedHeaders.collect(names)` resolves the configured header names
+  against it (the .NET `ForwardHeaders`: forward a name only when present on the incoming request), and **every
+  `HttpTrackingConfig`-based client adapter** copies them onto the outgoing request — OkHttp
+  (`KronikolOkHttpInterceptor`), JDK (`TrackingHttpClient`), WebClient filter (`KronikolWebClientFilter`) and
+  WebClient connector (`KronikolWebClientConnector`, via `beforeCommit`). (The `RestTemplate` interceptor is the
+  separate `HttpTrackingOptions` bare-recorder path that injects no headers by design — not part of the
+  `TestTrackingMessageHandler`/`HttpTrackingConfig` contract.) Proven by `IncomingRequestHeadersTest` (core
+  seam: lookup, nesting/restore, clearing, throwing-lookup swallowed), `KronikolOkHttpInterceptorTest` +
+  `KronikolWebClientConnectorTest` (present-incoming → forwarded, absent → skipped, no-scope → no-op) and
+  `KronikolServletFilterTest` (filter exposes incoming headers during handling, clears after). This closes the
+  HTTP adapter item end-to-end: OkHttp/JDK/WebClient capture (both bodies), identity/trace/traceparent
+  injection, service-name resolution, excluded-hosts, phase filtering, and header forwarding.
 - [x] **SQL / JDBC** (`kronikol4j-jdbc`) — wrap `DataSource`/`Connection`/`Statement`/`ResultSet`; multi-
   dialect `UnifiedSqlClassifier` (table extraction, CTE stripping, upsert variants, stored-proc detection);
   response capture (`TrackingDbDataReader` → row count / columns / rows); per-driver `DependencyCategory`;

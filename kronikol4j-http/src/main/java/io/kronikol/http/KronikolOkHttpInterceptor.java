@@ -80,6 +80,9 @@ public final class KronikolOkHttpInterceptor implements Interceptor {
         if (options.callerName() != null) {
             rb.header(TrackingHeaders.CALLER_NAME, options.callerName());
         }
+        for (Header forwarded : ForwardedHeaders.collect(options.headersToForward())) {
+            rb.header(forwarded.key(), forwarded.value());
+        }
 
         String activityTraceId = null;
         String activitySpanId = null;

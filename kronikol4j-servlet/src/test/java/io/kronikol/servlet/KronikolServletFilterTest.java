@@ -3,6 +3,7 @@ package io.kronikol.servlet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.kronikol.core.constants.TrackingHeaders;
+import io.kronikol.core.context.IncomingRequestHeaders;
 import io.kronikol.core.context.TestIdentityScope;
 import io.kronikol.core.context.TestInfo;
 import jakarta.servlet.FilterChain;
@@ -17,6 +18,7 @@ class KronikolServletFilterTest {
     @AfterEach
     void clear() {
         TestIdentityScope.clear();
+        IncomingRequestHeaders.clear();
     }
 
     @Test
@@ -41,6 +43,22 @@ class KronikolServletFilterTest {
 
         assertThat(during[0]).isEqualTo(new TestInfo("MyTest", "id-1")); // scoped for handling
         assertThat(TestIdentityScope.current()).isNull();                // cleared after (§3.2)
+    }
+
+    @Test
+    void filterExposesIncomingHeadersDuringHandlingAndClearsAfter() throws Exception {
+        HttpServletRequest request = stubRequest(Map.of(
+            TrackingHeaders.CURRENT_TEST_NAME, "MyTest",
+            TrackingHeaders.CURRENT_TEST_ID, "id-1",
+            "X-Tenant", "acme"));
+
+        String[] duringTenant = new String[1];
+        FilterChain chain = (req, res) -> duringTenant[0] = IncomingRequestHeaders.get("X-Tenant");
+
+        new KronikolServletFilter().doFilter(request, null, chain);
+
+        assertThat(duringTenant[0]).isEqualTo("acme");             // forwardable during handling
+        assertThat(IncomingRequestHeaders.get("X-Tenant")).isNull(); // cleared after (§3.2)
     }
 
     @Test

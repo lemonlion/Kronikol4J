@@ -65,6 +65,38 @@ class KronikolOkHttpInterceptorTest {
     }
 
     @Test
+    void forwardsConfiguredHeadersFromTheIncomingRequest() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("ok"));
+        HttpTrackingConfig config = baseOptions()
+            .headersToForward(List.of("X-Tenant", "X-Correlation-Id", "X-Absent")).build();
+
+        // Simulate handling an incoming server request carrying some of those headers.
+        java.util.Map<String, String> incoming =
+            java.util.Map.of("X-Tenant", "acme", "X-Correlation-Id", "corr-7");
+        try (var scope = io.kronikol.core.context.IncomingRequestHeaders.begin(incoming::get);
+             Response response = post(clientWith(config), "{\"a\":1}")) {
+            assertThat(response.code()).isEqualTo(200);
+        }
+
+        RecordedRequest sent = server.takeRequest();
+        assertThat(sent.getHeader("X-Tenant")).isEqualTo("acme");          // present incoming → forwarded
+        assertThat(sent.getHeader("X-Correlation-Id")).isEqualTo("corr-7");
+        assertThat(sent.getHeader("X-Absent")).isNull();                   // not incoming → skipped
+    }
+
+    @Test
+    void forwardsNothingWhenNoIncomingRequestScopeIsActive() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("ok"));
+        HttpTrackingConfig config = baseOptions().headersToForward(List.of("X-Tenant")).build();
+
+        try (Response response = post(clientWith(config), "{\"a\":1}")) {
+            assertThat(response.code()).isEqualTo(200);
+        }
+
+        assertThat(server.takeRequest().getHeader("X-Tenant")).isNull(); // no ambient source → no-op
+    }
+
+    @Test
     void consumesAmbientDiagramFocusOntoTheLogPair() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"ok\":true}"));
         io.kronikol.core.tracking.DiagramFocus.request("a");

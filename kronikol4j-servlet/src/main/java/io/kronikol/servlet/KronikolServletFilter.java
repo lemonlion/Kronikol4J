@@ -1,5 +1,6 @@
 package io.kronikol.servlet;
 
+import io.kronikol.core.context.IncomingRequestHeaders;
 import io.kronikol.core.context.TestIdentityScope;
 import io.kronikol.core.context.TestInfo;
 import jakarta.servlet.Filter;
@@ -24,17 +25,18 @@ public final class KronikolServletFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
         throws IOException, ServletException {
 
-        TestInfo identity = null;
-        if (request instanceof HttpServletRequest http) {
-            identity = ServletIdentity.fromHeaders(http::getHeader);
-        }
+        HttpServletRequest http = request instanceof HttpServletRequest r ? r : null;
+        TestInfo identity = http == null ? null : ServletIdentity.fromHeaders(http::getHeader);
 
         if (identity == null) {
             chain.doFilter(request, response);
             return;
         }
 
-        try (var scope = TestIdentityScope.begin(identity.name(), identity.id())) {
+        // Expose the incoming request's headers so outgoing client adapters can implement headersToForward
+        // (the .NET HttpContextAccessor analog), alongside the test-identity scope. Both cleared in finally.
+        try (var scope = TestIdentityScope.begin(identity.name(), identity.id());
+             var headers = IncomingRequestHeaders.begin(http::getHeader)) {
             chain.doFilter(request, response);
         }
     }

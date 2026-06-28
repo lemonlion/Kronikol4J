@@ -76,6 +76,9 @@ public final class KronikolWebClientFilter implements ExchangeFilterFunction {
         if (config.callerName() != null) {
             rb.header(TrackingHeaders.CALLER_NAME, config.callerName());
         }
+        for (Header forwarded : io.kronikol.http.ForwardedHeaders.collect(config.headersToForward())) {
+            rb.header(forwarded.key(), forwarded.value());
+        }
 
         String activityTraceId = null;
         String activitySpanId = null;

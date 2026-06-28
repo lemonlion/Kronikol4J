@@ -98,6 +98,22 @@ class KronikolWebClientConnectorTest {
     }
 
     @Test
+    void forwardsConfiguredHeadersFromTheIncomingRequest() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("ok"));
+        WebClient client = clientWith(baseConfig().headersToForward(List.of("X-Tenant", "X-Absent")).build());
+
+        java.util.Map<String, String> incoming = java.util.Map.of("X-Tenant", "acme");
+        try (var scope = io.kronikol.core.context.IncomingRequestHeaders.begin(incoming::get)) {
+            client.post().uri(server.url("/x").uri()).bodyValue("body")
+                .retrieve().bodyToMono(String.class).block();
+        }
+
+        RecordedRequest sent = server.takeRequest();
+        assertThat(sent.getHeader("X-Tenant")).isEqualTo("acme"); // forwarded from the incoming request
+        assertThat(sent.getHeader("X-Absent")).isNull();          // absent incoming → skipped
+    }
+
+    @Test
     void skipsWhenNoTestContext() throws InterruptedException {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("ok"));
         WebClient client = clientWith(baseConfig().testInfoFetcher(() -> null).build());

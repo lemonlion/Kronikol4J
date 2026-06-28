@@ -166,6 +166,9 @@ public final class TrackingHttpClient extends HttpClient {
         if (config.callerName() != null) {
             rb.setHeader(TrackingHeaders.CALLER_NAME, config.callerName());
         }
+        for (Header forwarded : ForwardedHeaders.collect(config.headersToForward())) {
+            rb.setHeader(forwarded.key(), forwarded.value());
+        }
 
         String activityTraceId = null;
         String activitySpanId = null;

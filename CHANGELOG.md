@@ -7,6 +7,18 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — headersToForward across all HTTP client adapters (HTTP item complete)
+- **`IncomingRequestHeaders`** (`kronikol4j-core`) — a zero-dependency ambient seam (the .NET
+  `HttpContextAccessor` analog) exposing the current incoming server request's headers via a `ThreadLocal`
+  name→value lookup with an `AutoCloseable` scope. `KronikolServletFilter` opens it per request (cleared in
+  `finally`).
+- **`ForwardedHeaders`** (`kronikol4j-http`) + wiring — the `headersToForward` config now actually forwards:
+  every `HttpTrackingConfig`-based client adapter (OkHttp, JDK `TrackingHttpClient`, WebClient filter, WebClient
+  connector via `beforeCommit`) copies each configured header from the incoming request onto the outgoing call,
+  when present (the .NET `TestTrackingMessageHandler.ForwardHeaders`). The RestTemplate bare-recorder path is
+  unaffected by design. Proven by `IncomingRequestHeadersTest`, `KronikolOkHttpInterceptorTest`,
+  `KronikolWebClientConnectorTest`, `KronikolServletFilterTest`. **Completes the HTTP adapter item.**
+
 ### Added — KronikolWebClientConnector: WebClient both-body capture (HTTP item progress)
 - **`KronikolWebClientConnector`** (`kronikol4j-spring`) — a `ClientHttpConnector` decorator that captures
   **both** the request and response bodies of a `WebClient` exchange (the filter could only read the response,
