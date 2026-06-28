@@ -125,6 +125,7 @@ public class KronikolPlugin implements Plugin<Project> {
             ext.getSpecificationsTitle());
         forwardString(test, io.kronikol.report.spec.SpecificationsOptions.DATA_FORMAT_PROPERTY,
             ext.getSpecificationsDataFormat());
+        forwardInt(test, ReportOptions.EXPECTED_TEST_COUNT_PROPERTY, ext.getExpectedTestCount());
         // CI summary / artifacts
         forwardBool(test, ReportOptions.WRITE_CI_SUMMARY_PROPERTY, ext.getWriteCiSummary());
         forwardInt(test, ReportOptions.MAX_CI_SUMMARY_DIAGRAMS_PROPERTY, ext.getMaxCiSummaryDiagrams());

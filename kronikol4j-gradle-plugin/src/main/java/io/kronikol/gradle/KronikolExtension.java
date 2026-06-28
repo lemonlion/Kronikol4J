@@ -154,6 +154,10 @@ public interface KronikolExtension {
     /** Specifications data format ({@code yaml}/{@code json}/{@code xml}; default {@code yaml}). */
     Property<String> getSpecificationsDataFormat();
 
+    /** Expected scenario count; a run with fewer suppresses the specifications report/data (the .NET
+     *  {@code ExpectedTestCount}). */
+    Property<Integer> getExpectedTestCount();
+
     // --- CI summary / artifacts ---
 
     /** Write the markdown run summary to the detected CI platform. */

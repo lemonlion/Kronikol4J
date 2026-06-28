@@ -245,6 +245,27 @@ class ReportFinalizerTest {
     }
 
     @Test
+    void finalizeSuppressesSpecificationsWhenBelowExpectedTestCount(@TempDir Path dir) throws IOException {
+        // Only one scenario recorded but five expected → the specifications report/data are suppressed.
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults().withExpectedTestCount(5));
+
+        assertThat(dir.resolve("Specifications.html")).doesNotExist();
+        assertThat(dir.resolve("Specifications.yaml")).doesNotExist();
+        assertThat(dir.resolve("TestRunReport.html")).exists(); // main report unaffected by the guard
+    }
+
+    @Test
+    void finalizeKeepsSpecificationsWhenExpectedTestCountMet(@TempDir Path dir) throws IOException {
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults().withExpectedTestCount(1));
+
+        assertThat(dir.resolve("Specifications.html")).exists(); // count met → specs still emitted
+    }
+
+    @Test
     void finalizeSkipsSpecificationsWhenDisabled(@TempDir Path dir) throws IOException {
         RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
 

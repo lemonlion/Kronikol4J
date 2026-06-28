@@ -99,6 +99,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     /** System property (boolean) master-switching the machine-readable test-run-report data file(s)
      *  (default {@code true}). */
     public static final String GENERATE_TEST_RUN_REPORT_DATA_PROPERTY = "kronikol.report.generateTestRunReportData";
+    /** System property (int) the expected scenario count; fewer suppresses the specifications report/data. */
+    public static final String EXPECTED_TEST_COUNT_PROPERTY = "kronikol.report.expectedTestCount";
     /** System property (boolean) writing the markdown run summary to the detected CI platform. */
     public static final String WRITE_CI_SUMMARY_PROPERTY = "kronikol.ci.writeCiSummary";
     /** System property (int) capping diagrams in the CI summary (default 10). */
@@ -362,6 +364,11 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return control.generateTestRunReportData();
     }
 
+    /** Sets the expected scenario count guard (the .NET {@code ExpectedTestCount}); {@code null} disables it. */
+    public ReportOptions withExpectedTestCount(Integer value) {
+        return withControl(control.withExpectedTestCount(value));
+    }
+
     /**
      * Reads every diagram + report toggle from system properties (each falling back to {@link #defaults()}),
      * so a listener-driven run configures them with e.g. {@code -Dkronikol.diagram.separateSetup=true} or
@@ -402,7 +409,21 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
             stringProperty(HTML_FILE_NAME_PROPERTY, ReportControlOptions.DEFAULT_HTML_FILE_NAME),
             boolProperty(GENERATE_COMPONENT_DIAGRAM_PROPERTY, true),
             boolProperty(GENERATE_MERGEABLE_DATA_PROPERTY, false),
-            boolProperty(GENERATE_TEST_RUN_REPORT_DATA_PROPERTY, true));
+            boolProperty(GENERATE_TEST_RUN_REPORT_DATA_PROPERTY, true),
+            intPropertyOrNull(EXPECTED_TEST_COUNT_PROPERTY));
+    }
+
+    /** An {@code Integer} system property, or {@code null} when unset/blank/non-numeric. */
+    private static Integer intPropertyOrNull(String name) {
+        String value = System.getProperty(name);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.strip());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     /** Builds the {@link CiPublishOptions} from system properties (all defaulting to the .NET defaults). */

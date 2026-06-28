@@ -581,9 +581,15 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
     setting it `false` is a kill-switch even when formats are configured. System property
     `kronikol.report.generateTestRunReportData` + Gradle DSL `generateTestRunReportData`. The full suite +
     goldens + Playwright stayed green. Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
-  **Still open** (genuinely blocked on unbuilt features, deferred to their owners): `expectedTestCount` guard
-  (needs the specifications report wired into the finalizer) and `inlineBackgroundSteps` (needs an
-  inline-background renderer). All other flags in this bundle are now done or resolved as boundaries above.
+  - `expectedTestCount` (default none) — added to `ReportControlOptions`; `ReportFinalizer` now suppresses the
+    Specifications report/data when the run produced fewer scenarios than expected (a partial run yields
+    misleading living documentation), via `ReportControlOptions.shouldSuppressSpecifications(scenarioCount)`.
+    The .NET `ExpectedTestCount` guard (a `Func<int>` there → a nullable `Integer` here). System property
+    `kronikol.report.expectedTestCount` + Gradle DSL `expectedTestCount`. Proven by `ReportFinalizerTest`
+    (suppressed below / kept when met). Unblocked by the specs-in-finalizer wiring (Specifications report item).
+  **Still open** (genuinely blocked on an unbuilt feature): `inlineBackgroundSteps` (needs an inline-background
+  step renderer that does not yet exist). Every other flag in this bundle is now done or resolved as a
+  boundary above — so this item is effectively complete bar that single feature-gated flag.
 - [x] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*

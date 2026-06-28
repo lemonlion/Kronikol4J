@@ -53,6 +53,10 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   generateMergeableData,generateTestRunReportData}` and the matching Gradle DSL properties. The .NET
   `TestRunReportTitle` / `HtmlTestRunReportFileName` / `GenerateComponentDiagram` / `GenerateMergeableData` /
   `GenerateTestRunReportData` analogs. Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
+- **`expectedTestCount` guard** (`kronikol4j-report` + `kronikol4j-runtime` + `kronikol4j-gradle-plugin`) —
+  added to `ReportControlOptions`; `ReportFinalizer` suppresses the Specifications report/data when the run
+  produced fewer scenarios than expected (the .NET `ExpectedTestCount` guard). Exposed via
+  `kronikol.report.expectedTestCount` + the Gradle DSL `expectedTestCount`. Proven by `ReportFinalizerTest`.
 - **`TestRunReport.json` now emitted by default** (`kronikol4j-runtime`) — matching .NET, a standalone run
   writes `TestRunReport.json` (the `testRunReportDataFormat`, default JSON) alongside the HTML when
   `generateTestRunReportData` is on (the new default). Previously Java emitted a data file only when

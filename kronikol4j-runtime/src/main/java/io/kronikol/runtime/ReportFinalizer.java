@@ -102,10 +102,18 @@ public final class ReportFinalizer {
             Files.writeString(outputDir.resolve("TestRunReport.mergeable.json"),
                 FragmentJson.toJson(fragment), StandardCharsets.UTF_8);
         }
-        if (specs != null && (specs.generateReport() || specs.generateData())) {
-            // .NET GenerateSpecificationsReport/Data: the separate "living documentation" Specifications.html
-            // + Specifications.<ext>, re-rendering the same scenarios/diagrams with spec styling.
-            SpecificationsReport.write(outputDir, features, diagramByTestId(logs, options), specs);
+        if (specs != null) {
+            // .NET ExpectedTestCount guard: a run with fewer scenarios than expected suppresses the
+            // specifications report/data (a partial run would be misleading living documentation).
+            int scenarioCount = features.stream().mapToInt(f -> f.scenarios().size()).sum();
+            SpecificationsOptions effectiveSpecs = options.control().shouldSuppressSpecifications(scenarioCount)
+                ? specs.withGenerateReport(false).withGenerateData(false)
+                : specs;
+            if (effectiveSpecs.generateReport() || effectiveSpecs.generateData()) {
+                // .NET GenerateSpecificationsReport/Data: the separate "living documentation"
+                // Specifications.html + Specifications.<ext>, re-rendering the same scenarios with spec styling.
+                SpecificationsReport.write(outputDir, features, diagramByTestId(logs, options), effectiveSpecs);
+            }
         }
         return report;
     }
