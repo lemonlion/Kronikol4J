@@ -58,6 +58,20 @@ public final class ElasticsearchTracking {
      */
     public static void record(ElasticsearchTrackingOptions options, String httpMethod, URI requestUri,
                               String body, String resultSummary) {
+        record(options, httpMethod, requestUri, body, resultSummary, StatusCode.of("OK"));
+    }
+
+    /**
+     * As {@link #record(ElasticsearchTrackingOptions, String, URI, String, String)} but with the real HTTP
+     * response status — the form a transport hook (e.g. {@link KronikolElasticsearchInterceptor}) uses.
+     */
+    public static void record(ElasticsearchTrackingOptions options, String httpMethod, URI requestUri,
+                              String body, String resultSummary, int statusCode) {
+        record(options, httpMethod, requestUri, body, resultSummary, StatusCode.of(statusCode));
+    }
+
+    private static void record(ElasticsearchTrackingOptions options, String httpMethod, URI requestUri,
+                               String body, String resultSummary, StatusCode statusCode) {
         if (suppressedByPhase(options)) {
             return;
         }
@@ -70,7 +84,7 @@ public final class ElasticsearchTracking {
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.ELASTICSEARCH, Method.of(label), uri, content,
-            StatusCode.of("OK"), resultSummary);
+            statusCode, resultSummary);
     }
 
     /** Whether the current phase suppresses tracking per the options' {@code trackDuringSetup/Action}. */
@@ -117,6 +131,12 @@ public final class ElasticsearchTracking {
         /** A copy with the given verbosity (Summarised omits the request body). */
         public ElasticsearchTrackingOptions withVerbosity(TrackingVerbosity value) {
             return new ElasticsearchTrackingOptions(serviceName, callerName, testInfoFetcher, value,
+                trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
+        }
+
+        /** A copy with the given test-identity fetcher (the .NET {@code CurrentTestInfoFetcher}). */
+        public ElasticsearchTrackingOptions withTestInfoFetcher(java.util.function.Supplier<TestInfo> value) {
+            return new ElasticsearchTrackingOptions(serviceName, callerName, value, verbosity,
                 trackDuringSetup, trackDuringAction, setupVerbosity, actionVerbosity);
         }
 

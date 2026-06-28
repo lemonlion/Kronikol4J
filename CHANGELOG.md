@@ -7,6 +7,16 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-1 Elasticsearch transport hook (item [x])
+- **`KronikolElasticsearchInterceptor`** (`kronikol4j-elasticsearch`) — an Apache HttpCore
+  `HttpResponseInterceptor` (httpcore `compileOnly`) that auto-captures ES/OpenSearch REST calls, installed on
+  the low-level `RestClient` via `setHttpClientConfigCallback(b -> b.addInterceptorLast(...))`. It rebuilds the
+  absolute URI from the context's target host + request line and delegates to a new status-aware
+  `ElasticsearchTracking.record(..., statusCode)` overload (real HTTP status). Added
+  `ElasticsearchTrackingOptions.withTestInfoFetcher`. ES could previously be classified/recorded only by hand.
+  Proven by `KronikolElasticsearchInterceptorTest` (hand-built Apache HttpCore objects, no live cluster).
+  Completes the Elasticsearch adapter.
+
 ### Completed — GCP adapter (item [x])
 - **Pub/Sub tracking** (`kronikol4j-gcp`) closes the GCP adapter. `PubSubInteractionRecorder` ports the .NET
   `PubSubTracker` (event-styled request + plain response on `MessageQueue`, `pubsub:///<short-name>` URI, no

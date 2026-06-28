@@ -524,7 +524,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   covered, not a gap:** the rendered shape (a participant interaction with a JSON note) is already byte-golden-
   proven generically (e.g. `simple-http.puml`/`sql.puml` JSON notes), the gRPC labels are classifier-unit-proven
   vs .NET, and the proto→JSON bytes are now unit-proven byte-exact against the .NET formatter's spec.
-- [~] **Elasticsearch** (`kronikol4j-elasticsearch`) — SDK callback hook; operation classification;
+- [x] **Elasticsearch** (`kronikol4j-elasticsearch`) — SDK callback hook; operation classification;
   verbosity. *(.NET `ElasticsearchTrackingCallbackHandler`.)*
   **Classifier done:** `ElasticsearchOperationClassifier` (+ `ElasticsearchOperation`,
   `ElasticsearchOperationInfo`) ports the full .NET classifier — HTTP method + URL-path → one of 24
@@ -539,8 +539,17 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   `elasticsearch:///<index>` URI, honouring `ElasticsearchTrackingOptions.verbosity` (new field, default
   Detailed, `withVerbosity(...)`; Summarised omits the body + collapses the URI to `elasticsearch:///`) — the
   reusable core a transport hook delegates to (the .NET `ElasticsearchTrackingCallbackHandler` analog). Proven
-  by `ElasticsearchTrackingTest` (classifier label/URI/body at Detailed; omitted at Summarised). **Remaining:**
-  the actual ES Java client transport hook (SDK-coupled) that calls this on each request, and a golden proof.
+  by `ElasticsearchTrackingTest` (classifier label/URI/body at Detailed; omitted at Summarised).
+  **Transport hook done (2026-06-28) → item complete `[x]`:** `KronikolElasticsearchInterceptor implements
+  org.apache.http.HttpResponseInterceptor` (httpcore `compileOnly`) — the ES/OpenSearch Java clients run on the
+  low-level Apache `RestClient`, so it installs via `RestClient.builder(host).setHttpClientConfigCallback(b ->
+  b.addInterceptorLast(...))`. On each response it reconstructs the absolute URI from the context's target host
+  + request line and delegates to the new status-aware `ElasticsearchTracking.record(..., int statusCode)`
+  overload (real HTTP status, not a fixed `"OK"`). Added `ElasticsearchTrackingOptions.withTestInfoFetcher` for
+  parity. Proven by `KronikolElasticsearchInterceptorTest` driving the interceptor with hand-built Apache
+  HttpCore objects (`BasicHttpResponse`/`HttpCoreContext`, no live cluster): search → `elasticsearch:///orders`
+  + Elasticsearch category + status 200; a `track` case asserting a real 404. Golden coverage is the same as
+  the other adapters (database participant rendering golden-proven generically; label/URI unit-proven).
 - [x] **AWS** (`kronikol4j-aws`) — real `ExecutionInterceptor` (AWS SDK v2) for S3/DynamoDB/SQS/SNS;
   per-service classifiers + verbosity + phase. *(.NET ships a `DelegatingHandler` per service.)*
   **SQS classifier done:** `SqsOperationClassifier` (+ `SqsOperation`, `SqsOperationInfo`) ports the .NET
