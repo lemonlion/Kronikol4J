@@ -56,6 +56,35 @@ class AwsTrackingTest {
     }
 
     @Test
+    void eventBridgeIsClassifiedAndRecordedAsAnEvent() {
+        String body = "{\"Entries\":[{\"EventBusName\":\"orders\",\"DetailType\":\"OrderPlaced\","
+            + "\"Source\":\"shop\"}]}";
+        AwsTracking.eventBridge(AwsTrackingOptions.forService("Events"), "AWSEvents.PutEvents", body);
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2);
+        assertThat(logs).allSatisfy(l -> assertThat(l.metaType()).isEqualTo(RequestResponseMetaType.EVENT));
+        assertThat(logs).anySatisfy(l -> {
+            assertThat(l.method().value()).isEqualTo("PutEvents [OrderPlaced]"); // classifier Detailed label
+            assertThat(l.uri().toString()).isEqualTo("eventbridge://orders/");    // bus host-form (matches .NET)
+        });
+    }
+
+    @Test
+    void eventBridgeSummarisedOmitsBodyAndUsesDefaultBus() {
+        var options = AwsTrackingOptions.forService("Events")
+            .withVerbosity(io.kronikol.core.tracking.TrackingVerbosity.SUMMARISED);
+        AwsTracking.eventBridge(options, "AWSEvents.PutEvents", "{\"Entries\":[{}]}");
+
+        var logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).anySatisfy(l -> {
+            assertThat(l.method().value()).isEqualTo("PutEvents");       // terse summarised label
+            assertThat(l.uri().toString()).isEqualTo("eventbridge://default/"); // no bus → "default"
+        });
+        assertThat(logs).noneSatisfy(l -> assertThat(l.content()).contains("Entries")); // body dropped
+    }
+
+    @Test
     void actionPhaseSuppressionSkipsRecordingWhenTrackDuringActionFalse() {
         var options = AwsTrackingOptions.forService("OrdersTable").withTrackDuringAction(false);
         io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);

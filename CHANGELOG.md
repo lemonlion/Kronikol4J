@@ -98,6 +98,14 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
+### Added — Tier-3 AWS EventBridge (recorder)
+- **`AwsTracking.eventBridge(...)`** (`kronikol4j-aws`) — the classifier-driven EventBridge recording core
+  (the .NET `EventBridgeTrackingMessageHandler` analog): classifies the request from `X-Amz-Target` + body,
+  emits an event-shaped pair (`MESSAGE_QUEUE`/`EVENT`/`"Sent"`) with the classifier's label, the
+  `eventbridge://<bus>/` URI (defaults to `default`, matching .NET), and the body honoured per (per-phase)
+  verbosity. EventBridge could previously be classified but not recorded. Proven by `AwsTrackingTest`. The AWS
+  SDK v2 interceptor that auto-feeds it + a golden proof remain.
+
 ### Completed — Phase-aware tracking suppression (cross-cutting item [x])
 - **HTTP per-phase verbosity** (`kronikol4j-http`, `kronikol4j-spring`) — `HttpTrackingConfig` gained
   `setupVerbosity`/`actionVerbosity` + an `effectiveVerbosity()` resolver; the OkHttp/JDK/WebClient adapters

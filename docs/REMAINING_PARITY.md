@@ -852,9 +852,15 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   body extraction (`Name`/`EventBusName`), and `getDiagramLabel` across Raw/Detailed/Summarised (incl.
   `PutEvents [type] xN`, `ManageRule`/`ManageTargets`/`ManageBus` collapsing). Pure logic (no AWS SDK
   dependency). Proven by `EventBridgeOperationClassifierTest` (target mapping incl. case-insensitive + Other,
-  PutEvents + rule body extraction, labels across verbosity, Raw bus/count). **Remaining (`[~]`):** the AWS
-  SDK v2 `ExecutionInterceptor` that feeds the classifier + emits the log pair, and a golden-rendered proof —
-  the same SDK-auto-capture follow-up tracked across the AWS adapters.
+  PutEvents + rule body extraction, labels across verbosity, Raw bus/count).
+  **Recorder done (2026-06-28):** `AwsTracking.eventBridge(options, xAmzTarget, body)` — the classifier-driven
+  recording core (the .NET `EventBridgeTrackingMessageHandler` analog): classifies the request, emits an
+  event-shaped pair (MESSAGE_QUEUE category, `EVENT` meta, `"Sent"` status) with the classifier's diagram
+  label, the `eventbridge://<bus>/` URI (bus host-form, defaults to `"default"` — matches .NET), and the body
+  honoured per (per-phase) verbosity. Proven by `AwsTrackingTest` (PutEvents label/URI/event-shape; Summarised
+  drops body + default bus). **Remaining (`[~]`):** the AWS SDK v2 `ExecutionInterceptor` that auto-feeds this
+  from real calls, and a golden-rendered proof — the same SDK-auto-capture follow-up tracked across the AWS
+  adapters.
 - [~] **MassTransit analog** — bus observer hooks (Java equivalent: Spring `ApplicationEvent`s / Axon — see
   PORT_PLAN Appendix B open question).
   **Open question resolved:** the Java equivalent is a generic in-process message-bus tracker (new

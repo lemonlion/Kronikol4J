@@ -67,6 +67,32 @@ public final class AwsTracking {
         event(options, "PUBLISH", topic, message);
     }
 
+    /**
+     * Records an Amazon EventBridge interaction (fire-and-forget event), classifying the request from its
+     * {@code X-Amz-Target} header + JSON body via {@link EventBridgeOperationClassifier} — the reusable core
+     * an AWS SDK interceptor delegates to. The diagram label comes from the classifier; the URI is
+     * {@code eventbridge://<bus>/} (bus defaults to {@code "default"}, matching .NET); the body is honoured per
+     * the (per-phase) verbosity. Queue/event shape, like SQS/SNS.
+     *
+     * @param xAmzTarget the {@code X-Amz-Target} header (e.g. {@code "AWSEvents.PutEvents"})
+     * @param body       the request JSON body (or a redacted form); dropped at Summarised verbosity
+     */
+    public static void eventBridge(AwsTrackingOptions options, String xAmzTarget, String body) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
+        EventBridgeOperationInfo info = EventBridgeOperationClassifier.classify(xAmzTarget, body);
+        TrackingVerbosity verbosity = effectiveVerbosity(options);
+        String label = EventBridgeOperationClassifier.getDiagramLabel(info, verbosity);
+        String bus = info.eventBusName() != null ? info.eventBusName() : "default";
+        URI uri = URI.create("eventbridge://" + bus + "/");
+        String content = verbosity.includesPayload() && body != null ? body : null;
+        TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        Interactions.recordPair(who, options.serviceName(), options.callerName(),
+            DependencyCategories.MESSAGE_QUEUE, Method.of(label), uri, null, content,
+            StatusCode.of("Sent"), null, RequestResponseMetaType.EVENT);
+    }
+
     private static void event(AwsTrackingOptions options, String verb, String destination, String message) {
         if (suppressedByPhase(options)) {
             return;
