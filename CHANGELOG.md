@@ -7,6 +7,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — step-tracking ByteBuddy agent (Step tracking item complete)
+- **`kronikol4j-steptracking-agent`** — the runtime ByteBuddy analog of .NET's `Kronikol.StepTracking` IL
+  weaver. `KronikolStepTrackingAgent` (premain/agentmain/`install()`, retransformation) instruments every
+  method annotated `@GivenStep`/`@WhenStep`/`@ThenStep`/`@ButStep`/`@Step` and wraps it (inlined `StepAdvice` →
+  `StepAgentRecorder`) in `StepCollector.startStep`/`completeStep` — no source change beyond the annotation.
+  Keyword + text derivation matches the .NET weaver (`StepText`: keyword from the annotation type; text from
+  `value()` else the humanised method name with the leading duplicate keyword stripped); parameters captured;
+  failures recorded `FAILED` and re-thrown; async (`CompletableFuture`) methods complete via
+  `completeStepAsync` (the wrapper replaces the return value); nested calls become sub-steps. Exception-safe.
+  Proven by `StepTrackingAgentTest` + `StepTextTest`. Completes the Step-tracking item (the runtime agent is the
+  IL-weaver analog; compile-time IL weaving is the documented C#-IL boundary). Use via `-javaagent` or
+  `install()`.
+
 ### Added — Maven assertion-agent auto-attach (Build-time weaving auto-wiring complete)
 - **`prepare-assertion-agent`** goal (`PrepareAssertionAgentMojo`, `kronikol4j-maven-plugin`) — the Maven mirror
   of the Gradle plugin's assertion-agent auto-attach. Bound to `initialize`, it resolves the agent jar from
