@@ -1,6 +1,7 @@
 package io.kronikol.report.step;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.kronikol.core.context.TestIdentityScope;
 import io.kronikol.core.context.TestPhaseContext;
@@ -42,6 +43,32 @@ class StepCollectorTest {
         assertThat(steps.get(0).text()).isEqualTo("an order exists");
         assertThat(steps.get(0).status()).isEqualTo(ExecutionStatus.PASSED);
         assertThat(steps.get(0).durationMs()).isNotNull();
+    }
+
+    @Test
+    void completeStepAsyncPassesTheStepAndPropagatesTheResultWhenTheFutureSucceeds() {
+        StepCollector.startStep(TID, "When", "the order is placed async", null, null);
+        java.util.concurrent.CompletableFuture<String> wrapped =
+            StepCollector.completeStepAsync(TID, java.util.concurrent.CompletableFuture.completedFuture("ok"));
+
+        assertThat(wrapped.join()).isEqualTo("ok"); // original value flows through
+        List<ScenarioStep> steps = StepCollector.getSteps(TID);
+        assertThat(steps).hasSize(1);
+        assertThat(steps.get(0).status()).isEqualTo(ExecutionStatus.PASSED);
+        assertThat(steps.get(0).durationMs()).isNotNull();
+    }
+
+    @Test
+    void completeStepAsyncFailsTheStepAndRePropagatesWhenTheFutureFails() {
+        StepCollector.startStep(TID, "When", "the async work fails", null, null);
+        java.util.concurrent.CompletableFuture<String> failing = new java.util.concurrent.CompletableFuture<>();
+        failing.completeExceptionally(new IllegalStateException("boom"));
+        java.util.concurrent.CompletableFuture<String> wrapped = StepCollector.completeStepAsync(TID, failing);
+
+        assertThatThrownBy(wrapped::join).hasRootCauseMessage("boom"); // original failure re-propagated
+        List<ScenarioStep> steps = StepCollector.getSteps(TID);
+        assertThat(steps).hasSize(1);
+        assertThat(steps.get(0).status()).isEqualTo(ExecutionStatus.FAILED);
     }
 
     @Test

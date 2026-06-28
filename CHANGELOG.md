@@ -7,6 +7,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — async step wrappers (Step-tracking item progress)
+- **`StepCollector.completeStepAsync(CompletableFuture<T>)`** (+ explicit-`testId` overload) — ports the .NET
+  `CompleteStepAsync(Task)`/`CompleteStepAsync<T>(Task<T>)`: wraps an async step's returned future so the
+  active step is completed (passed on normal completion, failed with the cause's message on exceptional
+  completion) and the original failure re-propagates via `CompletionException`. One generic method covers the
+  `Void` and value cases. Proven by two new `StepCollectorTest` cases. Step-tracking remains open only for the
+  build-time step weaver.
+
 ### Added — InternalFlow span-processor auto-registration (InternalFlow item progress)
 - **`KronikolAutoConfigurationCustomizerProvider`** (`kronikol4j-opentelemetry`) — an OTel autoconfigure SPI
   provider (registered via `META-INF/services`, autoconfigure-spi `compileOnly`) that adds the

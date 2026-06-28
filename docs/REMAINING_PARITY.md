@@ -1171,10 +1171,15 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   Java `ScenarioStep` has no dedicated fields), `clearSteps`. Plus `StepTrackingOptions` (the 5 toggles) and
   the `@GivenStep/@WhenStep/@ThenStep/@ButStep/@Step` runtime-retained annotations. Lives in
   `kronikol4j-report` (it produces the report `ScenarioStep` model) using core seams for identity/phase/
-  delimiters. Proven by `StepCollectorTest` (12 cases) + wiki page. **Remaining (`[~]`):** the build-time step
-  weaver (Gradle/Maven bytecode/AST pass that injects the start/complete calls from the annotations — the
-  Tier-5 build-tooling item); and async (`CompletableFuture`) step wrappers. (`TabularParameterData`
-  tabular-parameter capture in `buildParameters` is now wired — see the `ITabularParameterData` item.)
+  delimiters. Proven by `StepCollectorTest` + wiki page. The async step wrappers are now done:
+  `StepCollector.completeStepAsync(CompletableFuture<T>)` (+ explicit-`testId` overload) ports the .NET
+  `CompleteStepAsync(Task)`/`CompleteStepAsync<T>(Task<T>)` — one generic method covers the `Void`/value cases
+  — completing the active step (passed on normal completion, failed with the cause message on exceptional
+  completion) and re-propagating the original failure via `CompletionException`. Proven by two new
+  `StepCollectorTest` cases. **Remaining (`[~]`):** only the build-time step weaver (Gradle/Maven bytecode/AST
+  pass that injects the start/complete calls from the annotations — the Tier-5 build-tooling item).
+  (`TabularParameterData` tabular-parameter capture in `buildParameters` is now wired — see the
+  `ITabularParameterData` item.)
 - [x] **TabularAttributes** — `@Inputs`/`@Outputs`/`@HeadOut`/`@HeadIn` annotations + `TabularResolver` +
   `TabularDeserializer` + typed `TabularInputs<T>`/`TabularOutputs<T>` + `TabularVerificationException`.
   (Java has only the render-side data model `TabularParameterValue`.) *(.NET `TabularAttributes/`.)*

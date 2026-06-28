@@ -119,6 +119,35 @@ public final class StepCollector {
         }
     }
 
+    /**
+     * Wraps an async step's returned {@link java.util.concurrent.CompletableFuture} so the active step is
+     * completed when the future finishes — passed on normal completion, failed (with the cause's message) on
+     * exceptional completion, re-propagating the original failure. The Java analog of the .NET
+     * {@code CompleteStepAsync(Task)}/{@code CompleteStepAsync<T>(Task<T>)} (the IL weaver calls it for async
+     * step methods; one generic method covers the {@code Void} and value cases since {@code Void} is a {@code T}).
+     * Resolves the test id from the ambient context.
+     */
+    public static <T> java.util.concurrent.CompletableFuture<T> completeStepAsync(
+            java.util.concurrent.CompletableFuture<T> future) {
+        return completeStepAsync(resolveTestId(), future);
+    }
+
+    /** As {@link #completeStepAsync(java.util.concurrent.CompletableFuture)} but for an explicit {@code testId}. */
+    public static <T> java.util.concurrent.CompletableFuture<T> completeStepAsync(
+            String testId, java.util.concurrent.CompletableFuture<T> future) {
+        return future.handle((result, ex) -> {
+            if (ex != null) {
+                Throwable cause = ex instanceof java.util.concurrent.CompletionException && ex.getCause() != null
+                    ? ex.getCause() : ex;
+                completeStep(testId, false, cause.getMessage());
+                throw ex instanceof java.util.concurrent.CompletionException ce
+                    ? ce : new java.util.concurrent.CompletionException(cause);
+            }
+            completeStep(testId, true, null);
+            return result;
+        });
+    }
+
     /** Bypasses the active step (its body did not run) for {@code testId}, recording it as Bypassed. */
     public static void bypassStep(String reason) {
         bypassStep(resolveTestId(), reason);
