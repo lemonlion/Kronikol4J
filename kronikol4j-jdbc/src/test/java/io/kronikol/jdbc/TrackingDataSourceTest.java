@@ -143,6 +143,63 @@ class TrackingDataSourceTest {
         assertThat(logs.get(1).content()).isEqualTo("2 rows affected"); // 1 + 1 summed
     }
 
+    // --- FULL_ROWS cell-level capture end-to-end ---
+
+    @Test
+    void fullRowsDetailCapturesCellLevelJson() throws Exception {
+        DataSource fullRows = wrapFullRows(10);
+        try (Connection c = fullRows.getConnection(); Statement seed = c.createStatement()) {
+            seed.executeUpdate("INSERT INTO customers (id, name) VALUES (10, 'Grace')");
+            seed.executeUpdate("INSERT INTO customers (id, name) VALUES (11, 'Edsger')");
+        }
+        RequestResponseLogger.clear();
+
+        try (Connection c = fullRows.getConnection(); Statement s = c.createStatement();
+             ResultSet rs = s.executeQuery("SELECT id, name FROM customers ORDER BY id")) {
+            while (rs.next()) {
+                // drain — capture happens as rows are read
+            }
+        }
+
+        List<RequestResponseLog> logs = RequestResponseLogger.getAllLogs();
+        assertThat(logs).hasSize(2);
+        // Compact cell-level JSON (H2 upper-cases the labels); integers unquoted, strings quoted.
+        assertThat(logs.get(1).content())
+            .isEqualTo("[{\"ID\":10,\"NAME\":\"Grace\"},{\"ID\":11,\"NAME\":\"Edsger\"}]");
+    }
+
+    @Test
+    void fullRowsDetailTruncatesAtMaxResponseRows() throws Exception {
+        DataSource fullRows = wrapFullRows(1); // capture at most one row
+        try (Connection c = fullRows.getConnection(); Statement seed = c.createStatement()) {
+            seed.executeUpdate("INSERT INTO customers (id, name) VALUES (20, 'A')");
+            seed.executeUpdate("INSERT INTO customers (id, name) VALUES (21, 'B')");
+            seed.executeUpdate("INSERT INTO customers (id, name) VALUES (22, 'C')");
+        }
+        RequestResponseLogger.clear();
+
+        try (Connection c = fullRows.getConnection(); Statement s = c.createStatement();
+             ResultSet rs = s.executeQuery("SELECT id, name FROM customers ORDER BY id")) {
+            while (rs.next()) {
+                // drain
+            }
+        }
+
+        assertThat(RequestResponseLogger.getAllLogs().get(1).content())
+            .isEqualTo("[{\"ID\":20,\"NAME\":\"A\"}]\n... (2 more rows not shown)");
+    }
+
+    private static DataSource wrapFullRows(int maxRows) {
+        JdbcDataSource h2 = new JdbcDataSource();
+        h2.setURL("jdbc:h2:mem:trackingtest;DB_CLOSE_DELAY=-1");
+        return TrackingDataSource.wrap(h2, SqlTrackingOptions.builder()
+            .serviceName("ShopDb")
+            .responseDetail(SqlResponseDetail.FULL_ROWS)
+            .maxResponseRows(maxRows)
+            .testInfoFetcher(() -> new TestInfo("MyTest", "id-1"))
+            .ids(IdGenerator.seeded(1)).build());
+    }
+
     // --- verbosity + classifier exposed end-to-end through the DataSource (the Dapper/JdbcTemplate analog) ---
 
     @Test

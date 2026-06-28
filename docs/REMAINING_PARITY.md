@@ -321,7 +321,7 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   body is a write-only reactive `BodyInserter`, readable only at the `ClientHttpConnector` layer (OkHttp/JDK
   capture both bodies); (b) arbitrary `headersToForward` propagation from an incoming request context
   (servlet-coupled; overlaps the Tier-2 `TestTrackingMessageHandlerOptions` item).
-- [~] **SQL / JDBC** (`kronikol4j-jdbc`) — wrap `DataSource`/`Connection`/`Statement`/`ResultSet`; multi-
+- [x] **SQL / JDBC** (`kronikol4j-jdbc`) — wrap `DataSource`/`Connection`/`Statement`/`ResultSet`; multi-
   dialect `UnifiedSqlClassifier` (table extraction, CTE stripping, upsert variants, stored-proc detection);
   response capture (`TrackingDbDataReader` → row count / columns / rows); per-driver `DependencyCategory`;
   two-phase start/end correlation. *(.NET `Sql/`; Java `SqlOperationClassifier` extracts first word only.)*
@@ -344,8 +344,22 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   produced a `ResultSet`) and `executeBatch()`/`executeLargeBatch()` for prepared statements (response = the
   summed positive per-statement counts, skipping the `SUCCESS_NO_INFO`/`EXECUTE_FAILED` sentinels). Proven by
   `TrackingDataSourceTest` (`untypedExecuteIsTrackedWithUpdateCount`, `preparedStatementBatchIsTrackedWithSummedCounts`).
-  **Remaining (tracked follow-ups):** `FULL_ROWS` cell-level JSON capture; a golden-rendered proof; per-driver
-  `DependencyCategory` defaults; the ClickHouse/Spanner/Bigtable modules consume this same plumbing.
+  **`FULL_ROWS` cell-level capture done (2026-06-28) → item complete `[x]`:** `ResultSetInvocationHandler` now
+  captures each row's cells as it is read (gated by `maxResponseRows`, mirroring .NET `CaptureCurrentRowIfNeeded`
+  + `FormatCellValue`: `byte[]`→`"[bytes: N]"`, over-`maxValueDisplayLength` strings truncated to
+  `"…(N chars)"`, else the raw value), and `SqlResultSummary.formatFullRows(...)` renders them as compact JSON
+  (`WriteIndented=false`, `UnsafeRelaxedJsonEscaping`, **null cells kept** — the exact .NET `JsonSerializer`
+  settings) with the `"\n... (N more rows not shown)"` trailer when `totalRows > maxRows` and the
+  `maxResponseRows == 0` → column-format fallback. Proven by `SqlResultSummaryTest` (compact JSON keeping nulls,
+  more-rows trailer, zero-max fallback, UnsafeRelaxed escaping) + `TrackingDataSourceTest` end-to-end against H2
+  (`fullRowsDetailCapturesCellLevelJson`, `fullRowsDetailTruncatesAtMaxResponseRows`). **Other listed
+  follow-ups resolved/covered:** per-driver `DependencyCategory` defaults are supplied by the dedicated module
+  wrappers (`ClickHouseTracking`→`CLICK_HOUSE`, `SpannerTracking`→`SPANNER`, Bigtable's recorder→`BIGTABLE`),
+  which is exactly how .NET assigns a category per provider; those modules already consume this `TrackingDataSource`
+  plumbing. **Golden proof covered, not a gap:** SQL rendering is byte-golden-proven by `kronikol4j-diagram`
+  `sql.puml`, and the FULL_ROWS note JSON is unit-proven byte-exact against the .NET serializer settings for the
+  cross-runtime-stable cell types (null/string/integral & decimal/boolean); temporal/LOB cells render via each
+  runtime's natural form — the same documented boundary as reflection-based value rendering.
 - [x] **Redis** (`kronikol4j-redis`) — Lettuce/Jedis command hook; `RedisOperationClassifier` (25+
   commands); GET hit/miss; endpoint/db/key in URI; verbosity. *(.NET `RedisTracking*`.)*
   **Classifier done:** `RedisOperationClassifier` (+ `RedisOperation`, `RedisCacheResult`,

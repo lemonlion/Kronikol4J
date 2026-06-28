@@ -7,6 +7,18 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Completed — Tier-1 SQL/JDBC FULL_ROWS cell capture (item [x])
+- **`SqlResponseDetail.FULL_ROWS`** (`kronikol4j-jdbc`) now captures cell-level data. As a result set is read,
+  `ResultSetInvocationHandler` captures each row's cells (up to `maxResponseRows`, mirroring .NET
+  `CaptureCurrentRowIfNeeded`/`FormatCellValue`: `byte[]`→`"[bytes: N]"`, over-`maxValueDisplayLength` strings
+  truncated, else the raw value), and `SqlResultSummary.formatFullRows(...)` renders them as compact JSON
+  (`WriteIndented=false`, `UnsafeRelaxedJsonEscaping`, null cells kept — the exact .NET `JsonSerializer`
+  settings), with a `"\n... (N more rows not shown)"` trailer past `maxResponseRows` and a column-format
+  fallback when `maxResponseRows == 0`. Previously FULL_ROWS fell back to the column format. Proven by
+  `SqlResultSummaryTest` + end-to-end `TrackingDataSourceTest` against H2. This completes the SQL/JDBC adapter
+  (per-driver category is supplied by the ClickHouse/Spanner/Bigtable module wrappers; SQL rendering is
+  golden-proven by `sql.puml`).
+
 ### Completed — Tier-1 gRPC Protobuf→JSON rendering (item [x])
 - **`GrpcMessageFormatter`** (`kronikol4j-grpc`) — renders gRPC request/response messages as compact
   protobuf-JSON via `JsonFormat.printer().omittingInsignificantWhitespace()` (protobuf-java-util
