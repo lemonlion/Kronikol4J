@@ -560,13 +560,23 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
     already existed — the earlier "no generator yet" note was stale). System property
     `kronikol.report.generateComponentDiagram` + Gradle DSL `generateComponentDiagram`. Proven by
     `ReportOptionsTest` + `ReportFinalizerTest` (present by default / absent when disabled).
-  **Still open** (land with their owning features): `reportsFolderPath` (Java uses an explicit output dir
-  via `kronikol.output.dir` — the .NET `<BaseDir>/Reports` subfolder model is N/A; revisit only if a relative
-  subfolder is wanted), `fixedNameForReceivingService`, `expectedTestCount` guard,
-  the `requestResponsePostProcessor`/`midProcessor` hooks, `inlineBackgroundSteps`, `lazyLoadDiagramImages`,
-  and the explicit `generateTestRunReportData`/`generateMergeableData` booleans (the latter two change Java's
-  current dataFormats/run-dir *inference* into explicit flags — a behavior-affecting change best done as its
-  own careful pass).
+  - `generateMergeableData` (default `false`) — added to `ReportControlOptions`; a **standalone** run now also
+    writes the enriched mergeable fragment `TestRunReport.mergeable.json` (the same `ReportFragment` a forked
+    JVM emits, consumable by `kronikol merge`) when enabled. Additive — forked runs still always emit a
+    fragment to the run dir; default `false` keeps standalone behavior unchanged. The .NET
+    `GenerateMergeableData` analog (Java separates the mergeable fragment from `TestRunReport.json`, rather
+    than enriching it in place). System property `kronikol.report.generateMergeableData` + Gradle DSL
+    `generateMergeableData`. Proven by `ReportOptionsTest` + `ReportFinalizerTest`.
+  **Resolved as boundaries / done-primitive:** `fixedNameForReceivingService` is already implemented in
+  `ServiceNameResolver` (highest-priority fixed name); per-adapter wiring is the standing adapter follow-up.
+  `reportsFolderPath` is N/A by design (Java uses an explicit output dir via `kronikol.output.dir`, not a
+  `<BaseDir>/Reports` subfolder). `lazyLoadDiagramImages` is N/A (Java renders diagrams in-browser via
+  PlantUML-WASM, not `<img>` tags). `requestResponsePostProcessor`/`midProcessor` map to the programmatic
+  `NoteProcessors` passed to `PlantUmlCreator.create` (the deliberate Java seam, not a `ReportOptions` field).
+  **Still open** (genuinely blocked on unbuilt features): `expectedTestCount` guard + `inlineBackgroundSteps`
+  (no specs-in-finalizer / inline-background renderer yet), and the explicit `generateTestRunReportData`
+  boolean (changing Java's `dataFormats`-emptiness *inference* into an explicit default-emit-JSON flag is a
+  behavior-affecting change best done as its own careful pass).
 - [x] **Per-report-type data formats** — split the single `ReportOptions.dataFormats` set back into the
   two .NET options `testRunReportDataFormat` vs `specificationsDataFormat` (different formats per report
   type). *(Depends on the Specifications report, Tier 4.)*

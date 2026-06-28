@@ -132,6 +132,10 @@ public interface KronikolExtension {
     /** Embed the run-level component diagram (the .NET {@code GenerateComponentDiagram}, default true). */
     Property<Boolean> getGenerateComponentDiagram();
 
+    /** Also write the standalone mergeable fragment {@code TestRunReport.mergeable.json} (the .NET
+     *  {@code GenerateMergeableData}, default false). */
+    Property<Boolean> getGenerateMergeableData();
+
     // --- CI summary / artifacts ---
 
     /** Write the markdown run summary to the detected CI platform. */

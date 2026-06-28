@@ -81,6 +81,14 @@ public final class ReportFinalizer {
         if (options.diagnosticMode()) {
             writeDiagnosticReport(outputDir, features, logs, options);
         }
+        if (options.generateMergeableData()) {
+            // .NET GenerateMergeableData: emit the enriched mergeable fragment for a standalone run so it can
+            // later be combined via `kronikol merge` (forked runs already emit a fragment to the run dir).
+            ReportFragment fragment = ReportFragments.fromRun(options.control().resolveTitle(title), options);
+            Files.createDirectories(outputDir);
+            Files.writeString(outputDir.resolve("TestRunReport.mergeable.json"),
+                FragmentJson.toJson(fragment), StandardCharsets.UTF_8);
+        }
         return report;
     }
 

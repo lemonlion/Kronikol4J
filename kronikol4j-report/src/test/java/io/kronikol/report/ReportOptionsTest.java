@@ -126,6 +126,21 @@ class ReportOptionsTest {
     }
 
     @Test
+    void generateMergeableDataDefaultsFalseAndWithers() {
+        assertThat(ReportOptions.defaults().control().generateMergeableData()).isFalse(); // .NET default false
+        ReportOptions on = ReportOptions.defaults().withGenerateMergeableData(true);
+        assertThat(on.control().generateMergeableData()).isTrue();
+        assertThat(on.control().generateComponentDiagram()).isTrue(); // unrelated control flags kept
+
+        System.setProperty(ReportOptions.GENERATE_MERGEABLE_DATA_PROPERTY, "true");
+        try {
+            assertThat(ReportOptions.fromSystemProperties().control().generateMergeableData()).isTrue();
+        } finally {
+            System.clearProperty(ReportOptions.GENERATE_MERGEABLE_DATA_PROPERTY);
+        }
+    }
+
+    @Test
     void readsDiagramOptionsFromSystemProperties() {
         System.setProperty(ReportOptions.SEPARATE_SETUP_PROPERTY, "true");
         System.setProperty(ReportOptions.SETUP_HIGHLIGHT_COLOR_PROPERTY, "#123456");

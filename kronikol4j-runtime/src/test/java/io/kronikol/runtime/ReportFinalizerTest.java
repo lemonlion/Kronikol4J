@@ -234,6 +234,30 @@ class ReportFinalizerTest {
     }
 
     @Test
+    void finalizeWritesMergeableFragmentWhenEnabled(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults().withGenerateMergeableData(true));
+
+        Path fragment = dir.resolve("TestRunReport.mergeable.json");
+        assertThat(fragment).exists();
+        var parsed = FragmentJson.fromJson(Files.readString(fragment)); // round-trips as a real fragment
+        assertThat(parsed.features()).anySatisfy(f ->
+            assertThat(f.scenarios()).extracting(Scenario::name).contains("Checkout succeeds"));
+    }
+
+    @Test
+    void finalizeDoesNotWriteMergeableFragmentByDefault(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run");
+
+        assertThat(dir.resolve("TestRunReport.mergeable.json")).doesNotExist();
+    }
+
+    @Test
     void finalizeOmitsComponentDiagramWhenDisabled(@TempDir Path dir) throws IOException {
         trackCheckout(); // a Test -> OrderService HTTP interaction → a run-level component diagram
         RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));

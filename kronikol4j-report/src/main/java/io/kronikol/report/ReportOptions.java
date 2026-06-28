@@ -93,6 +93,9 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     public static final String HTML_FILE_NAME_PROPERTY = "kronikol.report.htmlFileName";
     /** System property (boolean) embedding the run-level component diagram (default {@code true}). */
     public static final String GENERATE_COMPONENT_DIAGRAM_PROPERTY = "kronikol.report.generateComponentDiagram";
+    /** System property (boolean) writing the standalone mergeable fragment {@code TestRunReport.mergeable.json}
+     *  (default {@code false}). */
+    public static final String GENERATE_MERGEABLE_DATA_PROPERTY = "kronikol.report.generateMergeableData";
     /** System property (boolean) writing the markdown run summary to the detected CI platform. */
     public static final String WRITE_CI_SUMMARY_PROPERTY = "kronikol.ci.writeCiSummary";
     /** System property (int) capping diagrams in the CI summary (default 10). */
@@ -336,6 +339,16 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return control.generateComponentDiagram();
     }
 
+    /** Writes the standalone mergeable fragment for {@code kronikol merge} (the .NET {@code GenerateMergeableData}). */
+    public ReportOptions withGenerateMergeableData(boolean value) {
+        return withControl(control.withGenerateMergeableData(value));
+    }
+
+    /** Whether a standalone run also emits the mergeable fragment (delegates to {@link #control()}). */
+    public boolean generateMergeableData() {
+        return control.generateMergeableData();
+    }
+
     /**
      * Reads every diagram + report toggle from system properties (each falling back to {@link #defaults()}),
      * so a listener-driven run configures them with e.g. {@code -Dkronikol.diagram.separateSetup=true} or
@@ -374,7 +387,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return new ReportControlOptions(
             stringProperty(REPORT_TITLE_PROPERTY, null),
             stringProperty(HTML_FILE_NAME_PROPERTY, ReportControlOptions.DEFAULT_HTML_FILE_NAME),
-            boolProperty(GENERATE_COMPONENT_DIAGRAM_PROPERTY, true));
+            boolProperty(GENERATE_COMPONENT_DIAGRAM_PROPERTY, true),
+            boolProperty(GENERATE_MERGEABLE_DATA_PROPERTY, false));
     }
 
     /** Builds the {@link CiPublishOptions} from system properties (all defaulting to the .NET defaults). */
