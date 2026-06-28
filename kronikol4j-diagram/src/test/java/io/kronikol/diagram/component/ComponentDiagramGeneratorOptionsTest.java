@@ -103,6 +103,68 @@ class ComponentDiagramGeneratorOptionsTest {
         assertThat(rels.get(0).service()).isEqualTo("OrderDb");
     }
 
+    @Test
+    void statsAddPercentileLabelAndKeepCategoryColourInDependencyMode() {
+        var rels = ComponentDiagramGenerator.extractRelationships(List.of(
+            req("t1", "Orders", DependencyCategories.HTTP, Method.Http.GET, "http://o/a")));
+        var stats = java.util.Map.of(
+            ComponentRelationshipStats.relationshipKey("Test", "Orders"),
+            new ComponentRelationshipStats(1, 1, 12, 12, 120, 480, 5, 900, 0.0, false));
+
+        var uml = ComponentDiagramGenerator.generatePlantUml(
+            rels, ComponentDiagramRenderOptions.defaults(), stats);
+
+        assertThat(uml)
+            .contains("[[#iflow-rel-Test-Orders HTTP: GET]]\\nP50: 12ms | P95: 120ms | P99: 480ms"
+                + "\\n1 calls across 1 tests")
+            .contains("test -[#438DD5]-> orders : \"[[#iflow-rel-Test-Orders"); // category colour kept
+    }
+
+    @Test
+    void errorRateAppendsErrorPart() {
+        var rels = ComponentDiagramGenerator.extractRelationships(List.of(
+            req("t1", "Orders", DependencyCategories.HTTP, Method.Http.GET, "http://o/a")));
+        var stats = java.util.Map.of(
+            ComponentRelationshipStats.relationshipKey("Test", "Orders"),
+            new ComponentRelationshipStats(2, 1, 10, 10, 40, 60, 1, 80, 0.5, false));
+
+        var uml = ComponentDiagramGenerator.generatePlantUml(
+            rels, ComponentDiagramRenderOptions.defaults(), stats);
+
+        assertThat(uml).contains("P50: 10ms | P95: 40ms | P99: 60ms | 50% errors");
+    }
+
+    @Test
+    void performanceModeHotspotColoursByP95() {
+        var rels = ComponentDiagramGenerator.extractRelationships(List.of(
+            req("t1", "Orders", DependencyCategories.HTTP, Method.Http.GET, "http://o/a")));
+        var stats = java.util.Map.of(
+            ComponentRelationshipStats.relationshipKey("Test", "Orders"),
+            new ComponentRelationshipStats(5, 5, 100, 100, 300, 400, 10, 500, 0.0, false)); // P95 300 → Red
+        var opts = ComponentDiagramRenderOptions.builder()
+            .arrowColorMode(ArrowColorMode.PERFORMANCE).build();
+
+        var uml = ComponentDiagramGenerator.generatePlantUml(rels, opts, stats);
+
+        assertThat(uml).contains("test -[#Red]-> orders : \"[[#iflow-rel-Test-Orders");
+    }
+
+    @Test
+    void performanceModeDashesLowCoverageRelationships() {
+        var rels = ComponentDiagramGenerator.extractRelationships(List.of(
+            req("t1", "Orders", DependencyCategories.HTTP, Method.Http.GET, "http://o/a")));
+        var stats = java.util.Map.of(
+            ComponentRelationshipStats.relationshipKey("Test", "Orders"),
+            new ComponentRelationshipStats(1, 1, 10, 10, 10, 10, 10, 10, 0.0, true)); // low coverage
+        var opts = ComponentDiagramRenderOptions.builder()
+            .arrowColorMode(ArrowColorMode.PERFORMANCE).build();
+
+        var uml = ComponentDiagramGenerator.generatePlantUml(rels, opts, stats);
+
+        assertThat(uml).contains("test ..> orders : \"[[#iflow-rel-Test-Orders")  // dashed, no colour
+            .doesNotContain("-[#");
+    }
+
     private static RequestResponseLog req(String testId, String service, String category,
                                           Method method, String uri) {
         return RequestResponseLog.builder()

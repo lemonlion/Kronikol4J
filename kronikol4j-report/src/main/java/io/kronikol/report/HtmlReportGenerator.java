@@ -4,6 +4,7 @@ import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.diagram.component.ComponentDiagramGenerator;
 import io.kronikol.diagram.component.ComponentDiagramRenderOptions;
 import io.kronikol.diagram.component.ComponentRelationship;
+import io.kronikol.diagram.component.ComponentRelationshipStats;
 import io.kronikol.diagram.model.PlantUmlForTest;
 import io.kronikol.diagram.plantuml.PlantUmlCreator;
 import io.kronikol.report.component.ComponentDiagramOptions;
@@ -85,7 +86,13 @@ public final class HtmlReportGenerator {
             .arrowColorMode(opts.arrowColorMode())
             .dependencyColors(opts.dependencyColors())
             .build();
-        return ComponentDiagramGenerator.generatePlantUml(relationships, render);
+        // When relationship flows are enabled, compute per-relationship latency stats (no-op for logs without
+        // timestamps → empty map → unchanged output) so labels gain P50/P95/P99 and PERFORMANCE mode can
+        // hotspot-colour. A custom label formatter supersedes stats labels (handled in the generator).
+        var stats = opts.showRelationshipFlows()
+            ? ComponentRelationshipStats.compute(relationships, logs, opts.lowCoverageThreshold())
+            : java.util.Map.<String, ComponentRelationshipStats>of();
+        return ComponentDiagramGenerator.generatePlantUml(relationships, render, stats);
     }
 
     /** Renders from pre-computed diagrams — used by the merge path, where fragments already carry

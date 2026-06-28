@@ -782,12 +782,26 @@ Per-tracker option classes are mostly ~3-of-N fields; several whole option class
   title/theme/arrow-colour-mode/per-category-colours/label-formatter/participant-filter actually drive the
   embedded run-level component diagram. Proven end-to-end by `HtmlReportGeneratorTest` (custom title+theme+colour
   decoded from the gzip puml-data island; participant filter excludes a service) + `ReportOptionsTest`.
-  **Remaining (`[~]`):** only the stats/flame-chart driven fields (`showRelationshipFlows`, `relationshipFlowStyle`,
-  `lowCoverageThreshold`, `showSystemFlameChart`, `maxFlameChartTests`, `embedInTestRunReport`, `fileName`,
-  performance/hotspot arrow colouring, low-coverage dashed arrows) — gated on the not-yet-ported
-  `RelationshipStats`/`DependencyGraphMetrics`/component flame-chart machinery. No system-property channel for
-  the component-diagram options yet (they need code-level config; the functional fields don't map to a string
-  property) — `fromSystemProperties` defaults them.
+  **Relationship-stats rendering done (2026-06-28):** `io.kronikol.diagram.component.ComponentRelationshipStats`
+  ports the component-diagram-consumed core of the .NET `RelationshipStats`/`ComputeRelationshipStats` —
+  pairs each request with its response by id+timestamp, measures durations, and computes call/test counts,
+  latency percentiles (P50/P95/P99 + mean/min/max via the exact .NET interpolation), error rate (status ≥ 400)
+  and the low-coverage flag, keyed by the `iflow-rel-<caller>-<service>` relKey. The generator's stats branch is
+  now live: `generatePlantUml(relationships, renderOptions, stats)` adds the percentile relationship-flow label
+  (`[[#relKey methods]]\nP50: …ms | P95: …ms | P99: …ms[ | N% errors]\nN calls across M tests`) and, in
+  `PERFORMANCE` mode, hotspot-colours the arrow by P95 (Green<50 / Orange<200 / Red) and dashes (`..>`)
+  low-coverage relationships — matching .NET. `HtmlReportGenerator` computes+passes the stats when
+  `showRelationshipFlows` is on (`lowCoverageThreshold` honoured); default output is unchanged for logs without
+  timestamps (empty stats). Proven by `ComponentRelationshipStatsTest` (percentiles/error-rate/coverage/pairing)
+  + `ComponentDiagramGeneratorOptionsTest` (stats label, error part, hotspot colours, low-coverage dashed); full
+  build + goldens green.
+  **Remaining (`[~]`):** (a) the component-diagram **flame chart** (`showSystemFlameChart`, `maxFlameChartTests`)
+  — a distinct visualisation not yet ported; (b) `embedInTestRunReport` + `fileName` (standalone-component-diagram
+  *file* emission — Java embeds the diagram, doesn't write a separate file); and (c) the **fuller**
+  `RelationshipStats`/`DependencyGraphMetrics` surface (endpoint breakdown, payload sizes, concurrency, outliers,
+  status/method distributions, fan-in/out, circular deps, longest chain) that feeds the standalone *stats report*
+  — a separate large port, not consumed by the component-diagram arrow. No system-property channel for the
+  component-diagram options (functional fields don't map to string properties); `fromSystemProperties` defaults them.
 - [x] **`TestTrackingMessageHandlerOptions`** (3/12) — add `portsToServiceNames`, `clientNamesToServiceNames`,
   `fixedNameForReceivingService`, `headersToForward`, `excludedHosts`, `trackDuringSetup/Action`,
   `currentStepTypeFetcher`, `internalFlowActivitySources`.

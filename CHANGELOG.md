@@ -7,6 +7,19 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — component-diagram relationship stats (ComponentDiagramOptions progress)
+- **`ComponentRelationshipStats`** (`kronikol4j-diagram`) — the component-diagram-consumed core of the .NET
+  `RelationshipStats`: pairs requests/responses by id+timestamp and computes call/test counts, latency
+  percentiles (P50/P95/P99 + mean/min/max via the .NET interpolation), error rate and the low-coverage flag,
+  keyed by the `iflow-rel-<caller>-<service>` relKey.
+- **`ComponentDiagramGenerator.generatePlantUml(relationships, options, stats)`** — when a relationship has
+  stats, its label gains the latency percentiles (`P50/P95/P99[ | N% errors]`); in `PERFORMANCE` arrow mode the
+  arrow is hotspot-coloured by P95 (Green<50 / Orange<200 / Red) and dashed for low-coverage relationships
+  (the .NET stats branch). `HtmlReportGenerator` computes+passes stats when `showRelationshipFlows` is on
+  (default output unchanged for timestamp-less logs). Proven by `ComponentRelationshipStatsTest` +
+  `ComponentDiagramGeneratorOptionsTest`. ComponentDiagramOptions remains open for the component flame chart +
+  the fuller stats-report surface.
+
 ### Resolved — Report control flags item complete (inlineBackgroundSteps is .NET dead-config)
 - Audited the last open flag in the Report-control-flags bundle, `InlineBackgroundSteps`: it is **declared but
   never read** anywhere in the .NET source (no consumer in `BackgroundStepsDetector`/`ReportGenerator`/etc.).
