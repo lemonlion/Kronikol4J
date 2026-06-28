@@ -605,9 +605,23 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   **All three Azure service classifiers (Cosmos, Blob, Service Bus) are now done.**
   **Verbosity wiring done (2026-06-28):** `AzureTrackingOptions` gained a `TrackingVerbosity` (default Detailed,
   `withVerbosity(...)`); the recorders drop the payload at Summarised — the Cosmos document (keeping the
-  container) and the Service Bus message (keeping the entity). Proven by `AzureTrackingTest`. **Remaining:** the
-  Azure SDK pipeline policies that feed the classifiers + emit the pair, `autoCorrelateWrites`/change-feed key
-  extractor, and a golden proof.
+  container) and the Service Bus message (keeping the entity). Proven by `AzureTrackingTest`.
+  **HTTP pipeline policy done (2026-06-28):** `KronikolAzureTrackingPolicy implements
+  com.azure.core.http.policy.HttpPipelinePolicy` (azure-core `compileOnly`) auto-captures the three HTTP-based
+  Azure services — Cosmos (`*.documents.azure.com`, reading the `x-ms-documentdb-isquery`/`-is-upsert` flags),
+  Blob (`*.blob.core.windows.net`) and Storage Queues (`*.queue.core.windows.net`) — detecting the service
+  from the host and delegating to the new classifier-driven `AzureTracking.cosmos(...)`/`blob(...)` recorder
+  cores (and the existing `storageQueue(...)`). The clean URIs faithfully port the .NET `BuildCleanUri`:
+  Cosmos rewrites the path to `/colls/<coll>[/docs|sprocs/<id>]` (Detailed) / `/<coll>` (Summarised) keeping
+  the host; Blob to `/<container>[/<blob>]` with the query stripped; both fall back to the original URI when
+  the resource is unknown. Request/response shape, real status, per-service category (CosmosDB / BlobStorage /
+  MessageQueue), per-phase verbosity (Raw → raw method + URI; Summarised → drop body + skip Other). Proven by
+  `KronikolAzureTrackingPolicyTest` (Cosmos read + query-header, Blob query-strip, StorageQueue routing,
+  unrecognised-host skip) with real `com.azure.core.http.HttpRequest`s. (`KronikolAzureStorageQueuePolicy`
+  remains a focused queue-only alternative.) **Remaining (`[~]`):** the **Service Bus** tracking — .NET uses
+  AMQP client wrappers (`TrackingServiceBusSender`/`Receiver`), not an HTTP policy, so it is a separate
+  client-decorator mechanism (the `ServiceBusOperationClassifier` is already done); plus `autoCorrelateWrites`/
+  change-feed key extractor for Cosmos, and a golden proof.
 - [~] **GCP** (`kronikol4j-gcp`) — SDK adapters for BigQuery, Cloud Storage, Pub/Sub; per-service
   classifiers + verbosity. *(.NET ships handlers + interceptors per service.)*
   **Pub/Sub classifier done:** `PubSubOperationClassifier` (+ `PubSubOperation`, `PubSubOperationInfo`) ports

@@ -81,6 +81,113 @@ public final class AzureTracking {
             StatusCode.of(statusCode), null);
     }
 
+    /**
+     * Records an Azure Cosmos DB REST interaction, classifying the request from its HTTP method + URI + the
+     * {@code x-ms-documentdb-isquery}/{@code -is-upsert} header flags via {@link CosmosOperationClassifier} —
+     * the reusable core an Azure pipeline policy delegates to (the .NET {@code CosmosTrackingMessageHandler}).
+     * Request/response shape on the {@code CosmosDB} category; the clean URI rewrites the original request
+     * URI's path to {@code /colls/<coll>[/docs|sprocs/<id>]} (Detailed) or {@code /<coll>} (Summarised),
+     * keeping the host (the raw request URI at Raw).
+     */
+    public static void cosmos(AzureTrackingOptions options, String httpMethod, URI requestUri,
+                              boolean isQuery, boolean isUpsert, String body, int statusCode) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
+        CosmosOperationInfo info = CosmosOperationClassifier.classify(httpMethod, requestUri, isQuery, isUpsert, body);
+        TrackingVerbosity verbosity = effectiveVerbosity(options);
+        if (verbosity == TrackingVerbosity.SUMMARISED && info.operation() == CosmosOperation.OTHER) {
+            return;
+        }
+        TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        if (who == null) {
+            return;
+        }
+        boolean raw = verbosity == TrackingVerbosity.RAW;
+        Method method = raw ? methodOf(httpMethod) : Method.of(CosmosOperationClassifier.getDiagramLabel(info, verbosity));
+        URI uri = raw ? requestUri : buildCosmosUri(requestUri, info, verbosity);
+        String content = verbosity == TrackingVerbosity.SUMMARISED ? null : body;
+        Interactions.recordPair(who, options.serviceName(), options.callerName(),
+            DependencyCategories.COSMOS_DB, method, uri, content, StatusCode.of(statusCode), null);
+    }
+
+    /**
+     * Records an Azure Blob Storage REST interaction, classifying the request from its HTTP method + URI via
+     * {@link BlobOperationClassifier} — the .NET {@code BlobTrackingMessageHandler} analog. Request/response
+     * shape on the {@code BlobStorage} category; the clean URI rewrites the path to
+     * {@code /<container>[/<blob>]} and strips the query (the raw request URI at Raw).
+     */
+    public static void blob(AzureTrackingOptions options, String httpMethod, URI requestUri,
+                            String body, int statusCode) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
+        BlobOperationInfo info = BlobOperationClassifier.classify(httpMethod, requestUri);
+        TrackingVerbosity verbosity = effectiveVerbosity(options);
+        if (verbosity == TrackingVerbosity.SUMMARISED && info.operation() == BlobOperation.OTHER) {
+            return;
+        }
+        TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        if (who == null) {
+            return;
+        }
+        boolean raw = verbosity == TrackingVerbosity.RAW;
+        Method method = raw ? methodOf(httpMethod) : Method.of(BlobOperationClassifier.getDiagramLabel(info, verbosity));
+        URI uri = raw ? requestUri : buildBlobUri(requestUri, info);
+        String content = verbosity == TrackingVerbosity.SUMMARISED ? null : body;
+        Interactions.recordPair(who, options.serviceName(), options.callerName(),
+            DependencyCategories.BLOB_STORAGE, method, uri, content, StatusCode.of(statusCode), null);
+    }
+
+    /** The Cosmos clean URI: original host + path {@code /colls/<coll>[/docs|sprocs/<id>]} (Detailed) or
+     *  {@code /<coll>} (Summarised); the original URI unchanged when the collection is unknown. */
+    static URI buildCosmosUri(URI original, CosmosOperationInfo op, TrackingVerbosity verbosity) {
+        if (op.collectionName() == null) {
+            return original;
+        }
+        String path;
+        if (verbosity == TrackingVerbosity.SUMMARISED) {
+            path = "/" + op.collectionName();
+        } else {
+            StringBuilder sb = new StringBuilder("/colls/").append(op.collectionName());
+            if (op.documentId() != null) {
+                String resourceType = op.operation() == CosmosOperation.EXEC_STORED_PROC ? "sprocs" : "docs";
+                sb.append('/').append(resourceType).append('/').append(op.documentId());
+            }
+            path = sb.toString();
+        }
+        return rewrite(original, path, original.getRawQuery());
+    }
+
+    /** The Blob clean URI: original host + path {@code /<container>[/<blob>]}, query stripped; the original
+     *  URI unchanged when the container is unknown. */
+    static URI buildBlobUri(URI original, BlobOperationInfo op) {
+        if (op.containerName() == null) {
+            return original;
+        }
+        String path = op.blobName() != null
+            ? "/" + op.containerName() + "/" + op.blobName()
+            : "/" + op.containerName();
+        return rewrite(original, path, null);
+    }
+
+    /** Rebuilds {@code original} with a new path/query, preserving scheme + authority (the .NET UriBuilder). */
+    private static URI rewrite(URI original, String path, String query) {
+        try {
+            return new URI(original.getScheme(), original.getAuthority(), path, query, null);
+        } catch (Exception e) {
+            return original; // malformed — fall back to the original URI rather than fail
+        }
+    }
+
+    private static Method methodOf(String httpMethod) {
+        try {
+            return Method.Http.valueOf(httpMethod == null ? "" : httpMethod.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException notStandard) {
+            return Method.of(httpMethod == null ? "AZURE" : httpMethod.toUpperCase(Locale.ROOT));
+        }
+    }
+
     private static void record(AzureTrackingOptions options, String category, String operation,
                                URI uri, String request) {
         if (suppressedByPhase(options)) {

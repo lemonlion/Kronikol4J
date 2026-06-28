@@ -7,6 +7,17 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — Azure Cosmos/Blob HTTP pipeline policy (Azure item progress)
+- **`KronikolAzureTrackingPolicy`** (`kronikol4j-azure`) — a unified Azure SDK `HttpPipelinePolicy` (azure-core
+  `compileOnly`) auto-capturing the HTTP-based Azure services: Cosmos (`*.documents.azure.com`, reading the
+  `x-ms-documentdb-isquery`/`-is-upsert` flags), Blob (`*.blob.core.windows.net`), and Storage Queues
+  (`*.queue.core.windows.net`). Detects the service from the host and delegates to new classifier-driven
+  `AzureTracking.cosmos(...)`/`blob(...)` recorder cores (+ the existing `storageQueue(...)`). Clean URIs port
+  the .NET `BuildCleanUri` (Cosmos `/colls/<coll>[/docs|sprocs/<id>]`, Blob `/<container>[/<blob>]` query
+  stripped, both keeping the original host). Request/response shape, real status, per-service category,
+  per-phase verbosity. Proven by `KronikolAzureTrackingPolicyTest`. The Azure item remains open for the Service
+  Bus AMQP client wrappers (a separate mechanism).
+
 ### Completed — Tier-3 Azure Storage Queues pipeline policy (item [x])
 - **`KronikolAzureStorageQueuePolicy`** (`kronikol4j-azure`) — an Azure SDK `HttpPipelinePolicy` (azure-core
   `compileOnly`), the Java analog of the .NET `StorageQueueTrackingMessageHandler`. Add it to the queue
