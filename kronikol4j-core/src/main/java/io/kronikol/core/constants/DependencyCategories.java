@@ -42,6 +42,7 @@ public final class DependencyCategories {
     // Storage
     public static final String BLOB_STORAGE = "BlobStorage";
     public static final String S3 = "S3";
+    public static final String CLOUD_STORAGE = "CloudStorage";
 
     // HTTP / RPC / in-process
     public static final String HTTP = "HTTP";

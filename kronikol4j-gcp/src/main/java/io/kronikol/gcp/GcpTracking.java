@@ -50,6 +50,116 @@ public final class GcpTracking {
             StatusCode.of("Sent"), null, RequestResponseMetaType.EVENT);
     }
 
+    /**
+     * Records a BigQuery REST interaction, classifying the request from its HTTP method + URI via
+     * {@link BigQueryOperationClassifier} — the reusable core the GCP HTTP interceptor delegates to (the .NET
+     * {@code BigQueryTrackingMessageHandler}). {@code BigQuery} category; the clean URI rewrites the original
+     * request URI's path to the dataset/resource form (the raw request URI at Raw); body honoured per
+     * (per-phase) verbosity.
+     */
+    public static void bigQuery(GcpTrackingOptions options, String httpMethod, URI requestUri,
+                                String body, int statusCode) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
+        BigQueryOperationInfo info = BigQueryOperationClassifier.classify(httpMethod, requestUri);
+        TrackingVerbosity verbosity = effectiveVerbosity(options);
+        if (verbosity == TrackingVerbosity.SUMMARISED && info.operation() == BigQueryOperation.OTHER) {
+            return;
+        }
+        TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        if (who == null) {
+            return;
+        }
+        boolean raw = verbosity == TrackingVerbosity.RAW;
+        Method method = raw ? methodOf(httpMethod) : Method.of(BigQueryOperationClassifier.getDiagramLabel(info, verbosity));
+        URI uri = raw ? requestUri : buildBigQueryUri(requestUri, info, verbosity);
+        String content = verbosity == TrackingVerbosity.SUMMARISED ? null : body;
+        Interactions.recordPair(who, options.serviceName(), options.callerName(),
+            DependencyCategories.BIG_QUERY, method, uri, content, StatusCode.of(statusCode), null);
+    }
+
+    /**
+     * Records a Cloud Storage REST interaction, classifying the request via
+     * {@link CloudStorageOperationClassifier} — the .NET {@code CloudStorageTrackingMessageHandler} analog.
+     * {@code CloudStorage} category; the clean URI is {@code gcs:///<bucket>[/<object>]} (raw request URI at
+     * Raw); body honoured per (per-phase) verbosity.
+     */
+    public static void cloudStorage(GcpTrackingOptions options, String httpMethod, URI requestUri,
+                                    String body, int statusCode) {
+        if (suppressedByPhase(options)) {
+            return;
+        }
+        CloudStorageOperationInfo info = CloudStorageOperationClassifier.classify(httpMethod, requestUri);
+        TrackingVerbosity verbosity = effectiveVerbosity(options);
+        if (verbosity == TrackingVerbosity.SUMMARISED && info.operation() == CloudStorageOperation.OTHER) {
+            return;
+        }
+        TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
+        if (who == null) {
+            return;
+        }
+        boolean raw = verbosity == TrackingVerbosity.RAW;
+        Method method = raw ? methodOf(httpMethod) : Method.of(CloudStorageOperationClassifier.getDiagramLabel(info, verbosity));
+        URI uri = raw ? requestUri : buildCloudStorageUri(info);
+        String content = verbosity == TrackingVerbosity.SUMMARISED ? null : body;
+        Interactions.recordPair(who, options.serviceName(), options.callerName(),
+            DependencyCategories.CLOUD_STORAGE, method, uri, content, StatusCode.of(statusCode), null);
+    }
+
+    /** The BigQuery clean URI: original host + rewritten resource path (the .NET {@code BuildCleanUri}). */
+    static URI buildBigQueryUri(URI original, BigQueryOperationInfo op, TrackingVerbosity verbosity) {
+        if (op.resourceType() == null) {
+            return original;
+        }
+        String path;
+        if (verbosity == TrackingVerbosity.SUMMARISED) {
+            path = op.resourceName() != null
+                ? "/" + op.resourceType() + "/" + op.resourceName()
+                : "/" + op.resourceType();
+        } else {
+            StringBuilder parts = new StringBuilder();
+            if (op.datasetId() != null) {
+                parts.append('/').append(op.datasetId());
+            }
+            if (!"dataset".equals(op.resourceType()) || op.resourceName() == null) {
+                parts.append('/').append(op.resourceType());
+            }
+            if (op.resourceName() != null) {
+                parts.append('/').append(op.resourceName());
+            }
+            path = parts.toString();
+        }
+        return rewritePath(original, path);
+    }
+
+    /** The Cloud Storage clean URI: {@code gcs:///<bucket>[/<object>]}, else {@code gcs:///}. */
+    static URI buildCloudStorageUri(CloudStorageOperationInfo op) {
+        if (op.bucketName() == null) {
+            return URI.create("gcs:///");
+        }
+        return op.objectName() != null
+            ? URI.create("gcs:///" + op.bucketName() + "/" + op.objectName())
+            : URI.create("gcs:///" + op.bucketName());
+    }
+
+    /** Rebuilds {@code original} with a new path, preserving scheme + authority and clearing the query. */
+    private static URI rewritePath(URI original, String path) {
+        try {
+            return new URI(original.getScheme(), original.getAuthority(), path, null, null);
+        } catch (Exception e) {
+            return original;
+        }
+    }
+
+    private static Method methodOf(String httpMethod) {
+        try {
+            return Method.Http.valueOf(httpMethod == null ? "" : httpMethod.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException notStandard) {
+            return Method.of(httpMethod == null ? "GCP" : httpMethod.toUpperCase(Locale.ROOT));
+        }
+    }
+
     private static void record(GcpTrackingOptions options, String category, String operation,
                                URI uri, String request) {
         if (suppressedByPhase(options)) {

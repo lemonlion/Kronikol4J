@@ -7,6 +7,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 
+### Added — GCP BigQuery/Cloud Storage HTTP hook (GCP item progress)
+- **`GcpHttpTrackingInterceptor`** (`kronikol4j-gcp`) — a google-http-client `HttpResponseInterceptor`
+  (google-http-client `compileOnly`, installed via `GcpHttpTrackingInterceptor.initializer(options)`) that
+  auto-captures BigQuery + Cloud Storage HTTP calls. Added classifier-driven `GcpTracking.bigQuery(...)`/
+  `cloudStorage(...)` recorder cores (BigQuery category + the .NET `BuildCleanUri` path-rewrite; Cloud Storage
+  the new `DependencyCategories.CLOUD_STORAGE` + `gcs:///<bucket>[/<object>]` URI) and `GcpHttpTracking.track`
+  routing by URL path. Honours verbosity + real status. Proven by `GcpHttpTrackingTest`. The GCP item remains
+  open for the Pub/Sub gRPC client wrappers (a separate mechanism).
+
 ### Completed — Tier-3 Azure Event Hubs client wrappers (item [x])
 - **`TrackingEventHubProducerClient` / `TrackingEventHubConsumerClient`** (`kronikol4j-eventhubs`) — explicit
   decorators (azure-messaging-eventhubs `compileOnly`) over the real `EventHubProducerClient`/

@@ -663,8 +663,20 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   Cloud Storage) are now done.**
   **Verbosity wiring done (2026-06-28):** `GcpTrackingOptions` gained a `TrackingVerbosity` (default Detailed,
   `withVerbosity(...)`); the recorders drop the payload at Summarised — the BigQuery query (keeping the
-  dataset) and the Pub/Sub message (keeping the topic). Proven by `GcpTrackingTest`. **Remaining:** the GCP SDK
-  adapters that feed the classifiers + emit the pair, and a golden proof.
+  dataset) and the Pub/Sub message (keeping the topic). Proven by `GcpTrackingTest`.
+  **BigQuery + Cloud Storage HTTP hook done (2026-06-28):** added the classifier-driven
+  `GcpTracking.bigQuery(options, method, uri, body, statusCode)` + `cloudStorage(...)` recorder cores (BigQuery
+  `BigQuery` category + the .NET `BuildCleanUri` path-rewrite keeping the host; Cloud Storage the new
+  `DependencyCategories.CLOUD_STORAGE` + `gcs:///<bucket>[/<object>]` URI), `GcpHttpTracking.track` routing by
+  URL path (`/bigquery/` vs `/storage/`), and `GcpHttpTrackingInterceptor implements
+  com.google.api.client.http.HttpResponseInterceptor` (google-http-client `compileOnly`) installed via
+  `GcpHttpTrackingInterceptor.initializer(options)` (sets the response interceptor on each request). Honours
+  per-phase verbosity (Raw → raw method + URI; Summarised → drop body + skip Other) + real status. Proven by
+  `GcpHttpTrackingTest` (BigQuery table-GET → `Read` + rewritten path + BigQuery category; Cloud Storage
+  metadata/download → `gcs://` URI + CloudStorage category; non-GCP-path skip) — driven through the router core,
+  no live GCP. **Remaining (`[~]`):** the **Pub/Sub** tracking — .NET uses gRPC client wrappers
+  (`TrackingPublisherClient`/`TrackingSubscriberClient`), a separate client-decorator mechanism (the
+  `PubSubOperationClassifier` + recorder are done) — plus a golden proof.
 
 ---
 

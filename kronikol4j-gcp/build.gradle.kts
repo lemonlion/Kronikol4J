@@ -2,11 +2,14 @@ plugins {
     id("kronikol4j.java-library-conventions")
 }
 
-description = "Kronikol4J Google Cloud adapters — records BigQuery, Pub/Sub and Cloud Storage " +
-    "operations as tracked interactions. Pure recorders (no GCP SDK dependency). Depends only on core."
+description = "Kronikol4J Google Cloud adapters — records BigQuery, Pub/Sub and Cloud Storage operations " +
+    "as tracked interactions. Pure recorders/classifiers; a google-http-client response interceptor feeds the " +
+    "BigQuery/Cloud Storage (HTTP) recorders (the SDK is compileOnly — the user brings it)."
 
 dependencies {
     api(project(":kronikol4j-core"))
+    // The google-http-client HttpResponseInterceptor SPI for the BigQuery/Cloud Storage HTTP hook.
+    compileOnly("com.google.http-client:google-http-client:1.44.2")
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
 }
