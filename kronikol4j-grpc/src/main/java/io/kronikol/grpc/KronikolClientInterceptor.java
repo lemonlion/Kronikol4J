@@ -39,17 +39,21 @@ public final class KronikolClientInterceptor implements ClientInterceptor {
         MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
 
         String fullMethodName = method.getFullMethodName();
+        TrackingVerbosity verbosity = options.verbosity();
+        boolean capturePayload = verbosity.includesPayload(); // Summarised omits the message bodies
         // Classify the call type so streaming calls get distinct labels (server-/client-/duplex-stream).
         GrpcOperation operation = GrpcOperationClassifier.classify(method.getType());
         String methodLabel = GrpcOperationClassifier.getDiagramLabel(
-            operation, GrpcTracking.methodName(fullMethodName), fullMethodName, TrackingVerbosity.DETAILED);
+            operation, GrpcTracking.methodName(fullMethodName), fullMethodName, verbosity);
 
         return new ForwardingClientCall.SimpleForwardingClientCall<>(next.newCall(method, callOptions)) {
             private String requestSummary;
 
             @Override
             public void sendMessage(ReqT message) {
-                requestSummary = String.valueOf(message);
+                if (capturePayload) {
+                    requestSummary = String.valueOf(message);
+                }
                 super.sendMessage(message);
             }
 
@@ -65,7 +69,9 @@ public final class KronikolClientInterceptor implements ClientInterceptor {
 
                         @Override
                         public void onMessage(RespT message) {
-                            responseSummary = String.valueOf(message);
+                            if (capturePayload) {
+                                responseSummary = String.valueOf(message);
+                            }
                             super.onMessage(message);
                         }
 

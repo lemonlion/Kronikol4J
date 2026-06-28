@@ -7,6 +7,7 @@ import io.kronikol.core.tracking.Interactions;
 import io.kronikol.core.tracking.Method;
 import io.kronikol.core.tracking.StatusCode;
 import io.kronikol.core.tracking.TrackingDefaults;
+import io.kronikol.core.tracking.TrackingVerbosity;
 import java.net.URI;
 import java.util.function.Supplier;
 
@@ -52,9 +53,25 @@ public final class GrpcTracking {
 
     /** Configuration for gRPC tracking. */
     public record GrpcTrackingOptions(String serviceName, String callerName,
-                                      Supplier<TestInfo> testInfoFetcher) {
+                                      Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
+
+        public GrpcTrackingOptions {
+            verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
+        }
+
+        /** Three-arg shape (default verbosity) — the back-compatible constructor. */
+        public GrpcTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher) {
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT);
+        }
+
         public static GrpcTrackingOptions forService(String serviceName) {
-            return new GrpcTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null);
+            return new GrpcTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
+                TrackingVerbosity.DEFAULT);
+        }
+
+        /** A copy with the given verbosity (Summarised omits the request/response message payloads). */
+        public GrpcTrackingOptions withVerbosity(TrackingVerbosity value) {
+            return new GrpcTrackingOptions(serviceName, callerName, testInfoFetcher, value);
         }
     }
 }

@@ -406,8 +406,12 @@ automatically. Each needs: the real wire adapter + operation classification + ve
   gRPC-status→HTTP-status port (NOT_FOUND→404, PERMISSION_DENIED→403, UNAUTHENTICATED→401, …, default 500).
   The interceptor now injects a W3C `traceparent` (reusing `W3CTraceparent`), maps the close status via
   `GrpcStatusMapping`, and labels via the classifier. Proven by `GrpcStatusMappingTest` +
-  `GrpcOperationClassifierTest`. **Remaining:** Protobuf→JSON message rendering (currently the protobuf
-  `toString`), verbosity wiring on the interceptor options, and a golden proof.
+  `GrpcOperationClassifierTest`.
+  **Verbosity wiring done (2026-06-28):** `GrpcTrackingOptions` now carries a `TrackingVerbosity` (default
+  Detailed, `withVerbosity(...)`); the interceptor uses it for the diagram label and, at Summarised, omits the
+  request/response message payloads (`includesPayload()`). Proven by the new `KronikolClientInterceptorTest`
+  (grpc-api fakes, no server — Detailed captures the payloads, Summarised omits them). **Remaining:**
+  Protobuf→JSON message rendering (currently the protobuf `toString`) and a golden proof.
 - [~] **Elasticsearch** (`kronikol4j-elasticsearch`) — SDK callback hook; operation classification;
   verbosity. *(.NET `ElasticsearchTrackingCallbackHandler`.)*
   **Classifier done:** `ElasticsearchOperationClassifier` (+ `ElasticsearchOperation`,

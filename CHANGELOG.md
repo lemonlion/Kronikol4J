@@ -74,6 +74,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   already had its own `SpecificationsOptions.dataFormat` (default YAML), completing the .NET two-scalar split.
   Proven by `ReportOptionsTest`.
 
+### Added — Tier-1 gRPC (verbosity wiring)
+- **Interceptor verbosity** (`kronikol4j-grpc`) — `GrpcTrackingOptions` now carries a `TrackingVerbosity`
+  (default Detailed, `withVerbosity(...)`); `KronikolClientInterceptor` uses it for the diagram label and, at
+  Summarised, omits the request/response message payloads. Proven by the new `KronikolClientInterceptorTest`
+  (grpc-api fakes, no server). Protobuf→JSON message rendering + a golden proof remain.
+
 ### Added — Tier-1 Redis (per-connection database)
 - **`SELECT`-aware database tracking** (`kronikol4j-redis`) — the Lettuce `RedisCommandsTracker` now
   intercepts `SELECT <db>` (still untracked — it's connection management) to update a per-connection current
