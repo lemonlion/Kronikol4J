@@ -185,9 +185,12 @@ These are shared mechanisms the .NET trackers all use. Building them once unbloc
   `AzureTrackingTest`/`GcpTrackingTest`. **Cassandra + Elasticsearch done (2026-06-28):** same wiring —
   `CassandraTrackingOptions`/`ElasticsearchTrackingOptions` gained `trackDuringSetup/Action` and their
   `record(...)` paths guard on `shouldTrack(...)`. Proven by `CassandraTrackingTest`/`ElasticsearchTrackingTest`.
-  **Remaining:** the same per-adapter wiring for the Bigtable/EventHubs/StorageQueues/EventBridge/eventbus/Atlas
-  recorders (identical pattern) + `Setup/ActionVerbosity` per-phase overrides; box flips `[x]` once every
-  recorder consults phase.
+  **gRPC done (2026-06-28):** `GrpcTrackingOptions` gained `trackDuringSetup/Action`; `GrpcTracking.record`
+  guards on `shouldTrack(...)`. Proven by `GrpcTrackingTest`. **Already phase-aware** (verified): the richer
+  two-phase `InteractionRecorder`s — Redis, Mongo, SQL/JDBC, Bigtable, EventHubs, EventBus — and the
+  `MessageTracker` (so the Kafka producer/consumer wrappers inherit it). **Remaining:** the static
+  `MessageTracking` publish facade + `TrackingProxy`, plus `Setup/ActionVerbosity` per-phase overrides; box
+  flips `[x]` once those two consult phase too.
 - [x] **Service-name resolution chain** — `PortsToServiceNames`, `ClientNamesToServiceNames` (with
   suffix/contains fallback for generated client names), `FixedNameForReceivingService`, `ExcludedHosts`.
   Used by HTTP + cloud adapters. (.NET `TestTrackingMessageHandler.cs:58-139`.)

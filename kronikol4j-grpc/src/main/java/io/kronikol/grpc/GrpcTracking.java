@@ -1,6 +1,7 @@
 package io.kronikol.grpc;
 
 import io.kronikol.core.constants.DependencyCategories;
+import io.kronikol.core.context.PhaseConfiguration;
 import io.kronikol.core.context.TestInfo;
 import io.kronikol.core.context.TestInfoResolver;
 import io.kronikol.core.tracking.Interactions;
@@ -36,6 +37,9 @@ public final class GrpcTracking {
      */
     public static void record(GrpcTrackingOptions options, String fullMethodName, String methodLabel,
                               String request, String response, StatusCode status) {
+        if (!PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction())) {
+            return;
+        }
         TestInfo who = TestInfoResolver.resolve(options.testInfoFetcher());
         Interactions.recordPair(who, options.serviceName(), options.callerName(),
             DependencyCategories.GRPC, Method.of(methodLabel), GRPC_URI,
@@ -53,25 +57,45 @@ public final class GrpcTracking {
 
     /** Configuration for gRPC tracking. */
     public record GrpcTrackingOptions(String serviceName, String callerName,
-                                      Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity) {
+                                      Supplier<TestInfo> testInfoFetcher, TrackingVerbosity verbosity,
+                                      boolean trackDuringSetup, boolean trackDuringAction) {
 
         public GrpcTrackingOptions {
             verbosity = verbosity == null ? TrackingVerbosity.DEFAULT : verbosity;
         }
 
-        /** Three-arg shape (default verbosity) — the back-compatible constructor. */
+        /** Three-arg shape (default verbosity, both phases tracked) — back-compatible. */
         public GrpcTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher) {
-            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT);
+            this(serviceName, callerName, testInfoFetcher, TrackingVerbosity.DEFAULT, true, true);
+        }
+
+        /** Four-arg shape (both phases tracked) — back-compatible. */
+        public GrpcTrackingOptions(String serviceName, String callerName, Supplier<TestInfo> testInfoFetcher,
+                                   TrackingVerbosity verbosity) {
+            this(serviceName, callerName, testInfoFetcher, verbosity, true, true);
         }
 
         public static GrpcTrackingOptions forService(String serviceName) {
             return new GrpcTrackingOptions(serviceName, TrackingDefaults.CALLER_NAME, null,
-                TrackingVerbosity.DEFAULT);
+                TrackingVerbosity.DEFAULT, true, true);
         }
 
         /** A copy with the given verbosity (Summarised omits the request/response message payloads). */
         public GrpcTrackingOptions withVerbosity(TrackingVerbosity value) {
-            return new GrpcTrackingOptions(serviceName, callerName, testInfoFetcher, value);
+            return new GrpcTrackingOptions(serviceName, callerName, testInfoFetcher, value,
+                trackDuringSetup, trackDuringAction);
+        }
+
+        /** A copy that (does not) track during the Setup phase (the .NET {@code TrackDuringSetup}). */
+        public GrpcTrackingOptions withTrackDuringSetup(boolean value) {
+            return new GrpcTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                value, trackDuringAction);
+        }
+
+        /** A copy that (does not) track during the Action phase (the .NET {@code TrackDuringAction}). */
+        public GrpcTrackingOptions withTrackDuringAction(boolean value) {
+            return new GrpcTrackingOptions(serviceName, callerName, testInfoFetcher, verbosity,
+                trackDuringSetup, value);
         }
     }
 }

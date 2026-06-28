@@ -98,6 +98,12 @@ Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
   Service Bus message) while keeping the container/entity identity. Proven by `AzureTrackingTest`. The Azure
   SDK pipeline policies + a golden proof remain.
 
+### Added — Tier-1 gRPC (phase suppression)
+- **Interceptor/recorder phase suppression** (`kronikol4j-grpc`) — `GrpcTrackingOptions` gained
+  `trackDuringSetup`/`trackDuringAction` (default true); `GrpcTracking.record` now consults
+  `PhaseConfiguration.shouldTrack(...)` and skips in a suppressed phase. Proven by `GrpcTrackingTest`. (The
+  richer Redis/Mongo/SQL/Bigtable/EventHubs/EventBus recorders + `MessageTracker` were already phase-aware.)
+
 ### Added — Tier-1 Cassandra + Elasticsearch (phase suppression)
 - **Recorder phase suppression** (`kronikol4j-cassandra`, `kronikol4j-elasticsearch`) — both options records
   gained `trackDuringSetup`/`trackDuringAction` (default true, `withTrackDuringSetup/Action`); the recorders

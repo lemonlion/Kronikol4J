@@ -42,4 +42,16 @@ class GrpcTrackingTest {
             .contains("test -[#438DD5]> orderService: Checkout: /")
             .contains("orderService -[#438DD5]-> test: OK");
     }
+
+    @Test
+    void actionPhaseSuppressionSkipsRecording() {
+        var options = GrpcTrackingOptions.forService("OrderService").withTrackDuringAction(false);
+        io.kronikol.core.context.TestPhaseContext.set(io.kronikol.core.tracking.TestPhase.ACTION);
+        try {
+            GrpcTracking.record(options, "orders.OrderService/Checkout", "{}", "{}", StatusCode.of("OK"));
+            assertThat(RequestResponseLogger.getAllLogs()).isEmpty();
+        } finally {
+            io.kronikol.core.context.TestPhaseContext.reset();
+        }
+    }
 }
