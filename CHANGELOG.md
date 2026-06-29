@@ -1881,3 +1881,14 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   response bodies (the Apache HttpCore `HttpResponseInterceptor` has no buffered entity) where .NET does via
   `DisableDirectStreaming`. The golden records body *presence* (`<body>` vs `~null~`) rather than volatile raw
   bytes. Self-managed via Testcontainers 1.21.4; skips without Docker.
+
+### Added — MySQL end-to-end cross-runtime capture parity (Layer B, vs a live MySQL)
+- `MySqlInteractionParityTest` (`kronikol4j-jdbc`) drives the **same generic `TrackingDataSource`** already
+  proven against Postgres — now against a Testcontainers `mysql:8.4`, configured `uriScheme=mysql` to match the
+  .NET `MySqlTrackingOptions` default — and byte-diffs the emitted `RequestResponseLog`s against the **real .NET
+  MySqlConnector adapter** (golden `mysql-interactions.txt`, new harness case `CaptureMySqlInteractions` gated by
+  `KRON_MYSQL_E2E=1`). **Byte-identical on every field of every line** — operation+table label,
+  `mysql://HOST/test/orders` request URI, `mysql:///` response URI, status, request SQL text, and response row
+  summaries — including the DDL `CREATE TABLE` response (`0 rows affected` on both, since MySqlConnector returns
+  `0` for DDL where Npgsql returns `-1`). MySQL therefore has **no divergence at all**. Self-managed via
+  Testcontainers 1.21.4 (with a JDBC connection-retry past the MySQL init server); skips without Docker.

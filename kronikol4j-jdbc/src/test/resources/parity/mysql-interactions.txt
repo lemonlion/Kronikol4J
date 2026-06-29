@@ -1,0 +1,10 @@
+Request|CREATE TABLE orders|mysql://HOST/test/orders|CREATE TABLE orders (id INT, name TEXT)|~null~
+Response||mysql:///|0 rows affected|OK
+Request|INSERT INTO orders|mysql://HOST/test/orders|INSERT INTO orders (id, name) VALUES (1, 'a')|~null~
+Response||mysql:///|1 rows affected|OK
+Request|SELECT FROM orders|mysql://HOST/test/orders|SELECT * FROM orders WHERE id = 1|~null~
+Response||mysql:///|1 row [id, name]|OK
+Request|UPDATE orders|mysql://HOST/test/orders|UPDATE orders SET name = 'b' WHERE id = 1|~null~
+Response||mysql:///|1 rows affected|OK
+Request|DELETE FROM orders|mysql://HOST/test/orders|DELETE FROM orders WHERE id = 1|~null~
+Response||mysql:///|1 rows affected|OK

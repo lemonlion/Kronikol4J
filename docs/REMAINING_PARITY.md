@@ -74,9 +74,17 @@
 >   body *presence* (`<body>` vs `~null~`), not raw bytes. To capture bodies + request status in Java would need
 >   a different transport hook and changes rendered note/status output — flagged like Kafka.
 >
+> - **End-to-end MySQL vs a live MySQL:** `MySqlInteractionParityTest` (`kronikol4j-jdbc`) drives the **same
+>   generic `TrackingDataSource`** already proven against Postgres — now against a Testcontainers `mysql:8.4`,
+>   configured `uriScheme=mysql` — and byte-diffs against the **real .NET MySqlConnector adapter** (golden
+>   `mysql-interactions.txt`, harness case `CaptureMySqlInteractions`, `KRON_MYSQL_E2E=1`). **Result:**
+>   byte-identical on EVERY field of EVERY line — including the DDL response (`0 rows affected` on both, since
+>   MySqlConnector returns `0` for DDL, unlike Npgsql's `-1`). So MySQL has **no divergence at all** — the
+>   cleanest adapter. (host normalised to `HOST`; `mysql://HOST/test/orders` request URI, `mysql:///` response.)
+>
 > **Per-adapter Layer-B (live-service) checklist** — drive REAL .NET vs REAL Java against a containerised service:
 > `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[!]` Kafka (decision needed) ·
-> `[~]` Elasticsearch (classification proven; body+req-status capture flagged) · `[ ]` MySQL · `[ ]` Cassandra ·
+> `[~]` Elasticsearch (classification proven; body+req-status capture flagged) · `[x]` MySQL · `[ ]` Cassandra ·
 > `[ ]` ClickHouse · `[ ]` AWS (LocalStack) · `[ ]` Azure (Azurite) · `[ ]` GCP (emulators).
 > Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
 >   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
