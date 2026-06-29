@@ -1,0 +1,10 @@
+Request|CREATE TABLE orders|postgresql://HOST/test/orders|CREATE TABLE orders (id INT, name TEXT)|~null~
+Response||postgresql:///|-1 rows affected|OK
+Request|INSERT INTO orders|postgresql://HOST/test/orders|INSERT INTO orders (id, name) VALUES (1, 'a')|~null~
+Response||postgresql:///|1 rows affected|OK
+Request|SELECT FROM orders|postgresql://HOST/test/orders|SELECT * FROM orders WHERE id = 1|~null~
+Response||postgresql:///|1 row [id, name]|OK
+Request|UPDATE orders|postgresql://HOST/test/orders|UPDATE orders SET name = 'b' WHERE id = 1|~null~
+Response||postgresql:///|1 rows affected|OK
+Request|DELETE FROM orders|postgresql://HOST/test/orders|DELETE FROM orders WHERE id = 1|~null~
+Response||postgresql:///|1 rows affected|OK

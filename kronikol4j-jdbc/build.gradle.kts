@@ -12,4 +12,7 @@ dependencies {
     testImplementation(project(":kronikol4j-diagram"))
     // In-memory database for end-to-end DataSource-wrapping tests (the JDBC API itself is in the JDK).
     testImplementation("com.h2database:h2:2.2.224")
+    // Cross-runtime end-to-end capture parity vs a live Postgres (driven through the real PG JDBC driver).
+    testImplementation("org.postgresql:postgresql:42.7.4")
+    testImplementation("org.testcontainers:testcontainers:1.21.4")
 }

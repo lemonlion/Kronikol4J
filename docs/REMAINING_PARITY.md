@@ -25,9 +25,17 @@
 >   **Result:** `type | method-label | uri | status` are byte-identical on every line, and read-op content
 >   (hit value / miss null) matches. This **found real differences** the fake-proxy unit tests miss:
 >   write-op response content differs by client library (Jedis `SET`→`OK`/`DEL`→count vs StackExchange→bool),
->   and a genuine **Java gap** — the Jedis `HashSet` tracker captures no `field=value` request content where
->   .NET captures `f=v` (flagged for follow-up). Remaining adapters (Postgres/Mongo/Kafka/Elasticsearch +
->   cloud emulators) follow the same recipe. The e2e test **self-manages its Redis via Testcontainers 1.21.4**
+>   and a genuine **Java gap** — the Jedis `HashSet` tracker captured no `field=value` request content where
+>   .NET captures `f=v` (**now fixed**: `RedisInteractionRecorder.requestContent` for both Jedis + Lettuce
+>   trackers; the e2e test asserts full request-content parity).
+> - **End-to-end SQL vs a live Postgres:** `SqlInteractionParityTest` drives the **real JDBC adapter**
+>   (`TrackingDataSource`) against a Testcontainers Postgres and byte-diffs against the **real .NET Npgsql
+>   adapter** (golden `sql-interactions.txt`, harness `KRON_PG_E2E=1`). **Result:** byte-identical on every line
+>   (operation+table label, `postgresql://HOST/db/table` URI, response URI, status, request SQL text, AND the
+>   response row summaries — `1 rows affected`, `1 row [id, name]`) **except one cell:** the DDL `CREATE TABLE`
+>   affected-rows (ADO.NET `ExecuteNonQuery`→`-1` vs JDBC `executeUpdate`→`0`, an inherent driver-API
+>   convention, pinned not hidden). Remaining adapters (Mongo/Kafka/Elasticsearch + cloud emulators) follow the
+>   same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
 >   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
 >   `skipped=0`, with no local config); `-Dkron.redis.endpoint` overrides it and it skips when no Docker/Redis
 >   is reachable. `./gradlew clean build` + full suite + Playwright green.

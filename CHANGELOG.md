@@ -1845,3 +1845,12 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   captures no `field=value` request content where .NET captures `f=v` (flagged for follow-up). The test takes a
   configurable `kron.redis.endpoint` and skips when no Redis is reachable (Testcontainers couldn't negotiate
   Rancher's Windows npipe from the JDK-25 test JVM).
+
+### Added — SQL end-to-end cross-runtime capture parity (Layer B, vs a live Postgres)
+- `SqlInteractionParityTest` drives the real JDBC adapter (`TrackingDataSource`) against a Testcontainers
+  Postgres and byte-diffs the emitted `RequestResponseLog`s against the real .NET Npgsql adapter (golden
+  `sql-interactions.txt`, harness `KRON_PG_E2E=1`). Byte-identical on every line — operation+table label,
+  `postgresql://HOST/db/table` URI, `postgresql:///` response URI, status, request SQL text, and response row
+  summaries (`1 rows affected`, `1 row [id, name]`) — except the DDL `CREATE TABLE` affected-rows count
+  (ADO.NET `ExecuteNonQuery`→`-1` vs JDBC `executeUpdate`→`0`, an inherent driver-API convention, pinned).
+  The e2e tests self-manage their containers via Testcontainers 1.21.4 and skip when no Docker is available.
