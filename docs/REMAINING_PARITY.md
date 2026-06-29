@@ -43,10 +43,27 @@
 >   identical; the sole divergence is the BSON→JSON dialect of the `find` filter/preview (.NET `MongoDB.Bson`
 >   shell-style `{ "_id" : 1 }` vs Java `org.bson` compact `{"_id": 1}`) — inherent driver serialization, pinned.
 >
+> - **Kafka — DECISION NEEDED (parity gap characterised, fix deferred):** unlike the other adapters, the Java
+>   Kafka wrappers (`TrackingKafkaProducer`/`TrackingKafkaConsumer`, `kronikol4j-messaging`) do **not** mirror the
+>   .NET `KafkaTracker` emission — they reuse the generic `MessageTracker`, which diverges on observable output:
+>   (a) **response status** — Java produce→`"Sent"`, consume→`"Ack"`; .NET emits **null** status on both;
+>   (b) **request content** — Java serialises the value only; .NET emits `Key: <k>, Value: <v>`
+>   (gated by `LogMessageKey`/`LogMessageValue`); (c) **participant direction** — .NET `LogIncoming` swaps
+>   caller/service for consume (message flows broker→app); Java sets `serviceName=consumerName`. (a)+(b) are in
+>   the `type|method|uri|content|status` projection; (c) is diagram-only. These are genuine port-fidelity gaps
+>   (the Java code comments even state the intent was to "mirror the .NET KafkaTracker"), **not** inherent client
+>   differences — so they must be *fixed*, not pinned. The fix is **output-changing** (removes the `Sent`/`Ack`
+>   arrow labels, reformats note content, flips consume participant direction) and rewrites the deliberately-
+>   written `TrackingKafkaProducerTest`/`TrackingKafkaConsumerTest` assertions. Because it alters rendered diagram
+>   output for every Kafka user, it is **flagged for an explicit go-ahead** before landing (broker setup itself is
+>   solved: single-node KRaft `confluentinc/cp-kafka:7.6.1`, host `localhost:19092`; at Detailed verbosity the
+>   projection is broker-independent — no partition/offset — so the golden is deterministic). Recommended
+>   direction: fix Java to match .NET (the project's faithful-port mandate).
+>
 > **Per-adapter Layer-B (live-service) checklist** — drive REAL .NET vs REAL Java against a containerised service:
-> `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[ ]` Kafka · `[ ]` Elasticsearch · `[ ]` MySQL ·
-> `[ ]` Cassandra · `[ ]` ClickHouse · `[ ]` AWS (LocalStack) · `[ ]` Azure (Azurite) · `[ ]` GCP (emulators).
-> Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
+> `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[!]` Kafka (decision needed — see above) ·
+> `[ ]` Elasticsearch · `[ ]` MySQL · `[ ]` Cassandra · `[ ]` ClickHouse · `[ ]` AWS (LocalStack) ·
+> `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
 >   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
 >   `skipped=0`, with no local config); `-Dkron.redis.endpoint` overrides it and it skips when no Docker/Redis
 >   is reachable. `./gradlew clean build` + full suite + Playwright green.
