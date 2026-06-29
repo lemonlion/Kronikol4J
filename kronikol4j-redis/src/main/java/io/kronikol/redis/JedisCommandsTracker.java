@@ -93,7 +93,8 @@ public final class JedisCommandsTracker {
 
             String command = name.toUpperCase(Locale.ROOT);
             String key = args != null && args.length > 0 && args[0] instanceof String s ? s : null;
-            Optional<RedisInteractionRecorder.Correlation> corr = recorder.logRequest(command, key, db, null);
+            Optional<RedisInteractionRecorder.Correlation> corr =
+                recorder.logRequest(command, key, db, RedisInteractionRecorder.requestContent(command, args));
             try {
                 Object result = invokeDirect(method, args);
                 corr.ifPresent(c -> recorder.logResponse(command, key, db, result != null, c,

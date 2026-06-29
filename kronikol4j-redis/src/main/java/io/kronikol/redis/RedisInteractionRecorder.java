@@ -44,6 +44,30 @@ public final class RedisInteractionRecorder {
     public record Correlation(UUID traceId, UUID requestResponseId) {
     }
 
+    /**
+     * The request-payload content for write commands, mirroring the .NET
+     * {@code RedisTrackingDatabase.GetRequestContent}: {@code SET}→value, {@code HSET}→{@code "field=value"},
+     * {@code PUBLISH}→message; {@code null} for reads and other commands (which carry no payload). Shared by the
+     * Jedis + Lettuce command trackers — closes the cross-runtime gap the end-to-end parity test surfaced
+     * (the trackers previously captured no request content).
+     */
+    static String requestContent(String command, Object[] args) {
+        if (args == null) {
+            return null;
+        }
+        switch (command) {
+            case "SET":
+                return args.length >= 2 && args[1] != null ? String.valueOf(args[1]) : null;
+            case "HSET":
+                return args.length >= 3 && args[1] != null && args[2] != null
+                    ? String.valueOf(args[1]) + "=" + String.valueOf(args[2]) : null;
+            case "PUBLISH":
+                return args.length >= 2 && args[1] != null ? String.valueOf(args[1]) : null;
+            default:
+                return null;
+        }
+    }
+
     /** Emits the request half (no hit/miss yet); returns the correlation token, or empty when not tracked. */
     public Optional<Correlation> logRequest(String command, String key, int db, String content) {
         if (!PhaseConfiguration.shouldTrack(options.trackDuringSetup(), options.trackDuringAction())) {

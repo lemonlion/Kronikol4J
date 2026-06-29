@@ -103,28 +103,36 @@ class RedisInteractionParityTest {
             assertThat(a[4]).as(where + " status").isEqualTo(g[4]);
         }
 
-        // (2) READ-op content (Get/HashGet) is byte-identical — hit value / miss null are client-independent.
+        // (2) REQUEST content is byte-identical on EVERY line — incl. the write payloads Set="v" and
+        //     HashSet="f=v" (the gap this end-to-end check first surfaced, now fixed in JedisCommandsTracker).
         for (int i = 0; i < golden.size(); i++) {
-            if (golden.get(i)[1].startsWith("Get") || golden.get(i)[1].startsWith("HashGet")) {
-                assertThat(actual.get(i)[3]).as("line " + i + " read content").isEqualTo(golden.get(i)[3]);
+            if (golden.get(i)[0].equals("Request")) {
+                assertThat(actual.get(i)[3]).as("line " + i + " request content (" + golden.get(i)[1] + ")")
+                    .isEqualTo(golden.get(i)[3]);
             }
         }
 
-        // (3) WRITE-op content DIVERGES by client library — documented, not hidden:
-        //   .NET (StackExchange)            Java (Jedis)
-        //   Set response      = "True"      = "OK"      (StackExchange returns bool; Jedis returns the status)
-        //   Delete response   = "True"      = "1"       (bool vs deleted-count)
-        //   HashSet request   = "f=v"       = "~null~"  (Java's Jedis hset tracker does not capture field=value)
-        //   HashSet response  = "True"      = "1"       (bool vs added-count)
-        // These are real cross-runtime differences this end-to-end check surfaced (invisible to the fake-proxy
-        // unit tests). The "HashSet request = ~null~" one is a genuine Java capture gap (tracked separately);
-        // the bool-vs-status/count ones are inherent client-library return-type differences.
+        // (3) READ + INCREMENT response content is byte-identical (client-independent values).
+        for (int i = 0; i < golden.size(); i++) {
+            String label = golden.get(i)[1];
+            if (golden.get(i)[0].equals("Response")
+                && (label.startsWith("Get") || label.startsWith("HashGet") || label.equals("Increment"))) {
+                assertThat(actual.get(i)[3]).as("line " + i + " response content").isEqualTo(golden.get(i)[3]);
+            }
+        }
+
+        // (4) Remaining divergence is WRITE-op RESPONSE content only — an inherent client return-type
+        //     difference (StackExchange returns bool; Jedis returns the status string / affected-count), not a
+        //     Kronikol bug. Pinned so a regression (or an accidental convergence) is caught, not hidden:
+        //       Set     response: .NET "True"  vs Java "OK"   (bool vs status)
+        //       Delete  response: .NET "True"  vs Java "1"    (bool vs deleted-count)
+        //       HashSet response: .NET "True"  vs Java "1"    (bool vs added-count)
         assertThat(contentFor(actual, "Set", "Response")).isEqualTo("OK");
         assertThat(contentFor(golden, "Set", "Response")).isEqualTo("True");
         assertThat(contentFor(actual, "Delete", "Response")).isEqualTo("1");
         assertThat(contentFor(golden, "Delete", "Response")).isEqualTo("True");
-        assertThat(contentFor(actual, "HashSet", "Request")).isEqualTo("~null~");
-        assertThat(contentFor(golden, "HashSet", "Request")).isEqualTo("f=v");
+        assertThat(contentFor(actual, "HashSet", "Response")).isEqualTo("1");
+        assertThat(contentFor(golden, "HashSet", "Response")).isEqualTo("True");
     }
 
     private static String contentFor(List<String[]> rows, String method, String type) {
