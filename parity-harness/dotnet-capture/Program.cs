@@ -61,6 +61,11 @@ if (Environment.GetEnvironmentVariable("KRON_MYSQL_E2E") == "1") { CaptureMySqlI
 // JDBC TrackingDataSource (uriScheme=clickhouse) against a Testcontainers ClickHouse and byte-diffs.
 if (Environment.GetEnvironmentVariable("KRON_CH_E2E") == "1") { CaptureClickHouseInteractions(); }
 
+// Cross-runtime AWS S3 END-TO-END capture parity: drive the REAL .NET S3TrackingMessageHandler against a live
+// LocalStack S3 (KRON_S3) and dump the emitted RequestResponseLog pairs; the Java side drives the real
+// AwsExecutionInterceptor against a Testcontainers LocalStack and byte-diffs.
+if (Environment.GetEnvironmentVariable("KRON_S3_E2E") == "1") { CaptureS3Interactions(); }
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1950,6 +1955,53 @@ void CaptureSqlClassification()
     }
     File.WriteAllText(Path.Combine(outDir, "sql-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
     Console.WriteLine($"=== sql-classification.txt ({battery.Length} cases) ===");
+}
+
+void CaptureS3Interactions()
+{
+    var url = Environment.GetEnvironmentVariable("KRON_S3") ?? "http://localhost:14566";
+    var cfg = new Amazon.S3.AmazonS3Config { ServiceURL = url, ForcePathStyle = true, AuthenticationRegion = "us-east-1" };
+    Kronikol.Extensions.S3.AmazonS3ConfigExtensions.WithTestTracking(cfg,
+        new Kronikol.Extensions.S3.S3TrackingMessageHandlerOptions
+        {
+            ServiceName = "Aws",
+            CurrentTestInfoFetcher = () => ("MyTest", "t1"),
+        });
+    var s3 = new Amazon.S3.AmazonS3Client(new Amazon.Runtime.BasicAWSCredentials("test", "test"), cfg);
+
+    // Setup (untracked — discarded by the Clear below): ensure a fresh bucket. CreateBucket itself is omitted
+    // from the tracked battery because the two SDKs marshal it differently (the .NET DelegatingHandler sees the
+    // PUT before the bucket lands in the path → classifies it ListBuckets), an SDK-marshalling artifact, not a
+    // classifier difference. The object operations marshal identically on both SDKs.
+    try { s3.DeleteObjectAsync("orders-bucket", "photo.jpg").GetAwaiter().GetResult(); } catch { }
+    try { s3.DeleteBucketAsync("orders-bucket").GetAwaiter().GetResult(); } catch { }
+    s3.PutBucketAsync(new Amazon.S3.Model.PutBucketRequest { BucketName = "orders-bucket" }).GetAwaiter().GetResult();
+
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    s3.PutObjectAsync(new Amazon.S3.Model.PutObjectRequest
+    { BucketName = "orders-bucket", Key = "photo.jpg", ContentBody = "hello" }).GetAwaiter().GetResult();
+    using (var get = s3.GetObjectAsync("orders-bucket", "photo.jpg").GetAwaiter().GetResult())
+    using (var rs = new StreamReader(get.ResponseStream)) { rs.ReadToEnd(); }
+    s3.DeleteObjectAsync("orders-bucket", "photo.jpg").GetAwaiter().GetResult();
+
+    var sb = new System.Text.StringBuilder();
+    foreach (var log in Kronikol.Tracking.RequestResponseLogger.RequestAndResponseLogs)
+    {
+        // Status numeric (Java stores the int; .NET stores the HttpStatusCode enum). Content as a PRESENCE
+        // token (empty-or-null -> ~null~, else <body>): the Java interceptor captures no RESPONSE body (the SDK
+        // already consumed it) and the two SDKs format bodies differently, so byte-comparing bodies is moot.
+        string status = log.StatusCode?.Value is System.Net.HttpStatusCode hc
+            ? ((int)hc).ToString() : (log.StatusCode?.Value?.ToString() ?? "~null~");
+        string content = string.IsNullOrEmpty(log.Content) ? "~null~" : "<body>";
+        sb.Append(log.Type).Append('|')
+          .Append(log.Method.Value?.ToString() ?? "~null~").Append('|')
+          .Append(log.Uri?.ToString() ?? "~null~").Append('|')
+          .Append(content).Append('|')
+          .Append(status).Append('\n');
+    }
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    File.WriteAllText(Path.Combine(outDir, "s3-interactions.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== s3-interactions.txt ===\n{sb}");
 }
 
 void CaptureClickHouseInteractions()

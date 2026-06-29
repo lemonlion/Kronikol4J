@@ -1904,3 +1904,15 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   `executeUpdate`→`1` vs ClickHouse.Client `ExecuteNonQuery`→`0`, an inherent driver-API convention, pinned not
   hidden). The test sets `compress=false` (skip the optional LZ4 native lib) and `CLICKHOUSE_SKIP_USER_SETUP=1`
   (passwordless default user). Self-managed via Testcontainers 1.21.4; skips without Docker.
+
+### Added — AWS S3 end-to-end cross-runtime capture parity (Layer B, vs LocalStack)
+- `S3InteractionParityTest` (`kronikol4j-aws`) drives the **real `AwsExecutionInterceptor`** on an AWS SDK v2
+  `S3Client` against a Testcontainers `localstack/localstack:3` (putObject/getObject/deleteObject) and byte-diffs
+  the emitted `RequestResponseLog`s against the **real .NET `S3TrackingMessageHandler`** (golden
+  `s3-interactions.txt`, new harness case `CaptureS3Interactions` gated by `KRON_S3_E2E=1`). Byte-identical on
+  type, label (`PutObject/GetObject/DeleteObject`), host-less `s3://bucket/key` clean URI, response-half status
+  (200/200/204), and request content. One divergence pinned + flagged (the same interceptor-hook limitation as
+  Elasticsearch): the `GetObject` response body — .NET reads it in the `DelegatingHandler`, the Java
+  `ExecutionInterceptor` runs after the SDK consumed the response stream so it captures none. `CreateBucket` is
+  untracked setup (the two SDKs marshal it differently); the Java side targets `s3.localhost.localstack.cloud`
+  so its host-based `detectService` routes to S3. Self-managed via Testcontainers 1.21.4; skips without Docker.

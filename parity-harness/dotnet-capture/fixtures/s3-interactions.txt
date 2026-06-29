@@ -1,0 +1,6 @@
+Request|PutObject|s3://orders-bucket/photo.jpg|<body>|~null~
+Response|PutObject|s3://orders-bucket/photo.jpg|~null~|200
+Request|GetObject|s3://orders-bucket/photo.jpg|~null~|~null~
+Response|GetObject|s3://orders-bucket/photo.jpg|<body>|200
+Request|DeleteObject|s3://orders-bucket/photo.jpg|~null~|~null~
+Response|DeleteObject|s3://orders-bucket/photo.jpg|~null~|204

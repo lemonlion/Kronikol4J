@@ -100,10 +100,24 @@
 >   `executeUpdate`→`1` vs ClickHouse.Client `ExecuteNonQuery`→`0`, an inherent driver-API convention, pinned).
 >   (Test sets `compress=false` to skip the optional LZ4 native lib + `CLICKHOUSE_SKIP_USER_SETUP=1`.)
 >
+> - **End-to-end AWS S3 vs LocalStack:** `S3InteractionParityTest` (`kronikol4j-aws`) drives the **real
+>   `AwsExecutionInterceptor`** on an AWS SDK v2 `S3Client` against a Testcontainers `localstack/localstack:3`
+>   (putObject/getObject/deleteObject on a pre-created bucket) and byte-diffs against the **real .NET
+>   `S3TrackingMessageHandler`** (golden `s3-interactions.txt`, harness case `CaptureS3Interactions`,
+>   `KRON_S3_E2E=1`). **Result:** byte-identical on type, label (`PutObject/GetObject/DeleteObject`), host-less
+>   `s3://bucket/key` clean URI, response-half status (200/200/204), and request content. **One divergence pinned
+>   + flagged** (the same interceptor-hook limitation as ES): the `GetObject` *response body* — .NET reads it in
+>   the `DelegatingHandler`; the Java `ExecutionInterceptor` runs after the SDK consumed the response stream, so
+>   it captures none. Two cross-SDK notes: `CreateBucket` is untracked setup (the SDKs marshal it differently —
+>   .NET's handler sees the PUT before the bucket lands in the path); the Java side targets
+>   `s3.localhost.localstack.cloud` so its host-based `detectService` routes to S3 (the .NET handler is
+>   S3-specific). Content projected as a presence token (`<body>`/`~null~`); status numeric on both.
+>
 > **Per-adapter Layer-B (live-service) checklist** — drive REAL .NET vs REAL Java against a containerised service:
 > `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[!]` Kafka (decision needed) ·
 > `[~]` Elasticsearch (classification proven; body+req-status capture flagged) · `[x]` MySQL ·
-> `[—]` Cassandra (N/A — no .NET extension; Java is a manual helper) · `[x]` ClickHouse · `[ ]` AWS (LocalStack) ·
+> `[—]` Cassandra (N/A — no .NET extension; Java is a manual helper) · `[x]` ClickHouse ·
+> `[~]` AWS S3 (classification proven; GetObject response-body flagged) · `[ ]` AWS SQS/SNS/DynamoDB ·
 > `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
 >   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
 >   `skipped=0`, with no local config); `-Dkron.redis.endpoint` overrides it and it skips when no Docker/Redis
