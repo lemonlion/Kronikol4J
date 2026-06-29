@@ -90,10 +90,20 @@
 >   driver dependency). With no .NET counterpart AND no live-service interception on the Java side, Layer-B
 >   cross-runtime capture parity does not apply. (Its direct-log shape is already unit-tested in-module.)
 >
+> - **End-to-end ClickHouse vs a live ClickHouse:** `ClickHouseInteractionParityTest` (`kronikol4j-clickhouse`)
+>   drives the **same generic JDBC `TrackingDataSource`** (via `ClickHouseTracking`, `uriScheme=clickhouse`)
+>   against a Testcontainers `clickhouse/clickhouse-server:24.8` (create/insert/select) and byte-diffs against
+>   the **real .NET ClickHouse adapter** (`TrackingClickHouseConnection`, golden `clickhouse-interactions.txt`,
+>   harness case `CaptureClickHouseInteractions`, `KRON_CH_E2E=1`). **Result:** byte-identical on type, label,
+>   `clickhouse://HOST/default/orders` request URI, `clickhouse:///` response URI, status, request SQL text, and
+>   the SELECT summary (`1 row [id, name]`) — **except one cell:** the INSERT affected-rows (ClickHouse JDBC
+>   `executeUpdate`→`1` vs ClickHouse.Client `ExecuteNonQuery`→`0`, an inherent driver-API convention, pinned).
+>   (Test sets `compress=false` to skip the optional LZ4 native lib + `CLICKHOUSE_SKIP_USER_SETUP=1`.)
+>
 > **Per-adapter Layer-B (live-service) checklist** — drive REAL .NET vs REAL Java against a containerised service:
 > `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[!]` Kafka (decision needed) ·
 > `[~]` Elasticsearch (classification proven; body+req-status capture flagged) · `[x]` MySQL ·
-> `[—]` Cassandra (N/A — no .NET extension; Java is a manual helper) · `[ ]` ClickHouse · `[ ]` AWS (LocalStack) ·
+> `[—]` Cassandra (N/A — no .NET extension; Java is a manual helper) · `[x]` ClickHouse · `[ ]` AWS (LocalStack) ·
 > `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
 >   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
 >   `skipped=0`, with no local config); `-Dkron.redis.endpoint` overrides it and it skips when no Docker/Redis

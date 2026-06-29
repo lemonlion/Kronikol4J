@@ -18,6 +18,12 @@
     <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.MongoDB\Kronikol.Extensions.MongoDB.csproj" />
     <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.Elasticsearch\Kronikol.Extensions.Elasticsearch.csproj" />
     <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.MySqlConnector\Kronikol.Extensions.MySqlConnector.csproj" />
+    <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.ClickHouse\Kronikol.Extensions.ClickHouse.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ClickHouse ADO client for the live-server capture case (cached). -->
+    <PackageReference Include="ClickHouse.Client" Version="7.14.0" />
   </ItemGroup>
 
 </Project>

@@ -1892,3 +1892,15 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   summaries — including the DDL `CREATE TABLE` response (`0 rows affected` on both, since MySqlConnector returns
   `0` for DDL where Npgsql returns `-1`). MySQL therefore has **no divergence at all**. Self-managed via
   Testcontainers 1.21.4 (with a JDBC connection-retry past the MySQL init server); skips without Docker.
+
+### Added — ClickHouse end-to-end cross-runtime capture parity (Layer B, vs a live ClickHouse)
+- `ClickHouseInteractionParityTest` (`kronikol4j-clickhouse`) drives the **same generic JDBC `TrackingDataSource`**
+  (via `ClickHouseTracking`, `uriScheme=clickhouse`) against a Testcontainers `clickhouse/clickhouse-server:24.8`
+  (create/insert/select) and byte-diffs the emitted `RequestResponseLog`s against the **real .NET ClickHouse
+  adapter** (`TrackingClickHouseConnection`, golden `clickhouse-interactions.txt`, new harness case
+  `CaptureClickHouseInteractions` gated by `KRON_CH_E2E=1`). Byte-identical on type, operation+table label,
+  `clickhouse://HOST/default/orders` request URI, `clickhouse:///` response URI, status, request SQL text, and
+  the SELECT row summary (`1 row [id, name]`) — except the INSERT affected-rows count (ClickHouse JDBC
+  `executeUpdate`→`1` vs ClickHouse.Client `ExecuteNonQuery`→`0`, an inherent driver-API convention, pinned not
+  hidden). The test sets `compress=false` (skip the optional LZ4 native lib) and `CLICKHOUSE_SKIP_USER_SETUP=1`
+  (passwordless default user). Self-managed via Testcontainers 1.21.4; skips without Docker.

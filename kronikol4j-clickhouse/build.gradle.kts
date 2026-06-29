@@ -12,4 +12,9 @@ dependencies {
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
     testImplementation("com.h2database:h2:2.2.224")
+    // Cross-runtime end-to-end capture parity vs a live ClickHouse (driven through the real ClickHouse JDBC
+    // driver — jdbc brings clickhouse-client/data transitively; http-client supplies the HTTP transport).
+    testImplementation("com.clickhouse:clickhouse-jdbc:0.6.5")
+    testImplementation("com.clickhouse:clickhouse-http-client:0.6.5")
+    testImplementation("org.testcontainers:testcontainers:1.21.4")
 }

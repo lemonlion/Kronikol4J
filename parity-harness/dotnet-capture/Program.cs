@@ -56,6 +56,11 @@ if (Environment.GetEnvironmentVariable("KRON_ES_E2E") == "1") { CaptureElasticse
 // JDBC TrackingDataSource (uriScheme=mysql) against a Testcontainers MySQL and byte-diffs. Gated on the env var.
 if (Environment.GetEnvironmentVariable("KRON_MYSQL_E2E") == "1") { CaptureMySqlInteractions(); }
 
+// Cross-runtime ClickHouse END-TO-END capture parity: drive the REAL .NET ClickHouse tracking wrapper against a
+// live ClickHouse (KRON_CH) and dump the emitted RequestResponseLog pairs; the Java side drives the same generic
+// JDBC TrackingDataSource (uriScheme=clickhouse) against a Testcontainers ClickHouse and byte-diffs.
+if (Environment.GetEnvironmentVariable("KRON_CH_E2E") == "1") { CaptureClickHouseInteractions(); }
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1945,6 +1950,43 @@ void CaptureSqlClassification()
     }
     File.WriteAllText(Path.Combine(outDir, "sql-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
     Console.WriteLine($"=== sql-classification.txt ({battery.Length} cases) ===");
+}
+
+void CaptureClickHouseInteractions()
+{
+    var cs = Environment.GetEnvironmentVariable("KRON_CH")
+        ?? "Host=localhost;Port=18123;Username=default;Password=;Database=default";
+    using var raw = new ClickHouse.Client.ADO.ClickHouseConnection(cs);
+    raw.Open();
+    using (var drop = raw.CreateCommand()) { drop.CommandText = "DROP TABLE IF EXISTS orders"; drop.ExecuteNonQuery(); }
+    var tracked = Kronikol.Extensions.ClickHouse.ClickHouseConnectionExtensions.WithClickHouseTestTracking(raw,
+        new Kronikol.Extensions.ClickHouse.ClickHouseTrackingOptions
+        {
+            ServiceName = "OrdersDb",
+            CurrentTestInfoFetcher = () => ("MyTest", "t1"),
+        });
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    void Exec(string sql) { using var c = tracked.CreateCommand(); c.CommandText = sql; c.ExecuteNonQuery(); }
+    void Query(string sql) { using var c = tracked.CreateCommand(); c.CommandText = sql; using var r = c.ExecuteReader(); while (r.Read()) { } }
+    Exec("CREATE TABLE orders (id Int32, name String) ENGINE = MergeTree ORDER BY id");
+    Exec("INSERT INTO orders (id, name) VALUES (1, 'a')");
+    Query("SELECT * FROM orders WHERE id = 1");
+    var sb = new System.Text.StringBuilder();
+    foreach (var log in Kronikol.Tracking.RequestResponseLogger.RequestAndResponseLogs)
+    {
+        sb.Append(log.Type).Append('|')
+          .Append(log.Method.Value?.ToString() ?? "~null~").Append('|')
+          .Append(NormalizeHost(log.Uri?.ToString() ?? "~null~")).Append('|')
+          .Append(log.Content ?? "~null~").Append('|')
+          .Append(log.StatusCode?.Value?.ToString() ?? "~null~").Append('\n');
+    }
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    raw.Close();
+    File.WriteAllText(Path.Combine(outDir, "clickhouse-interactions.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== clickhouse-interactions.txt ===\n{sb}");
+
+    static string NormalizeHost(string uri) =>
+        System.Text.RegularExpressions.Regex.Replace(uri, @"^([a-z]+://)[^/]+", "$1HOST");
 }
 
 void CaptureMySqlInteractions()

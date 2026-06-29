@@ -1,0 +1,6 @@
+Request|CREATE TABLE orders|clickhouse://HOST/default/orders|CREATE TABLE orders (id Int32, name String) ENGINE = MergeTree ORDER BY id|~null~
+Response||clickhouse:///|0 rows affected|OK
+Request|INSERT INTO orders|clickhouse://HOST/default/orders|INSERT INTO orders (id, name) VALUES (1, 'a')|~null~
+Response||clickhouse:///|0 rows affected|OK
+Request|SELECT FROM orders|clickhouse://HOST/default/orders|SELECT * FROM orders WHERE id = 1|~null~
+Response||clickhouse:///|1 row [id, name]|OK
