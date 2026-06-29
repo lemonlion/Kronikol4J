@@ -119,7 +119,20 @@
 > `[—]` Cassandra (N/A — no .NET extension; Java is a manual helper) · `[x]` ClickHouse ·
 > `[~]` AWS S3 (classification proven; GetObject response-body flagged) ·
 > `[~]` AWS SQS (classification proven; response-body flagged) · `[!]` AWS SNS (query-protocol gap — see below) ·
-> `[ ]` AWS DynamoDB · `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe.
+> `[~]` AWS DynamoDB (classification proven; response-body flagged) · `[ ]` Azure (Azurite) · `[ ]` GCP (emulators).
+> Each follows the same recipe.
+>
+> - **End-to-end AWS DynamoDB vs LocalStack:** `DynamoDbInteractionParityTest` (`kronikol4j-aws`) drives the
+>   **real `AwsExecutionInterceptor`** on an AWS SDK v2 `DynamoDbClient` against Testcontainers LocalStack
+>   (PutItem + GetItem on a pre-created table) and byte-diffs against the **real .NET
+>   `DynamoDbTrackingMessageHandler`** (golden `dynamodb-interactions.txt`, harness case
+>   `CaptureDynamoDbInteractions`, `KRON_DDB_E2E=1`). DynamoDB rides the AWS **JSON** protocol
+>   (`X-Amz-Target: DynamoDB_<v>.PutItem`), so — unlike the query-protocol SNS — the interceptor classifies it
+>   cleanly. **Result:** byte-identical on type, label (`PutItem/GetItem`), host-less `dynamodb:///table` URI,
+>   response status (200), and request content; the response body is pinned+flagged (Java interceptor captures
+>   none — same hook limitation as ES/S3/SQS). Java targets `dynamodb.localhost.localstack.cloud`; CreateTable
+>   is untracked setup. **This confirms the AWS-services split: the JSON-protocol services (SQS, DynamoDB)
+>   classify correctly; only the query-protocol SNS hits the requestBody gap.**
 >
 > - **AWS SNS — DECISION NEEDED (query-protocol capture gap):** SQS/DynamoDB ride the AWS **JSON** protocol
 >   (the SDK sends an `X-Amz-Target` header → the Java `AwsExecutionInterceptor` classifies them fine, proven for

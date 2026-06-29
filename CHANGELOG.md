@@ -1928,3 +1928,15 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   interceptor-hook limitation as Elasticsearch / S3-GetObject). The Java side targets
   `sqs.localhost.localstack.cloud` so its host-based `detectService` routes to SQS; CreateQueue is untracked
   setup. Self-managed via Testcontainers 1.21.4; skips without Docker.
+
+### Added — AWS DynamoDB end-to-end cross-runtime capture parity (Layer B, vs LocalStack)
+- `DynamoDbInteractionParityTest` (`kronikol4j-aws`) drives the **real `AwsExecutionInterceptor`** on an AWS SDK
+  v2 `DynamoDbClient` against Testcontainers `localstack/localstack:3` (PutItem + GetItem on a pre-created table)
+  and byte-diffs the emitted `RequestResponseLog`s against the **real .NET `DynamoDbTrackingMessageHandler`**
+  (golden `dynamodb-interactions.txt`, new harness case `CaptureDynamoDbInteractions` gated by `KRON_DDB_E2E=1`).
+  DynamoDB rides the AWS JSON protocol (`X-Amz-Target: DynamoDB_<v>.PutItem`), so the interceptor classifies it
+  cleanly. Byte-identical on type, label (`PutItem/GetItem`), host-less `dynamodb:///table` clean URI, response
+  status (200), and request content; the response body is pinned + flagged (the Java `ExecutionInterceptor`
+  captures none — the same interceptor-hook limitation as Elasticsearch / S3-GetObject / SQS). The Java side
+  targets `dynamodb.localhost.localstack.cloud` so its host-based `detectService` routes to DynamoDB; CreateTable
+  is untracked setup. Self-managed via Testcontainers 1.21.4; skips without Docker.

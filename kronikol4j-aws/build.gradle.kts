@@ -18,5 +18,6 @@ dependencies {
     // Cross-runtime end-to-end capture parity vs a live LocalStack S3/SQS (driven through the real AWS SDK v2).
     testImplementation("software.amazon.awssdk:s3:2.28.11")
     testImplementation("software.amazon.awssdk:sqs:2.28.11")
+    testImplementation("software.amazon.awssdk:dynamodb:2.28.11")
     testImplementation("org.testcontainers:testcontainers:1.21.4")
 }

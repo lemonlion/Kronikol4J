@@ -1,0 +1,4 @@
+Request|PutItem|dynamodb:///orders|<body>|~null~
+Response|PutItem|dynamodb:///orders|<body>|200
+Request|GetItem|dynamodb:///orders|<body>|~null~
+Response|GetItem|dynamodb:///orders|<body>|200

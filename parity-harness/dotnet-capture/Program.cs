@@ -76,6 +76,11 @@ if (Environment.GetEnvironmentVariable("KRON_SQS_E2E") == "1") { CaptureSqsInter
 // AwsExecutionInterceptor against a Testcontainers LocalStack and byte-diffs.
 if (Environment.GetEnvironmentVariable("KRON_SNS_E2E") == "1") { CaptureSnsInteractions(); }
 
+// Cross-runtime AWS DynamoDB END-TO-END capture parity: drive the REAL .NET DynamoDbTrackingMessageHandler
+// against a live LocalStack DynamoDB (KRON_DDB) and dump the emitted RequestResponseLog pairs; the Java side
+// drives the real AwsExecutionInterceptor against a Testcontainers LocalStack and byte-diffs.
+if (Environment.GetEnvironmentVariable("KRON_DDB_E2E") == "1") { CaptureDynamoDbInteractions(); }
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1965,6 +1970,64 @@ void CaptureSqlClassification()
     }
     File.WriteAllText(Path.Combine(outDir, "sql-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
     Console.WriteLine($"=== sql-classification.txt ({battery.Length} cases) ===");
+}
+
+void CaptureDynamoDbInteractions()
+{
+    var url = Environment.GetEnvironmentVariable("KRON_DDB") ?? "http://localhost:14566";
+    var cfg = new Amazon.DynamoDBv2.AmazonDynamoDBConfig { ServiceURL = url, AuthenticationRegion = "us-east-1" };
+    Kronikol.Extensions.DynamoDB.AmazonDynamoDBConfigExtensions.WithTestTracking(cfg,
+        new Kronikol.Extensions.DynamoDB.DynamoDbTrackingMessageHandlerOptions
+        {
+            ServiceName = "Aws",
+            CurrentTestInfoFetcher = () => ("MyTest", "t1"),
+        });
+    var ddb = new Amazon.DynamoDBv2.AmazonDynamoDBClient(new Amazon.Runtime.BasicAWSCredentials("test", "test"), cfg);
+
+    // Setup (untracked — discarded by the Clear below): ensure a fresh table, wait until ACTIVE.
+    try { ddb.DeleteTableAsync("orders").GetAwaiter().GetResult(); } catch { }
+    ddb.CreateTableAsync(new Amazon.DynamoDBv2.Model.CreateTableRequest
+    {
+        TableName = "orders",
+        KeySchema = [new Amazon.DynamoDBv2.Model.KeySchemaElement("id", Amazon.DynamoDBv2.KeyType.HASH)],
+        AttributeDefinitions = [new Amazon.DynamoDBv2.Model.AttributeDefinition("id", Amazon.DynamoDBv2.ScalarAttributeType.S)],
+        BillingMode = Amazon.DynamoDBv2.BillingMode.PAY_PER_REQUEST,
+    }).GetAwaiter().GetResult();
+    for (int i = 0; i < 30; i++)
+    {
+        var st = ddb.DescribeTableAsync("orders").GetAwaiter().GetResult().Table.TableStatus;
+        if (st == Amazon.DynamoDBv2.TableStatus.ACTIVE) { break; }
+        System.Threading.Thread.Sleep(200);
+    }
+
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    ddb.PutItemAsync(new Amazon.DynamoDBv2.Model.PutItemRequest
+    {
+        TableName = "orders",
+        Item = new() { ["id"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = "1" },
+                       ["name"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = "a" } },
+    }).GetAwaiter().GetResult();
+    ddb.GetItemAsync(new Amazon.DynamoDBv2.Model.GetItemRequest
+    {
+        TableName = "orders",
+        Key = new() { ["id"] = new Amazon.DynamoDBv2.Model.AttributeValue { S = "1" } },
+    }).GetAwaiter().GetResult();
+
+    var sb = new System.Text.StringBuilder();
+    foreach (var log in Kronikol.Tracking.RequestResponseLogger.RequestAndResponseLogs)
+    {
+        string status = log.StatusCode?.Value is System.Net.HttpStatusCode hc
+            ? ((int)hc).ToString() : (log.StatusCode?.Value?.ToString() ?? "~null~");
+        string content = string.IsNullOrEmpty(log.Content) ? "~null~" : "<body>";
+        sb.Append(log.Type).Append('|')
+          .Append(log.Method.Value?.ToString() ?? "~null~").Append('|')
+          .Append(log.Uri?.ToString() ?? "~null~").Append('|')
+          .Append(content).Append('|')
+          .Append(status).Append('\n');
+    }
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    File.WriteAllText(Path.Combine(outDir, "dynamodb-interactions.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== dynamodb-interactions.txt ===\n{sb}");
 }
 
 void CaptureSnsInteractions()
