@@ -1,0 +1,2 @@
+Request|Publish|sns:///|<body>|~null~
+Response|Publish|sns:///|<body>|200

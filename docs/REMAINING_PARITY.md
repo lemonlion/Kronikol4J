@@ -118,8 +118,23 @@
 > `[~]` Elasticsearch (classification proven; body+req-status capture flagged) · `[x]` MySQL ·
 > `[—]` Cassandra (N/A — no .NET extension; Java is a manual helper) · `[x]` ClickHouse ·
 > `[~]` AWS S3 (classification proven; GetObject response-body flagged) ·
-> `[~]` AWS SQS (classification proven; response-body flagged) · `[ ]` AWS SNS/DynamoDB ·
-> `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe.
+> `[~]` AWS SQS (classification proven; response-body flagged) · `[!]` AWS SNS (query-protocol gap — see below) ·
+> `[ ]` AWS DynamoDB · `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe.
+>
+> - **AWS SNS — DECISION NEEDED (query-protocol capture gap):** SQS/DynamoDB ride the AWS **JSON** protocol
+>   (the SDK sends an `X-Amz-Target` header → the Java `AwsExecutionInterceptor` classifies them fine, proven for
+>   SQS). **SNS rides the AWS *query* protocol** (form-encoded body, no `X-Amz-Target`). The Java interceptor's
+>   `afterExecution` reads `context.requestBody()` — which is **empty** for query-protocol operations (the
+>   form params live in the marshalled HTTP body, not the SDK `RequestBody`) — so it extracts neither the
+>   `Action` nor the `TopicArn`: a live SDK-v2 `Publish` is captured as **`Other | sns:/// | no content`**, where
+>   the .NET `DelegatingHandler` reads the form body and captures `Publish | sns:/// | <body>` (it too gets
+>   `sns:///` — its `TopicArn` regex is JSON-shaped, so neither runtime extracts the topic from the query body —
+>   that part is consistent). The divergence is on the **label** (`Other` vs `Publish`) + request content, a
+>   genuine Java-adapter gap: the interceptor can't see query-protocol bodies from `afterExecution`. The fix
+>   (capture the marshalled HTTP body via an earlier hook, e.g. `modifyHttpContent`/`beforeTransmission`) is
+>   non-trivial and **output-changing**, so it's flagged for a go-ahead rather than landed unsupervised. The
+>   .NET reference capture (`CaptureSnsInteractions`, harness `KRON_SNS_E2E=1`, golden in `fixtures/`) is in
+>   place and ready for when the Java side is fixed. (SQS confirms the JSON-protocol path already works.)
 >
 > - **End-to-end AWS SQS vs LocalStack:** `SqsInteractionParityTest` (`kronikol4j-aws`) drives the **real
 >   `AwsExecutionInterceptor`** on an AWS SDK v2 `SqsClient` against Testcontainers LocalStack (SendMessage +

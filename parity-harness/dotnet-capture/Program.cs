@@ -71,6 +71,11 @@ if (Environment.GetEnvironmentVariable("KRON_S3_E2E") == "1") { CaptureS3Interac
 // AwsExecutionInterceptor against a Testcontainers LocalStack and byte-diffs.
 if (Environment.GetEnvironmentVariable("KRON_SQS_E2E") == "1") { CaptureSqsInteractions(); }
 
+// Cross-runtime AWS SNS END-TO-END capture parity: drive the REAL .NET SnsTrackingMessageHandler against a live
+// LocalStack SNS (KRON_SNS) and dump the emitted RequestResponseLog pairs; the Java side drives the real
+// AwsExecutionInterceptor against a Testcontainers LocalStack and byte-diffs.
+if (Environment.GetEnvironmentVariable("KRON_SNS_E2E") == "1") { CaptureSnsInteractions(); }
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1960,6 +1965,44 @@ void CaptureSqlClassification()
     }
     File.WriteAllText(Path.Combine(outDir, "sql-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
     Console.WriteLine($"=== sql-classification.txt ({battery.Length} cases) ===");
+}
+
+void CaptureSnsInteractions()
+{
+    var url = Environment.GetEnvironmentVariable("KRON_SNS") ?? "http://localhost:14566";
+    var cfg = new Amazon.SimpleNotificationService.AmazonSimpleNotificationServiceConfig
+    { ServiceURL = url, AuthenticationRegion = "us-east-1" };
+    Kronikol.Extensions.SNS.AmazonSNSConfigExtensions.WithTestTracking(cfg,
+        new Kronikol.Extensions.SNS.SnsTrackingMessageHandlerOptions
+        {
+            ServiceName = "Aws",
+            CurrentTestInfoFetcher = () => ("MyTest", "t1"),
+        });
+    var sns = new Amazon.SimpleNotificationService.AmazonSimpleNotificationServiceClient(
+        new Amazon.Runtime.BasicAWSCredentials("test", "test"), cfg);
+
+    // Setup (untracked — discarded by the Clear below): ensure a topic + get its ARN.
+    var topicArn = sns.CreateTopicAsync("orders-topic").GetAwaiter().GetResult().TopicArn;
+
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    sns.PublishAsync(new Amazon.SimpleNotificationService.Model.PublishRequest
+    { TopicArn = topicArn, Message = "hello" }).GetAwaiter().GetResult();
+
+    var sb = new System.Text.StringBuilder();
+    foreach (var log in Kronikol.Tracking.RequestResponseLogger.RequestAndResponseLogs)
+    {
+        string status = log.StatusCode?.Value is System.Net.HttpStatusCode hc
+            ? ((int)hc).ToString() : (log.StatusCode?.Value?.ToString() ?? "~null~");
+        string content = string.IsNullOrEmpty(log.Content) ? "~null~" : "<body>";
+        sb.Append(log.Type).Append('|')
+          .Append(log.Method.Value?.ToString() ?? "~null~").Append('|')
+          .Append(log.Uri?.ToString() ?? "~null~").Append('|')
+          .Append(content).Append('|')
+          .Append(status).Append('\n');
+    }
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    File.WriteAllText(Path.Combine(outDir, "sns-interactions.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== sns-interactions.txt ===\n{sb}");
 }
 
 void CaptureSqsInteractions()
