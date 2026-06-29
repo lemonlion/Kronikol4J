@@ -119,8 +119,25 @@
 > `[—]` Cassandra (N/A — no .NET extension; Java is a manual helper) · `[x]` ClickHouse ·
 > `[~]` AWS S3 (classification proven; GetObject response-body flagged) ·
 > `[~]` AWS SQS (classification proven; response-body flagged) · `[!]` AWS SNS (query-protocol gap — see below) ·
-> `[~]` AWS DynamoDB (classification proven; response-body flagged) · `[ ]` Azure (Azurite) · `[ ]` GCP (emulators).
-> Each follows the same recipe.
+> `[~]` AWS DynamoDB (classification proven; response-body flagged) · `[—]` Azure Blob/Queue (emulator-blocked —
+> see below) · `[ ]` GCP (emulators). Each follows the same recipe.
+>
+> - **Azure Storage (Blob + Queue) — BLOCKED for Layer-B emulator parity (classifier parity is unit-level):**
+>   two independent obstacles make a *meaningful* live-emulator (Azurite) cross-runtime test infeasible:
+>   (1) **Blob** is hooked on the Java side only by the **unified host-detecting** `KronikolAzureTrackingPolicy`
+>   (it routes by host suffix `*.blob.core.windows.net`), which **never fires** for Azurite's `127.0.0.1` host —
+>   and, unlike AWS LocalStack's public `*.localhost.localstack.cloud` DNS, there is **no public
+>   localhost-resolving DNS** for `*.blob.core.windows.net`, so the host can't be spoofed without OS hosts-file
+>   edits (unfit for a self-contained Testcontainers test). (2) **Queue** *is* hooked by a focused,
+>   host-agnostic `KronikolAzureStorageQueuePolicy` that fires, **but** both runtimes' classifiers are written
+>   for **production** Azure URL shapes (account in the *host* → path `/{queue}/messages`). Azurite is
+>   **path-style** (`/devstoreaccount1/{queue}/messages`), which both the Java and .NET classifiers map to
+>   `Other` / `storagequeue:///` — so an emulator test would only demonstrate the trivial `Other == Other`, not
+>   real operation-classification parity. Both classifiers are **identical parallel ports** (`BlobOperationClassifier`,
+>   `StorageQueueOperationClassifier`) already covered by in-module unit tests against production-shaped URLs;
+>   that pure-logic parity could be byte-proven Layer-A-style (env-free golden) if desired, but it does not need a
+>   live emulator. (The .NET Blob/Queue `DelegatingHandler`s are service-specific and would classify fine, but
+>   the asymmetry with the Java host-detecting blob policy + the path-style emulator URLs is the blocker.)
 >
 > - **End-to-end AWS DynamoDB vs LocalStack:** `DynamoDbInteractionParityTest` (`kronikol4j-aws`) drives the
 >   **real `AwsExecutionInterceptor`** on an AWS SDK v2 `DynamoDbClient` against Testcontainers LocalStack
