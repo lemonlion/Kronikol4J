@@ -27,9 +27,10 @@
 >   write-op response content differs by client library (Jedis `SET`→`OK`/`DEL`→count vs StackExchange→bool),
 >   and a genuine **Java gap** — the Jedis `HashSet` tracker captures no `field=value` request content where
 >   .NET captures `f=v` (flagged for follow-up). Remaining adapters (Postgres/Mongo/Kafka/Elasticsearch +
->   cloud emulators) follow the same recipe. Caveat: Testcontainers couldn't self-manage the container from the
->   JDK-25 test JVM via Rancher's Windows npipe, so the e2e test takes a configurable `kron.redis.endpoint`
->   (skips when no Redis is reachable). `./gradlew clean build` + full suite + Playwright green.
+>   cloud emulators) follow the same recipe. The e2e test **self-manages its Redis via Testcontainers 1.21.4**
+>   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
+>   `skipped=0`, with no local config); `-Dkron.redis.endpoint` overrides it and it skips when no Docker/Redis
+>   is reachable. `./gradlew clean build` + full suite + Playwright green.
 
 **Purpose.** A prioritized, checklist-style breakdown of what is left to reach the stated goal:
 **Kronikol4J as a fully ported, usable port of Kronikol with every single feature / full functional

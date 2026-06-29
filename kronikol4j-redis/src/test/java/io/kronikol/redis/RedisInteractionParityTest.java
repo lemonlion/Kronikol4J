@@ -14,6 +14,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.DockerClientFactory;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.commands.JedisCommands;
 
@@ -31,22 +34,29 @@ import redis.clients.jedis.commands.JedisCommands;
  */
 class RedisInteractionParityTest {
 
-    // Connects to a live Redis at kron.redis.endpoint (default localhost:16379). Self-contained Testcontainers
-    // management is the intended form, but Testcontainers' docker-API detection does not negotiate Rancher's
-    // Windows npipe from the JDK-25 test JVM here, so the endpoint is configurable and the test is skipped when
-    // no Redis is reachable — keeping it CI-portable while proving the parity against a real server.
+    // Self-managed via Testcontainers by default; an explicit -Dkron.redis.endpoint=host:port overrides it
+    // (e.g. for an externally-provided Redis). Skips gracefully when no Docker/Redis is reachable, keeping the
+    // suite green on machines without a container engine.
+    private static GenericContainer<?> container;
     private static Jedis raw;
 
     @BeforeAll
     static void connectRedis() {
-        String endpoint = System.getProperty("kron.redis.endpoint", "localhost:16379");
+        String endpoint = System.getProperty("kron.redis.endpoint");
+        if (endpoint == null) {
+            Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(),
+                "No Docker available and no -Dkron.redis.endpoint set — skipping the live-Redis parity test");
+            container = new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
+            container.start();
+            endpoint = container.getHost() + ":" + container.getMappedPort(6379);
+        }
         String[] hp = endpoint.split(":");
         try {
             raw = new Jedis(hp[0], Integer.parseInt(hp[1]));
             raw.ping();
             raw.flushDB();
         } catch (RuntimeException unreachable) {
-            Assumptions.abort("No Redis reachable at " + endpoint + " (set -Dkron.redis.endpoint): " + unreachable);
+            Assumptions.abort("No Redis reachable at " + endpoint + ": " + unreachable);
         }
     }
 
@@ -54,6 +64,9 @@ class RedisInteractionParityTest {
     static void stop() {
         if (raw != null) {
             raw.close();
+        }
+        if (container != null) {
+            container.stop();
         }
     }
 

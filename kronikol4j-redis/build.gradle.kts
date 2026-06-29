@@ -15,4 +15,6 @@ dependencies {
     testImplementation(project(":kronikol4j-diagram"))
     testImplementation("io.lettuce:lettuce-core:6.3.2.RELEASE")
     testImplementation("redis.clients:jedis:5.2.0")
+    // End-to-end cross-runtime capture parity drives the real Jedis adapter against a live Redis it manages.
+    testImplementation("org.testcontainers:testcontainers:1.21.4")
 }
