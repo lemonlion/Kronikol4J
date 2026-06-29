@@ -15,7 +15,8 @@ dependencies {
     testImplementation(project(":kronikol4j-diagram"))
     testImplementation("software.amazon.awssdk:sdk-core:2.28.11")
     testImplementation("software.amazon.awssdk:http-client-spi:2.28.11")
-    // Cross-runtime end-to-end capture parity vs a live LocalStack S3 (driven through the real AWS SDK v2 client).
+    // Cross-runtime end-to-end capture parity vs a live LocalStack S3/SQS (driven through the real AWS SDK v2).
     testImplementation("software.amazon.awssdk:s3:2.28.11")
+    testImplementation("software.amazon.awssdk:sqs:2.28.11")
     testImplementation("org.testcontainers:testcontainers:1.21.4")
 }

@@ -1916,3 +1916,15 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   `ExecutionInterceptor` runs after the SDK consumed the response stream so it captures none. `CreateBucket` is
   untracked setup (the two SDKs marshal it differently); the Java side targets `s3.localhost.localstack.cloud`
   so its host-based `detectService` routes to S3. Self-managed via Testcontainers 1.21.4; skips without Docker.
+
+### Added — AWS SQS end-to-end cross-runtime capture parity (Layer B, vs LocalStack)
+- `SqsInteractionParityTest` (`kronikol4j-aws`) drives the **real `AwsExecutionInterceptor`** on an AWS SDK v2
+  `SqsClient` against Testcontainers `localstack/localstack:3` (SendMessage + ReceiveMessage on a pre-created
+  queue) and byte-diffs the emitted `RequestResponseLog`s against the **real .NET `SqsTrackingMessageHandler`**
+  (golden `sqs-interactions.txt`, new harness case `CaptureSqsInteractions` gated by `KRON_SQS_E2E=1`). Both SDKs
+  use the AWS JSON protocol (`X-Amz-Target: AmazonSQS.*`), so the classification matches. Byte-identical on type,
+  label (`SendMessage/ReceiveMessage`), host-less `sqs:///queue` clean URI, response status (200), and request
+  content; the response body is pinned + flagged (the Java `ExecutionInterceptor` captures none — the same
+  interceptor-hook limitation as Elasticsearch / S3-GetObject). The Java side targets
+  `sqs.localhost.localstack.cloud` so its host-based `detectService` routes to SQS; CreateQueue is untracked
+  setup. Self-managed via Testcontainers 1.21.4; skips without Docker.

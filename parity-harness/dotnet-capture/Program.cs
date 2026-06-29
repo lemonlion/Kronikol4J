@@ -66,6 +66,11 @@ if (Environment.GetEnvironmentVariable("KRON_CH_E2E") == "1") { CaptureClickHous
 // AwsExecutionInterceptor against a Testcontainers LocalStack and byte-diffs.
 if (Environment.GetEnvironmentVariable("KRON_S3_E2E") == "1") { CaptureS3Interactions(); }
 
+// Cross-runtime AWS SQS END-TO-END capture parity: drive the REAL .NET SqsTrackingMessageHandler against a live
+// LocalStack SQS (KRON_SQS) and dump the emitted RequestResponseLog pairs; the Java side drives the real
+// AwsExecutionInterceptor against a Testcontainers LocalStack and byte-diffs.
+if (Environment.GetEnvironmentVariable("KRON_SQS_E2E") == "1") { CaptureSqsInteractions(); }
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1955,6 +1960,46 @@ void CaptureSqlClassification()
     }
     File.WriteAllText(Path.Combine(outDir, "sql-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
     Console.WriteLine($"=== sql-classification.txt ({battery.Length} cases) ===");
+}
+
+void CaptureSqsInteractions()
+{
+    var url = Environment.GetEnvironmentVariable("KRON_SQS") ?? "http://localhost:14566";
+    var cfg = new Amazon.SQS.AmazonSQSConfig { ServiceURL = url, AuthenticationRegion = "us-east-1" };
+    Kronikol.Extensions.SQS.AmazonSQSConfigExtensions.WithTestTracking(cfg,
+        new Kronikol.Extensions.SQS.SqsTrackingMessageHandlerOptions
+        {
+            ServiceName = "Aws",
+            CurrentTestInfoFetcher = () => ("MyTest", "t1"),
+        });
+    var sqs = new Amazon.SQS.AmazonSQSClient(new Amazon.Runtime.BasicAWSCredentials("test", "test"), cfg);
+
+    // Setup (untracked — discarded by the Clear below): ensure a fresh queue + get its URL.
+    var queueUrl = sqs.CreateQueueAsync("orders-queue").GetAwaiter().GetResult().QueueUrl;
+
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    sqs.SendMessageAsync(new Amazon.SQS.Model.SendMessageRequest
+    { QueueUrl = queueUrl, MessageBody = "hello" }).GetAwaiter().GetResult();
+    sqs.ReceiveMessageAsync(new Amazon.SQS.Model.ReceiveMessageRequest
+    { QueueUrl = queueUrl, MaxNumberOfMessages = 1, WaitTimeSeconds = 2 }).GetAwaiter().GetResult();
+
+    var sb = new System.Text.StringBuilder();
+    foreach (var log in Kronikol.Tracking.RequestResponseLogger.RequestAndResponseLogs)
+    {
+        // Status numeric; content as a PRESENCE token (the Java interceptor captures no RESPONSE body, and the
+        // two SDKs format JSON bodies differently, so byte-comparing bodies is moot).
+        string status = log.StatusCode?.Value is System.Net.HttpStatusCode hc
+            ? ((int)hc).ToString() : (log.StatusCode?.Value?.ToString() ?? "~null~");
+        string content = string.IsNullOrEmpty(log.Content) ? "~null~" : "<body>";
+        sb.Append(log.Type).Append('|')
+          .Append(log.Method.Value?.ToString() ?? "~null~").Append('|')
+          .Append(log.Uri?.ToString() ?? "~null~").Append('|')
+          .Append(content).Append('|')
+          .Append(status).Append('\n');
+    }
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    File.WriteAllText(Path.Combine(outDir, "sqs-interactions.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== sqs-interactions.txt ===\n{sb}");
 }
 
 void CaptureS3Interactions()

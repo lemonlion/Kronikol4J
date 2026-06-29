@@ -117,8 +117,18 @@
 > `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[!]` Kafka (decision needed) ·
 > `[~]` Elasticsearch (classification proven; body+req-status capture flagged) · `[x]` MySQL ·
 > `[—]` Cassandra (N/A — no .NET extension; Java is a manual helper) · `[x]` ClickHouse ·
-> `[~]` AWS S3 (classification proven; GetObject response-body flagged) · `[ ]` AWS SQS/SNS/DynamoDB ·
-> `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
+> `[~]` AWS S3 (classification proven; GetObject response-body flagged) ·
+> `[~]` AWS SQS (classification proven; response-body flagged) · `[ ]` AWS SNS/DynamoDB ·
+> `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe.
+>
+> - **End-to-end AWS SQS vs LocalStack:** `SqsInteractionParityTest` (`kronikol4j-aws`) drives the **real
+>   `AwsExecutionInterceptor`** on an AWS SDK v2 `SqsClient` against Testcontainers LocalStack (SendMessage +
+>   ReceiveMessage on a pre-created queue) and byte-diffs against the **real .NET `SqsTrackingMessageHandler`**
+>   (golden `sqs-interactions.txt`, harness case `CaptureSqsInteractions`, `KRON_SQS_E2E=1`). Both SDKs use the
+>   AWS JSON protocol (`X-Amz-Target: AmazonSQS.*`). **Result:** byte-identical on type, label, host-less
+>   `sqs:///queue` clean URI, response status (200), and request content; the response body is pinned+flagged
+>   (Java interceptor captures none — same hook limitation as ES/S3). Java targets
+>   `sqs.localhost.localstack.cloud` for host-based `detectService`; CreateQueue is untracked setup. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
 >   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
 >   `skipped=0`, with no local config); `-Dkron.redis.endpoint` overrides it and it skips when no Docker/Redis
 >   is reachable. `./gradlew clean build` + full suite + Playwright green.

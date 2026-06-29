@@ -1,0 +1,4 @@
+Request|SendMessage|sqs:///orders-queue|<body>|~null~
+Response|SendMessage|sqs:///orders-queue|<body>|200
+Request|ReceiveMessage|sqs:///orders-queue|<body>|~null~
+Response|ReceiveMessage|sqs:///orders-queue|<body>|200

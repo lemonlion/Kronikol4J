@@ -20,12 +20,14 @@
     <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.MySqlConnector\Kronikol.Extensions.MySqlConnector.csproj" />
     <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.ClickHouse\Kronikol.Extensions.ClickHouse.csproj" />
     <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.S3\Kronikol.Extensions.S3.csproj" />
+    <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.SQS\Kronikol.Extensions.SQS.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- ClickHouse ADO client + AWS SDK S3 for the live-server/emulator capture cases (cached). -->
+    <!-- ClickHouse ADO client + AWS SDK S3/SQS for the live-server/emulator capture cases (cached). -->
     <PackageReference Include="ClickHouse.Client" Version="7.14.0" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.23" />
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.2.28" />
   </ItemGroup>
 
 </Project>
