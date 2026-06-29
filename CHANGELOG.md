@@ -1940,3 +1940,17 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   captures none — the same interceptor-hook limitation as Elasticsearch / S3-GetObject / SQS). The Java side
   targets `dynamodb.localhost.localstack.cloud` so its host-based `detectService` routes to DynamoDB; CreateTable
   is untracked setup. Self-managed via Testcontainers 1.21.4; skips without Docker.
+
+### Added — GCP BigQuery end-to-end cross-runtime capture parity (Layer B, vs the emulator)
+- `BigQueryInteractionParityTest` (`kronikol4j-gcp`) drives the **real `GcpHttpTrackingInterceptor`** (via its
+  documented `initializer(...)` on a google-http-client request factory) against a Testcontainers
+  `ghcr.io/goccy/bigquery-emulator` (CreateDataset + GetDataset) and byte-diffs the emitted `RequestResponseLog`s
+  against the **real .NET `BigQueryTrackingMessageHandler`** (golden `bigquery-interactions.txt`, new harness case
+  `CaptureBigQueryInteractions` gated by `KRON_BQ_E2E=1`). The interceptor routes by the `/bigquery/` path (not
+  host), so no emulator host trick is needed. Byte-identical on type, label (`Create/Read`), host-normalised
+  clean URI, and response status (200); the body content is pinned + flagged (the Java google-http-client
+  interceptor passes no body to the recorder, where .NET reads request/response content — the same
+  interceptor-hook limitation as ES/S3/SQS/DynamoDB). GCP CloudStorage shares this same proven interceptor; GCP
+  PubSub (gRPC wrappers, Kafka family), Spanner (asymmetric JDBC-vs-gRPC capture) and Bigtable (gRPC) are
+  documented in REMAINING_PARITY rather than emulator-tested. Self-managed via Testcontainers 1.21.4; skips
+  without Docker.

@@ -81,6 +81,11 @@ if (Environment.GetEnvironmentVariable("KRON_SNS_E2E") == "1") { CaptureSnsInter
 // drives the real AwsExecutionInterceptor against a Testcontainers LocalStack and byte-diffs.
 if (Environment.GetEnvironmentVariable("KRON_DDB_E2E") == "1") { CaptureDynamoDbInteractions(); }
 
+// Cross-runtime GCP BigQuery END-TO-END capture parity: drive the REAL .NET BigQueryTrackingMessageHandler
+// against a live BigQuery emulator (KRON_BQ) and dump the emitted RequestResponseLog pairs; the Java side drives
+// the real GcpHttpTrackingInterceptor against the same emulator and byte-diffs.
+if (Environment.GetEnvironmentVariable("KRON_BQ_E2E") == "1") { CaptureBigQueryInteractions(); }
+
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
 CaptureReportData();
@@ -1970,6 +1975,49 @@ void CaptureSqlClassification()
     }
     File.WriteAllText(Path.Combine(outDir, "sql-classification.txt"), sb.ToString().ReplaceLineEndings("\n"));
     Console.WriteLine($"=== sql-classification.txt ({battery.Length} cases) ===");
+}
+
+void CaptureBigQueryInteractions()
+{
+    var url = Environment.GetEnvironmentVariable("KRON_BQ") ?? "http://localhost:19050";
+    var builder = new Google.Cloud.BigQuery.V2.BigQueryClientBuilder
+    {
+        ProjectId = "test-project",
+        BaseUri = url + "/bigquery/v2/",
+        Credential = Google.Apis.Auth.OAuth2.GoogleCredential.FromAccessToken("emulator-fake-token"),
+    };
+    Kronikol.Extensions.BigQuery.BigQueryClientBuilderExtensions.WithTestTracking(builder,
+        new Kronikol.Extensions.BigQuery.BigQueryTrackingMessageHandlerOptions
+        {
+            ServiceName = "Gcp",
+            CurrentTestInfoFetcher = () => ("MyTest", "t1"),
+        });
+    var client = builder.Build();
+
+    try { client.DeleteDataset("ds1"); } catch { } // untracked-ish cleanup before the Clear below
+
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    client.CreateDataset("ds1");      // POST  /bigquery/v2/projects/test-project/datasets
+    client.GetDataset("ds1");         // GET   /bigquery/v2/projects/test-project/datasets/ds1
+
+    var sb = new System.Text.StringBuilder();
+    foreach (var log in Kronikol.Tracking.RequestResponseLogger.RequestAndResponseLogs)
+    {
+        string status = log.StatusCode?.Value is System.Net.HttpStatusCode hc
+            ? ((int)hc).ToString() : (log.StatusCode?.Value?.ToString() ?? "~null~");
+        string content = string.IsNullOrEmpty(log.Content) ? "~null~" : "<body>";
+        sb.Append(log.Type).Append('|')
+          .Append(log.Method.Value?.ToString() ?? "~null~").Append('|')
+          .Append(NormalizeHost(log.Uri?.ToString() ?? "~null~")).Append('|')
+          .Append(content).Append('|')
+          .Append(status).Append('\n');
+    }
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    File.WriteAllText(Path.Combine(outDir, "bigquery-interactions.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== bigquery-interactions.txt ===\n{sb}");
+
+    static string NormalizeHost(string uri) =>
+        System.Text.RegularExpressions.Regex.Replace(uri, @"^([a-z]+://)[^/]+", "$1HOST");
 }
 
 void CaptureDynamoDbInteractions()

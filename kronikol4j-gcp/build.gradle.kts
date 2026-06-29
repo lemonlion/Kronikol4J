@@ -14,4 +14,8 @@ dependencies {
     compileOnly("com.google.cloud:google-cloud-pubsub:1.131.0")
     testImplementation(project(":kronikol4j-junit5"))
     testImplementation(project(":kronikol4j-diagram"))
+    // Cross-runtime end-to-end capture parity vs a live BigQuery emulator (driving the REAL interceptor through
+    // a google-http-client request factory — the interceptor's documented entry point).
+    testImplementation("com.google.http-client:google-http-client:1.44.2")
+    testImplementation("org.testcontainers:testcontainers:1.21.4")
 }

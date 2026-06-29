@@ -1,0 +1,4 @@
+Request|Create|http://HOST/dataset|<body>|~null~
+Response|Create|http://HOST/dataset|<body>|200
+Request|Read|http://HOST/ds1/ds1|~null~|~null~
+Response|Read|http://HOST/ds1/ds1|<body>|200

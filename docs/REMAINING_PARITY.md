@@ -120,7 +120,36 @@
 > `[~]` AWS S3 (classification proven; GetObject response-body flagged) ·
 > `[~]` AWS SQS (classification proven; response-body flagged) · `[!]` AWS SNS (query-protocol gap — see below) ·
 > `[~]` AWS DynamoDB (classification proven; response-body flagged) · `[—]` Azure Blob/Queue (emulator-blocked —
-> see below) · `[ ]` GCP (emulators). Each follows the same recipe.
+> see below) · `[~]` GCP BigQuery (classification proven; content flagged) · `[~]` GCP CloudStorage (same proven
+> interceptor) · `[!]` GCP PubSub (gRPC wrappers — Kafka family) · `[—]` GCP Spanner (asymmetric capture) ·
+> `[!]` GCP Bigtable (gRPC). Each follows the same recipe.
+>
+> - **End-to-end GCP BigQuery vs the emulator:** `BigQueryInteractionParityTest` (`kronikol4j-gcp`) drives the
+>   **real `GcpHttpTrackingInterceptor`** (installed via its documented `initializer(...)` on a google-http-client
+>   request factory — the same hook the BigQuery client uses) against a Testcontainers
+>   `ghcr.io/goccy/bigquery-emulator` (CreateDataset + GetDataset) and byte-diffs against the **real .NET
+>   `BigQueryTrackingMessageHandler`** (golden `bigquery-interactions.txt`, harness case
+>   `CaptureBigQueryInteractions`, `KRON_BQ_E2E=1`). The interceptor routes by the `/bigquery/` **path** (not host),
+>   so no emulator host trick is needed. **Result:** byte-identical on type, label (`Create/Read`), host-normalised
+>   clean URI, and response status (200); the body content is pinned+flagged — the Java google-http-client
+>   interceptor only sees method/URL+status (passes no body to the recorder), where .NET reads request/response
+>   content (same hook limitation as ES/S3/SQS/DynamoDB).
+> - **GCP CloudStorage** uses the **same `GcpHttpTrackingInterceptor`** (just the `/storage/` path branch), whose
+>   end-to-end behaviour is now proven via BigQuery; its path→operation classification is pure logic covered by
+>   in-module unit tests. No separate emulator run adds parity signal beyond BigQuery.
+> - **GCP PubSub — gRPC client wrappers (Kafka family, flagged):** hooked by `TrackingPublisher`/
+>   `TrackingMessageReceiver` wrappers (gRPC, not an HTTP interceptor) that emit via the generic recorder — the
+>   same wrapper-emission shape as Kafka, with the same kind of status/content emission choices to reconcile
+>   against the .NET `TrackingPublisherClient`/`TrackingSubscriberClient`. Deferred to the same decision as Kafka.
+> - **GCP Spanner — asymmetric capture (documented):** the **Java** side is a thin JDBC `TrackingDataSource`
+>   layer (`SpannerTracking`, `uriScheme=spanner`) capturing SQL text via the Spanner JDBC driver; the **.NET**
+>   side is a gRPC ADO wrapper (`TrackingSpannerConnection/Command` + `SpannerTrackingInterceptor`). The shared
+>   SQL classification (`UnifiedSqlClassifier`) is unit-tested on both, but the live capture paths differ
+>   structurally (JDBC `ResultSet` vs gRPC stream), so a byte-clean live cross-runtime projection isn't the right
+>   tool here (the JDBC-side SQL capture is already proven generically via Postgres/MySQL/ClickHouse).
+> - **GCP Bigtable — gRPC (deferred):** Java `KronikolBigtableInterceptor` (gRPC ClientInterceptor) vs .NET
+>   `BigtableTracker`; gRPC-level interception, heavier than the HTTP/JDBC harness pattern. Classification is
+>   unit-tested; a live gRPC cross-runtime e2e is a larger, separate effort — deferred.
 >
 > - **Azure Storage (Blob + Queue) — BLOCKED for Layer-B emulator parity (classifier parity is unit-level):**
 >   two independent obstacles make a *meaningful* live-emulator (Azurite) cross-runtime test infeasible:
