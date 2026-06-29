@@ -1866,3 +1866,18 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   (`{ "_id" : 1 }`) while Java `org.bson` writes compact relaxed JSON (`{"_id": 1}`) — an inherent third-party
   driver serialization convention (not a Kronikol bug), pinned not hidden. Multi-line preview content is
   newline-escaped to keep one row per line. Self-managed via Testcontainers 1.21.4; skips without Docker.
+
+### Added — Elasticsearch end-to-end cross-runtime capture parity (Layer B, vs a live ES)
+- `ElasticsearchInteractionParityTest` (`kronikol4j-elasticsearch`) drives the **real
+  `KronikolElasticsearchInterceptor`** on the low-level ES `RestClient` against a Testcontainers ES `9.0.4`
+  (index/get/search/delete) and byte-diffs the emitted `RequestResponseLog`s against the **real .NET
+  `ElasticsearchTrackingCallbackHandler`** (golden `elasticsearch-interactions.txt`, new harness case
+  `CaptureElasticsearchInteractions` gated by `KRON_ES_E2E=1`; ES major matched to 9.x so the .NET v9 client's
+  compatibility headers are accepted). `type | label (Index →/Get ←/Search →/Delete) | host-less
+  elasticsearch:///<index> | response-half status` are byte-identical on every line. Two divergences are pinned
+  (not hidden) as genuine Java interceptor-hook limitations — flagged in REMAINING_PARITY for a go-ahead rather
+  than landed unsupervised, since fixing them changes rendered output: (a) the request half carries no status
+  in Java (the `recordPair` convention) where .NET stamps it on both halves; (b) Java captures no request/
+  response bodies (the Apache HttpCore `HttpResponseInterceptor` has no buffered entity) where .NET does via
+  `DisableDirectStreaming`. The golden records body *presence* (`<body>` vs `~null~`) rather than volatile raw
+  bytes. Self-managed via Testcontainers 1.21.4; skips without Docker.

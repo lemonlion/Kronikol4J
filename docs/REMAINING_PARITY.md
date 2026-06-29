@@ -60,10 +60,25 @@
 >   projection is broker-independent — no partition/offset — so the golden is deterministic). Recommended
 >   direction: fix Java to match .NET (the project's faithful-port mandate).
 >
+> - **End-to-end Elasticsearch vs a live ES:** `ElasticsearchInteractionParityTest` drives the **real
+>   `KronikolElasticsearchInterceptor`** on the low-level ES `RestClient` against a Testcontainers ES `9.0.4`
+>   (index/get/search/delete) and byte-diffs against the **real .NET `ElasticsearchTrackingCallbackHandler`**
+>   (golden `elasticsearch-interactions.txt`, harness case `CaptureElasticsearchInteractions`, `KRON_ES_E2E=1`;
+>   ES major matched to 9.x so the .NET v9 client's compat headers are accepted). **Result:** `type | label
+>   (Index →/Get ←/Search →/Delete) | host-less elasticsearch:///<index> | response-half status` byte-identical
+>   on every line. **Two divergences pinned + flagged (genuine Java interceptor-hook limitations, NOT inherent
+>   client differences — a deferred, output-changing enhancement awaiting go-ahead):** (a) **request-half
+>   status** — .NET stamps the HTTP status on both halves, Java's `Interactions.recordPair` leaves the request
+>   half null; (b) **body content** — .NET (`DisableDirectStreaming`) captures request/response bodies, the
+>   Apache HttpCore `HttpResponseInterceptor` has no buffered entity so Java captures none. The golden records
+>   body *presence* (`<body>` vs `~null~`), not raw bytes. To capture bodies + request status in Java would need
+>   a different transport hook and changes rendered note/status output — flagged like Kafka.
+>
 > **Per-adapter Layer-B (live-service) checklist** — drive REAL .NET vs REAL Java against a containerised service:
-> `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[!]` Kafka (decision needed — see above) ·
-> `[ ]` Elasticsearch · `[ ]` MySQL · `[ ]` Cassandra · `[ ]` ClickHouse · `[ ]` AWS (LocalStack) ·
-> `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
+> `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[!]` Kafka (decision needed) ·
+> `[~]` Elasticsearch (classification proven; body+req-status capture flagged) · `[ ]` MySQL · `[ ]` Cassandra ·
+> `[ ]` ClickHouse · `[ ]` AWS (LocalStack) · `[ ]` Azure (Azurite) · `[ ]` GCP (emulators).
+> Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
 >   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
 >   `skipped=0`, with no local config); `-Dkron.redis.endpoint` overrides it and it skips when no Docker/Redis
 >   is reachable. `./gradlew clean build` + full suite + Playwright green.

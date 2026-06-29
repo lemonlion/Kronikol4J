@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Net;
 using Kronikol;
 using MongoDB.Driver; // IMongoCollectionExtensions.Find for the Mongo e2e capture case
+using Kronikol.Extensions.Elasticsearch; // ElasticsearchClientSettingsExtensions.WithTestTracking
 using Kronikol.ComponentDiagram;
 using Kronikol.InternalFlow;
 using Kronikol.PlantUml;
@@ -44,6 +45,11 @@ if (Environment.GetEnvironmentVariable("KRON_PG_E2E") == "1") { CaptureSqlIntera
 // live Mongo (KRON_MONGO) and dump the emitted RequestResponseLog pairs; the Java side drives the real
 // KronikolMongoCommandListener against a Testcontainers Mongo and byte-diffs. Gated on the env var.
 if (Environment.GetEnvironmentVariable("KRON_MONGO_E2E") == "1") { CaptureMongoInteractions(); }
+
+// Cross-runtime Elasticsearch END-TO-END capture parity: drive the REAL .NET ElasticsearchTrackingCallbackHandler
+// against a live ES (KRON_ES) and dump the emitted RequestResponseLog pairs; the Java side drives the real
+// KronikolElasticsearchInterceptor against a Testcontainers ES and byte-diffs. Gated on the env var.
+if (Environment.GetEnvironmentVariable("KRON_ES_E2E") == "1") { CaptureElasticsearchInteractions(); }
 
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
@@ -1975,6 +1981,50 @@ void CaptureSqlInteractions()
     // the scheme), so the Java (Testcontainers) and .NET captures compare regardless of the container host/port.
     static string NormalizeHost(string uri) =>
         System.Text.RegularExpressions.Regex.Replace(uri, @"^([a-z]+://)[^/]+", "$1HOST");
+}
+
+void CaptureElasticsearchInteractions()
+{
+    var url = Environment.GetEnvironmentVariable("KRON_ES") ?? "http://localhost:19200";
+    var settings = new Elastic.Clients.Elasticsearch.ElasticsearchClientSettings(new Uri(url))
+        .WithTestTracking(new Kronikol.Extensions.Elasticsearch.ElasticsearchTrackingOptions
+        {
+            ServiceName = "SearchCluster",
+            CurrentTestInfoFetcher = () => ("MyTest", "t1"),
+        });
+    var client = new Elastic.Clients.Elasticsearch.ElasticsearchClient(settings);
+
+    try { client.Indices.Delete("orders"); } catch { /* 404 if absent — fine, this is pre-Clear cleanup */ }
+
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    var doc = new Dictionary<string, object> { ["id"] = 1, ["name"] = "a" };
+    client.Index(doc, i => i.Index("orders").Id("1"));               // PUT  /orders/_doc/1  -> Index → orders
+    client.Get<Dictionary<string, object>>("1", g => g.Index("orders")); // GET /orders/_doc/1 -> Get ← orders
+    client.Search<Dictionary<string, object>>(s => s.Index("orders"));   // POST /orders/_search -> Search → orders
+    client.Delete("orders", "1");                                    // DELETE /orders/_doc/1 -> Delete orders
+
+    // The ES URI is host-less (elasticsearch:///<index>), so no host normalisation. The Java RestClient
+    // interceptor captures NO request/response bodies (the low-level HttpResponseInterceptor has no buffered
+    // entity), and .NET's response body carries a volatile `took`; so byte-comparing bodies is moot. We project
+    // content as a PRESENCE token (<body> vs ~null~) — honestly recording that .NET captures bodies and Java
+    // does not — and let the Java test pin that gap.
+    var sb = new System.Text.StringBuilder();
+    foreach (var log in Kronikol.Tracking.RequestResponseLogger.RequestAndResponseLogs)
+    {
+        // Project the HTTP status as its numeric code (Java stores the int; .NET stores the HttpStatusCode
+        // enum whose ToString is the name) so the status field is comparable cross-runtime.
+        string status = log.StatusCode?.Value is System.Net.HttpStatusCode hc
+            ? ((int)hc).ToString()
+            : (log.StatusCode?.Value?.ToString() ?? "~null~");
+        sb.Append(log.Type).Append('|')
+          .Append(log.Method.Value?.ToString() ?? "~null~").Append('|')
+          .Append(log.Uri?.ToString() ?? "~null~").Append('|')
+          .Append(log.Content is null ? "~null~" : "<body>").Append('|')
+          .Append(status).Append('\n');
+    }
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    File.WriteAllText(Path.Combine(outDir, "elasticsearch-interactions.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== elasticsearch-interactions.txt ===\n{sb}");
 }
 
 void CaptureMongoInteractions()

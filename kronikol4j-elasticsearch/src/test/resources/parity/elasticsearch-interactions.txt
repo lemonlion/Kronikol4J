@@ -1,0 +1,8 @@
+Request|Index → orders|elasticsearch:///orders|<body>|201
+Response|Index → orders|elasticsearch:///orders|<body>|201
+Request|Get ← orders|elasticsearch:///orders|~null~|200
+Response|Get ← orders|elasticsearch:///orders|<body>|200
+Request|Search → orders|elasticsearch:///orders|<body>|200
+Response|Search → orders|elasticsearch:///orders|<body>|200
+Request|Delete orders|elasticsearch:///orders|~null~|200
+Response|Delete orders|elasticsearch:///orders|<body>|200
