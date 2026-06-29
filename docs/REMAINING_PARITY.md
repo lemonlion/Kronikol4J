@@ -34,8 +34,19 @@
 >   (operation+table label, `postgresql://HOST/db/table` URI, response URI, status, request SQL text, AND the
 >   response row summaries — `1 rows affected`, `1 row [id, name]`) **except one cell:** the DDL `CREATE TABLE`
 >   affected-rows (ADO.NET `ExecuteNonQuery`→`-1` vs JDBC `executeUpdate`→`0`, an inherent driver-API
->   convention, pinned not hidden). Remaining adapters (Mongo/Kafka/Elasticsearch + cloud emulators) follow the
->   same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
+>   convention, pinned not hidden).
+> - **End-to-end MongoDB vs a live Mongo:** `MongoInteractionParityTest` drives the **real
+>   `KronikolMongoCommandListener`** against a Testcontainers `mongo:7` (insert/find/update/delete) and byte-diffs
+>   against the **real .NET `MongoDbTrackingSubscriber`** (golden `mongo-interactions.txt`, harness case
+>   `CaptureMongoInteractions`, `KRON_MONGO_E2E=1`). **Result:** `type | label (Insert →/Find ←/…) |
+>   mongodb:///db/coll | status` byte-identical on every line, response metadata (`n=1`, `n=1, nModified=1`)
+>   identical; the sole divergence is the BSON→JSON dialect of the `find` filter/preview (.NET `MongoDB.Bson`
+>   shell-style `{ "_id" : 1 }` vs Java `org.bson` compact `{"_id": 1}`) — inherent driver serialization, pinned.
+>
+> **Per-adapter Layer-B (live-service) checklist** — drive REAL .NET vs REAL Java against a containerised service:
+> `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[ ]` Kafka · `[ ]` Elasticsearch · `[ ]` MySQL ·
+> `[ ]` Cassandra · `[ ]` ClickHouse · `[ ]` AWS (LocalStack) · `[ ]` Azure (Azurite) · `[ ]` GCP (emulators).
+> Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
 >   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
 >   `skipped=0`, with no local config); `-Dkron.redis.endpoint` overrides it and it skips when no Docker/Redis
 >   is reachable. `./gradlew clean build` + full suite + Playwright green.

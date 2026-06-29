@@ -5,6 +5,7 @@
 using System.Diagnostics;
 using System.Net;
 using Kronikol;
+using MongoDB.Driver; // IMongoCollectionExtensions.Find for the Mongo e2e capture case
 using Kronikol.ComponentDiagram;
 using Kronikol.InternalFlow;
 using Kronikol.PlantUml;
@@ -38,6 +39,11 @@ if (Environment.GetEnvironmentVariable("KRON_REDIS_E2E") == "1") { CaptureRedisI
 // (KRON_PG) and dump the emitted RequestResponseLog pairs; the Java side drives TrackingDataSource against a
 // Testcontainers Postgres and byte-diffs. Gated on the env var.
 if (Environment.GetEnvironmentVariable("KRON_PG_E2E") == "1") { CaptureSqlInteractions(); }
+
+// Cross-runtime MongoDB END-TO-END capture parity: drive the REAL .NET MongoDbTrackingSubscriber against a
+// live Mongo (KRON_MONGO) and dump the emitted RequestResponseLog pairs; the Java side drives the real
+// KronikolMongoCommandListener against a Testcontainers Mongo and byte-diffs. Gated on the env var.
+if (Environment.GetEnvironmentVariable("KRON_MONGO_E2E") == "1") { CaptureMongoInteractions(); }
 
 // Test-run report data in all three formats (rich corpus: steps, attachments, examples, diagrams,
 // httpInteractions; fixed times/ids so the fixtures are reproducible).
@@ -1969,6 +1975,46 @@ void CaptureSqlInteractions()
     // the scheme), so the Java (Testcontainers) and .NET captures compare regardless of the container host/port.
     static string NormalizeHost(string uri) =>
         System.Text.RegularExpressions.Regex.Replace(uri, @"^([a-z]+://)[^/]+", "$1HOST");
+}
+
+void CaptureMongoInteractions()
+{
+    var cs = Environment.GetEnvironmentVariable("KRON_MONGO") ?? "mongodb://localhost:17017";
+    var settings = MongoDB.Driver.MongoClientSettings.FromConnectionString(cs);
+    settings = Kronikol.Extensions.MongoDB.MongoClientSettingsExtensions.WithTestTracking(settings,
+        new Kronikol.Extensions.MongoDB.MongoDbTrackingOptions
+        {
+            ServiceName = "OrdersDb",
+            CurrentTestInfoFetcher = () => ("MyTest", "t1"),
+        });
+    var client = new MongoDB.Driver.MongoClient(settings);
+    var db = client.GetDatabase("test");
+    var coll = db.GetCollection<MongoDB.Bson.BsonDocument>("orders");
+    coll.DeleteMany(new MongoDB.Bson.BsonDocument()); // deterministic starting state (tracked, then cleared)
+
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    coll.InsertOne(new MongoDB.Bson.BsonDocument { { "_id", 1 }, { "name", "a" } });
+    coll.Find(new MongoDB.Bson.BsonDocument("_id", 1)).ToList();          // read (filter + doc preview)
+    coll.UpdateOne(new MongoDB.Bson.BsonDocument("_id", 1),
+        new MongoDB.Bson.BsonDocument("$set", new MongoDB.Bson.BsonDocument("name", "b")));
+    coll.DeleteOne(new MongoDB.Bson.BsonDocument("_id", 1));
+
+    // The Mongo URI carries no host (mongodb:///db/coll), so no host normalisation is needed. The find
+    // response content is multi-line (indented document-preview JSON), so embedded newlines are escaped to a
+    // literal "\n" (and CRLF→LF first) to keep one row per line; the Java side projects identically.
+    var sb = new System.Text.StringBuilder();
+    foreach (var log in Kronikol.Tracking.RequestResponseLogger.RequestAndResponseLogs)
+    {
+        var content = (log.Content ?? "~null~").Replace("\r\n", "\n").Replace("\n", "\\n");
+        sb.Append(log.Type).Append('|')
+          .Append(log.Method.Value?.ToString() ?? "~null~").Append('|')
+          .Append(log.Uri?.ToString() ?? "~null~").Append('|')
+          .Append(content).Append('|')
+          .Append(log.StatusCode?.Value?.ToString() ?? "~null~").Append('\n');
+    }
+    Kronikol.Tracking.RequestResponseLogger.Clear();
+    File.WriteAllText(Path.Combine(outDir, "mongo-interactions.txt"), sb.ToString().ReplaceLineEndings("\n"));
+    Console.WriteLine($"=== mongo-interactions.txt ===\n{sb}");
 }
 
 void CaptureRedisInteractions()

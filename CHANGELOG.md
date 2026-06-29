@@ -1854,3 +1854,15 @@ The initial Java-native implementation, built core-first per [docs/PORT_PLAN.md]
   summaries (`1 rows affected`, `1 row [id, name]`) — except the DDL `CREATE TABLE` affected-rows count
   (ADO.NET `ExecuteNonQuery`→`-1` vs JDBC `executeUpdate`→`0`, an inherent driver-API convention, pinned).
   The e2e tests self-manage their containers via Testcontainers 1.21.4 and skip when no Docker is available.
+
+### Added — MongoDB end-to-end cross-runtime capture parity (Layer B, vs a live Mongo)
+- `MongoInteractionParityTest` (`kronikol4j-mongodb`) drives the **real `KronikolMongoCommandListener`** against a
+  Testcontainers Mongo (`mongo:7`) over an insert/find/update/delete battery and byte-diffs the emitted
+  `RequestResponseLog`s against the **real .NET `MongoDbTrackingSubscriber`** (golden `mongo-interactions.txt`,
+  new harness case `CaptureMongoInteractions` gated by `KRON_MONGO_E2E=1`). `type | method-label
+  (Insert →/Find ←/Update →/Delete →) | mongodb:///db/coll URI | status` are byte-identical on every line, and
+  the response metadata content (`n=1`, `n=1, nModified=1`) matches. The only divergence is the BSON→JSON
+  *dialect* for the `find` filter + document preview: .NET `MongoDB.Bson` writes shell-style spacing
+  (`{ "_id" : 1 }`) while Java `org.bson` writes compact relaxed JSON (`{"_id": 1}`) — an inherent third-party
+  driver serialization convention (not a Kronikol bug), pinned not hidden. Multi-line preview content is
+  newline-escaped to keep one row per line. Self-managed via Testcontainers 1.21.4; skips without Docker.

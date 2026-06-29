@@ -15,6 +15,7 @@
          StackExchange.Redis / Npgsql NuGet deps are already cached, so the offline restore works). -->
     <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.Redis\Kronikol.Extensions.Redis.csproj" />
     <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.Npgsql\Kronikol.Extensions.Npgsql.csproj" />
+    <ProjectReference Include="..\..\..\Kronikol\src\Kronikol.Extensions.MongoDB\Kronikol.Extensions.MongoDB.csproj" />
   </ItemGroup>
 
 </Project>

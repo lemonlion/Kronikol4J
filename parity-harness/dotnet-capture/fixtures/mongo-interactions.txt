@@ -1,0 +1,8 @@
+Request|Insert → orders|mongodb:///test/orders|~null~|~null~
+Response|Insert → orders|mongodb:///test/orders|n=1|OK
+Request|Find ← orders|mongodb:///test/orders|{ "_id" : 1 }|~null~
+Response|Find ← orders|mongodb:///test/orders|[\n  {\n    "_id" : 1,\n    "name" : "a"\n  }\n]|OK
+Request|Update → orders|mongodb:///test/orders|~null~|~null~
+Response|Update → orders|mongodb:///test/orders|n=1, nModified=1|OK
+Request|Delete → orders|mongodb:///test/orders|~null~|~null~
+Response|Delete → orders|mongodb:///test/orders|n=1|OK

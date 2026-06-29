@@ -19,4 +19,7 @@ dependencies {
     testImplementation("org.mongodb:mongodb-driver-core:5.1.4")
     testImplementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    // Cross-runtime end-to-end capture parity vs a live Mongo (driven through the real sync driver).
+    testImplementation("org.mongodb:mongodb-driver-sync:5.1.4")
+    testImplementation("org.testcontainers:testcontainers:1.21.4")
 }
