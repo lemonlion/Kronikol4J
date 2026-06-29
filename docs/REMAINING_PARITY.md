@@ -82,11 +82,19 @@
 >   MySqlConnector returns `0` for DDL, unlike Npgsql's `-1`). So MySQL has **no divergence at all** — the
 >   cleanest adapter. (host normalised to `HOST`; `mysql://HOST/test/orders` request URI, `mysql:///` response.)
 >
+> - **Cassandra — N/A (no cross-runtime parity possible):** there is **no .NET Cassandra extension** in
+>   `c:\Code\Kronikol\src` (nothing matching `Kronikol.Extensions.*assandra*`), so there is no real .NET adapter
+>   to drive for a golden. The Java side (`kronikol4j-cassandra`, single class `CassandraTracking`) is a
+>   **manual, driver-agnostic direct-log helper** — `record(options, operation, table, statement, summary)` that
+>   the user calls by hand — not a driver-integrated capture adapter (no CQL `RequestTracker`/session hook, no
+>   driver dependency). With no .NET counterpart AND no live-service interception on the Java side, Layer-B
+>   cross-runtime capture parity does not apply. (Its direct-log shape is already unit-tested in-module.)
+>
 > **Per-adapter Layer-B (live-service) checklist** — drive REAL .NET vs REAL Java against a containerised service:
 > `[x]` Redis · `[x]` SQL/Postgres · `[x]` MongoDB · `[!]` Kafka (decision needed) ·
-> `[~]` Elasticsearch (classification proven; body+req-status capture flagged) · `[x]` MySQL · `[ ]` Cassandra ·
-> `[ ]` ClickHouse · `[ ]` AWS (LocalStack) · `[ ]` Azure (Azurite) · `[ ]` GCP (emulators).
-> Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
+> `[~]` Elasticsearch (classification proven; body+req-status capture flagged) · `[x]` MySQL ·
+> `[—]` Cassandra (N/A — no .NET extension; Java is a manual helper) · `[ ]` ClickHouse · `[ ]` AWS (LocalStack) ·
+> `[ ]` Azure (Azurite) · `[ ]` GCP (emulators). Each follows the same recipe. The e2e tests **self-manage their containers via Testcontainers 1.21.4**
 >   (the earlier 1.20.4 + JDK-25 npipe detection failure is fixed by the version bump; verified executing,
 >   `skipped=0`, with no local config); `-Dkron.redis.endpoint` overrides it and it skips when no Docker/Redis
 >   is reachable. `./gradlew clean build` + full suite + Playwright green.
