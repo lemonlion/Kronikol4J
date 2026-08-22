@@ -22,6 +22,18 @@ actual execution, not AI.
 > **current status and how to resume work**, use [docs/REMAINING_PARITY.md](docs/REMAINING_PARITY.md) §0 —
 > the cold-start runbook (repo map, the seams, build/prove commands, a worked example).
 
+> **Known divergence (since .NET Kronikol 3.0.45, 2026-08-22).** .NET moved browser rendering off the
+> main thread: its `plantuml-browser-render-script.js` now bootstraps the PlantUML engine in Web Workers
+> (engine fetched as text and inlined into a Blob worker together with a new embedded
+> `plantuml-worker-host.js`), caches rendered SVG per fragment source, prefetches note-toggle fragments
+> (`collapsible-notes-script.js`), and exposes three `ReportConfigurationOptions`
+> (`BrowserRenderWorkers`, `BrowserRenderCacheMegabytes`, `BrowserFragmentMaxHeight`) that are baked
+> into the script as constants. This port still ships the pre-3.0.45 main-thread scripts, so the
+> report HTML is **no longer byte-identical** to .NET ≥ 3.0.45 in those two assets (everything else is
+> unchanged). Porting it means copying the two scripts + the worker host, JSON-escaping the host into
+> the render script in `DiagramContextMenu`'s Java counterpart, and plumbing the three options. See the
+> .NET wiki page *PlantUML Browser Rendering → How Rendering Runs (3.0.45+)*.
+
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
 > tracker options, and several whole features/modules — are the remaining work toward *every-feature*
