@@ -23,6 +23,13 @@
       "format": "date-time",
       "description": "UTC end time of the test run"
     },
+    "diagnostics": {
+      "type": "array",
+      "description": "Everything worth knowing about how this report was produced: capture health handed in by the host (CaptureDegraded), skipped malformed lines, diagrams that could not be rendered, labels that still do not read as sentences. Empty is the happy path.",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    },
     "features": {
       "type": "array",
       "items": {
@@ -75,6 +82,11 @@
                 },
                 "name": {
                   "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "The scenario\u0027s own free-text description (the prose under Scenario:)"
                 },
                 "result": {
                   "type": "string",
@@ -153,6 +165,11 @@
                       },
                       "relativePath": {
                         "type": "string"
+                      },
+                      "mediaType": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "IANA media type; image/* renders inline, anything else as a link"
                       }
                     }
                   }
@@ -168,6 +185,29 @@
                   "items": {
                     "$ref": "#/$defs/httpInteraction"
                   }
+                },
+                "annotations": {
+                  "type": "array",
+                  "description": "Diagram markers that carry information found nowhere else: which row of a tabular input was in flight, and fragments the test author injected. Step and assertion markers are excluded \u2014 those are already structured in steps.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "description": "Position in httpInteractions the marker sat before"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "Row",
+                          "Custom"
+                        ]
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -177,6 +217,42 @@
     }
   },
   "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "required": [
+        "kind",
+        "message"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "RenderFailure",
+            "OutputFailure",
+            "MalformedLine",
+            "StepsNotStartingWithCapital",
+            "UnattributedInteractions",
+            "DroppedUnattributed",
+            "AttachmentFailure",
+            "Other",
+            "TitlesNotStartingWithCapital",
+            "DroppedOutsideRunWindow",
+            "CaptureDegraded",
+            "StepAttributionMismatch"
+          ],
+          "description": "What the entry is about (DiagnosticKind)"
+        },
+        "message": {
+          "type": "string",
+          "description": "One-line description, safe to print"
+        },
+        "scenarioId": {
+          "type": "string",
+          "nullable": true,
+          "description": "The scenario the entry belongs to, when it is scenario-specific"
+        }
+      }
+    },
     "step": {
       "type": "object",
       "properties": {
@@ -218,9 +294,66 @@
               },
               "relativePath": {
                 "type": "string"
+              },
+              "mediaType": {
+                "type": "string",
+                "nullable": true,
+                "description": "IANA media type; image/* renders inline, anything else as a link"
               }
             }
           }
+        },
+        "bypassReason": {
+          "type": "string",
+          "nullable": true,
+          "description": "Why the step was skipped, when its status is Bypassed"
+        },
+        "docString": {
+          "type": "string",
+          "nullable": true,
+          "description": "The step\u0027s Gherkin doc-string body"
+        },
+        "docStringMediaType": {
+          "type": "string",
+          "nullable": true,
+          "description": "Media type declared on the doc string, when the source gave one"
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Comment lines attached to the step in the source"
+        },
+        "parameters": {
+          "type": "array",
+          "description": "The step\u0027s inputs: inline values, data tables (columns and rows) and tree values. Present unless TestRunReportFullStepDetail is turned off.",
+          "items": {
+            "type": "object"
+          }
+        },
+        "textSegments": {
+          "type": "array",
+          "nullable": true,
+          "description": "The step text split into literal prose and inline parameter values, for highlighted rendering",
+          "items": {
+            "type": "object"
+          }
+        },
+        "failureMessage": {
+          "type": "string",
+          "nullable": true,
+          "description": "Why this step or assertion failed \u2014 the assertion message, or the exception that ended the step"
+        },
+        "sourceFile": {
+          "type": "string",
+          "nullable": true,
+          "description": "File the assertion was written in (name only), when the caller supplied it"
+        },
+        "sourceLine": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Line in sourceFile"
         }
       }
     },
@@ -283,6 +416,62 @@
           "type": "string",
           "format": "date-time",
           "nullable": true
+        },
+        "metaType": {
+          "type": "string",
+          "enum": [
+            "Default",
+            "Event"
+          ],
+          "description": "Default for a request/response exchange, Event for a fire-and-forget publish"
+        },
+        "dependencyCategory": {
+          "type": "string",
+          "nullable": true,
+          "description": "What kind of thing the callee is (database, cache, queue, ...) \u2014 drives participant shape and arrow colour in the diagram"
+        },
+        "callerDependencyCategory": {
+          "type": "string",
+          "nullable": true,
+          "description": "The same, for the caller"
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "Unknown",
+            "Setup",
+            "Action"
+          ],
+          "description": "Whether the call happened during Setup or the Action under test; Unknown when phase detection is off"
+        },
+        "isUserAction": {
+          "type": "boolean",
+          "description": "A UI interaction (click, navigate) rather than a dependency call"
+        },
+        "activityTraceId": {
+          "type": "string",
+          "nullable": true,
+          "description": "W3C trace id \u2014 the bridge to OpenTelemetry traces and application logs. Unlike traceId, which is Kronikol\u0027s own identifier for the request/response pair."
+        },
+        "activitySpanId": {
+          "type": "string",
+          "nullable": true,
+          "description": "W3C span id"
+        },
+        "capturedBy": {
+          "type": "string",
+          "nullable": true,
+          "description": "Which capture path produced this entry: wire (proxy/TCP tap) or span (OpenTelemetry receiver)"
+        },
+        "durationMs": {
+          "type": "number",
+          "nullable": true,
+          "description": "Wall-clock milliseconds between the request and its response, derived from the two timestamps. Repeated on both halves of the pair; null when the request went unanswered or timestamps are absent."
+        },
+        "stepPath": {
+          "type": "string",
+          "nullable": true,
+          "description": "Which step this call happened under: an index into the scenario\u0027s steps, prefixed b for a background step (b0, 0, 1, ...). Null before the first step, and whenever attribution could not be trusted \u2014 see the StepAttributionMismatch diagnostic."
         }
       }
     }

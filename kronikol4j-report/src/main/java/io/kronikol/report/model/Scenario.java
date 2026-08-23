@@ -23,7 +23,20 @@ public record Scenario(
     boolean isHappyPath, String errorStackTrace, List<String> labels, List<String> categories,
     String rule, String outlineId, Map<String, String> exampleValues, Map<String, String> exampleFlatValues,
     String exampleDisplayName,
-    List<FileAttachment> attachments, List<ScenarioStep> backgroundSteps, List<ScenarioStep> steps) {
+    List<FileAttachment> attachments, List<ScenarioStep> backgroundSteps, List<ScenarioStep> steps,
+    String description) {
+
+    /** The shape before the scenario carried its own free-text description. */
+    public Scenario(String name, String testId, ExecutionStatus status, long durationMs, String error,
+                    boolean isHappyPath, String errorStackTrace, List<String> labels, List<String> categories,
+                    String rule, String outlineId, Map<String, String> exampleValues,
+                    Map<String, String> exampleFlatValues, String exampleDisplayName,
+                    List<FileAttachment> attachments, List<ScenarioStep> backgroundSteps,
+                    List<ScenarioStep> steps) {
+        this(name, testId, status, durationMs, error, isHappyPath, errorStackTrace, labels, categories,
+            rule, outlineId, exampleValues, exampleFlatValues, exampleDisplayName, attachments,
+            backgroundSteps, steps, null);
+    }
 
     public Scenario {
         labels = labels == null ? List.of() : List.copyOf(labels);
@@ -39,7 +52,7 @@ public record Scenario(
 
     /** The deterministic, cross-run stable id derived from the owning feature + this scenario. */
     public String stableId(String featureName) {
-        return ScenarioStableId.compute(featureName, name, outlineId);
+        return ScenarioStableId.compute(featureName, name, outlineId, exampleValues);
     }
 
     /** Back-compatible core scenario (no BDD / parameterized metadata). */

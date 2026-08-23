@@ -1,4 +1,4 @@
-KronikolVersion: 3.0.43+de7b45a8cc2e3ef102d1455f3f100f4d8d10a17c
+KronikolVersion: 3.0.47+b6b73ddb1cefbb9e3dd0d42d8e73273cb3bb4790
 StartTime: 2024-01-15T10:00:00Z
 EndTime: 2024-01-15T10:00:05Z
 Features:
@@ -64,6 +64,8 @@ Features:
             TraceId: 00000000-0000-0000-0000-000000000007
             RequestResponseId: 00000000-0000-0000-0000-000000000107
             Timestamp: 2024-01-15T10:00:01.234Z
+            DependencyCategory: HTTP
+            DurationMs: 16.000
             Headers:
               - Key: Accept
                 Value: application/json
@@ -77,8 +79,10 @@ Features:
             TraceId: 00000000-0000-0000-0000-000000000007
             RequestResponseId: 00000000-0000-0000-0000-000000000107
             Timestamp: 2024-01-15T10:00:01.250Z
+            DependencyCategory: HTTP
+            DurationMs: 16.000
       - Name: Checkout rejects empty cart
-        StableId: 478c03688cd2bdb0
+        StableId: 15e9f0d49ff9bc08
         Result: Failed
         DurationSeconds: 0.012
         IsHappyPath: false

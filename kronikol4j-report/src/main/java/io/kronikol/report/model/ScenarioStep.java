@@ -13,7 +13,9 @@ import java.util.List;
 public record ScenarioStep(String keyword, String text, ExecutionStatus status, Long durationMs,
                            List<ScenarioStep> subSteps, List<FileAttachment> attachments,
                            List<String> comments, String docString, String docStringMediaType,
-                           List<StepTextSegment> textSegments, List<StepParameter> parameters) {
+                           List<StepTextSegment> textSegments, List<StepParameter> parameters,
+                           String failureMessage, String sourceFile, Integer sourceLine,
+                           String bypassReason) {
 
     public ScenarioStep {
         subSteps = subSteps == null ? List.of() : List.copyOf(subSteps);
@@ -27,6 +29,15 @@ public record ScenarioStep(String keyword, String text, ExecutionStatus status, 
     public ScenarioStep(String keyword, String text, ExecutionStatus status, Long durationMs,
                         List<ScenarioStep> subSteps, List<FileAttachment> attachments) {
         this(keyword, text, status, durationMs, subSteps, attachments, List.of(), null, null, List.of(), List.of());
+    }
+
+    /** The shape before failure detail was carried: everything except {@code failureMessage} and its source location. */
+    public ScenarioStep(String keyword, String text, ExecutionStatus status, Long durationMs,
+                        List<ScenarioStep> subSteps, List<FileAttachment> attachments,
+                        List<String> comments, String docString, String docStringMediaType,
+                        List<StepTextSegment> textSegments, List<StepParameter> parameters) {
+        this(keyword, text, status, durationMs, subSteps, attachments, comments, docString,
+            docStringMediaType, textSegments, parameters, null, null, null, null);
     }
 
     /** A leaf step with a keyword, text, and status. */
@@ -51,6 +62,10 @@ public record ScenarioStep(String keyword, String text, ExecutionStatus status, 
         private String docStringMediaType;
         private List<StepTextSegment> textSegments = List.of();
         private List<StepParameter> parameters = List.of();
+        private String failureMessage;
+        private String sourceFile;
+        private Integer sourceLine;
+        private String bypassReason;
 
         private Builder(String keyword, String text, ExecutionStatus status) {
             this.keyword = keyword;
@@ -98,9 +113,29 @@ public record ScenarioStep(String keyword, String text, ExecutionStatus status, 
             return this;
         }
 
+        /** Why the step or assertion failed — the single most-wanted fact about a failing test. */
+        public Builder failureMessage(String v) {
+            this.failureMessage = v;
+            return this;
+        }
+
+        /** Where a tracked assertion lives: the file name only, and the line. */
+        public Builder source(String file, Integer line) {
+            this.sourceFile = file;
+            this.sourceLine = line;
+            return this;
+        }
+
+        /** Why a bypassed step was skipped. */
+        public Builder bypassReason(String v) {
+            this.bypassReason = v;
+            return this;
+        }
+
         public ScenarioStep build() {
             return new ScenarioStep(keyword, text, status, durationMs, subSteps, attachments,
-                comments, docString, docStringMediaType, textSegments, parameters);
+                comments, docString, docStringMediaType, textSegments, parameters,
+                failureMessage, sourceFile, sourceLine, bypassReason);
         }
     }
 }

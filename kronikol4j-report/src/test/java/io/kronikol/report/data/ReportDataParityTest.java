@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
 class ReportDataParityTest {
 
     // The .NET assembly's informational version stamped into the captured fixtures (re-capture if it changes).
-    private static final String VERSION = "3.0.43+bd0b671c8c4f5741b97ec6a1c25f4f7dc99fdbb9";
+    private static final String VERSION = "3.0.47+b6b73ddb1cefbb9e3dd0d42d8e73273cb3bb4790";
 
     @Test
     void json() throws IOException {

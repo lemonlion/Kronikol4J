@@ -1,5 +1,6 @@
 package io.kronikol.report.data;
 
+import io.kronikol.core.tracking.DiagramMarkerKind;
 import io.kronikol.core.tracking.Header;
 import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseType;
@@ -9,7 +10,14 @@ import io.kronikol.report.model.ExecutionStatus;
 import io.kronikol.report.model.Feature;
 import io.kronikol.report.model.FileAttachment;
 import io.kronikol.report.model.Scenario;
+import io.kronikol.report.model.InlineParameterValue;
 import io.kronikol.report.model.ScenarioStep;
+import io.kronikol.report.model.StepParameter;
+import io.kronikol.report.model.StepTextSegment;
+import io.kronikol.report.model.TableRowType;
+import io.kronikol.report.model.TabularParameterValue;
+import io.kronikol.report.model.TreeParameterValue;
+import io.kronikol.report.model.VerificationStatus;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Serializes the {@link ReportData} test-run report to JSON, XML, and YAML — aligned
@@ -65,6 +74,9 @@ public final class ReportDataSerializer {
             features.add(fo);
         }
         root.put("features", features);
+        // Everything worth knowing about how the report was produced. Empty is the happy path, but
+        // the key is always present so a reader never has to distinguish absent from empty.
+        root.put("diagnostics", new ArrayList<Object>());
         StringBuilder sb = new StringBuilder(2048);
         writeJson(sb, root, "");
         return sb.toString();
@@ -75,6 +87,7 @@ public final class ReportDataSerializer {
         o.put("id", s.testId());
         o.put("stableId", s.stableId(f.displayName()));
         o.put("name", s.name());
+        o.put("description", s.description());
         o.put("result", s.status().displayName());
         o.put("durationSeconds", s.durationMs() / 1000.0);
         o.put("isHappyPath", s.isHappyPath());
@@ -85,6 +98,9 @@ public final class ReportDataSerializer {
         o.put("rule", s.rule());
         o.put("outlineId", s.outlineId());
         o.put("exampleValues", s.exampleValues() == null ? null : new LinkedHashMap<Object, Object>(s.exampleValues()));
+        // The flattened view drives the pivot table columns; a merged report loses the parameterised
+        // grouping without it.
+        o.put("exampleFlatValues", s.exampleFlatValues() == null ? null : new LinkedHashMap<Object, Object>(s.exampleFlatValues()));
         o.put("exampleDisplayName", s.exampleDisplayName());
         o.put("attachments", attachmentsJson(s.attachments()));
         o.put("backgroundSteps", stepsJson(s.backgroundSteps()));
@@ -93,11 +109,25 @@ public final class ReportDataSerializer {
             o.put("diagrams", new ArrayList<Object>(diagramsFor(data, s.testId())));
         }
         if (data.logsByTestId() != null) {
+            List<RequestResponseLog> stream = logsFor(data, s.testId());
+            InteractionAttribution.Result attribution = InteractionAttribution.attribute(stream, s);
+            List<RequestResponseLog> interactions = InteractionAttribution.interactions(stream);
+
             List<Object> logs = new ArrayList<>();
-            for (RequestResponseLog log : logsFor(data, s.testId())) {
-                logs.add(logJson(log));
+            for (int i = 0; i < interactions.size(); i++) {
+                logs.add(logJson(interactions.get(i), attribution.durations(), attribution.pathAt(i)));
             }
             o.put("httpInteractions", logs);
+
+            List<Object> annotations = new ArrayList<>();
+            for (InteractionAttribution.Annotation a : attribution.annotations()) {
+                Map<String, Object> ao = new LinkedHashMap<>();
+                ao.put("index", (double) a.index());
+                ao.put("kind", a.kind().displayName());
+                ao.put("text", a.text());
+                annotations.add(ao);
+            }
+            o.put("annotations", annotations);
         }
         return o;
     }
@@ -110,11 +140,139 @@ public final class ReportDataSerializer {
             o.put("text", step.text());
             o.put("status", step.status() == null ? null : step.status().displayName());
             o.put("durationSeconds", step.durationMs() == null ? null : step.durationMs() / 1000.0);
+            // Failure detail rides on every step mapping: the smaller file saves payload bytes, it does
+            // not withhold why a test failed.
+            o.put("bypassReason", step.bypassReason());
+            o.put("docString", step.docString());
+            o.put("docStringMediaType", step.docStringMediaType());
+            o.put("failureMessage", step.failureMessage());
+            o.put("sourceFile", step.sourceFile());
+            o.put("sourceLine", step.sourceLine() == null ? null : (double) step.sourceLine());
+            o.put("comments", new ArrayList<Object>(step.comments()));
             o.put("subSteps", stepsJson(step.subSteps()));
             o.put("attachments", attachmentsJson(step.attachments()));
+            List<Object> parameters = new ArrayList<>();
+            for (StepParameter p : step.parameters()) {
+                parameters.add(parameterJson(p));
+            }
+            o.put("parameters", parameters);
+            o.put("textSegments", step.textSegments().isEmpty() ? null : textSegmentsJson(step.textSegments()));
             out.add(o);
         }
         return out;
+    }
+
+    /** Mirrors the .NET MapStepParameterJson: kind, then whichever of the three values is set. */
+    private static Map<String, Object> parameterJson(StepParameter p) {
+        Map<String, Object> o = new LinkedHashMap<>();
+        o.put("name", p.name());
+        o.put("kind", parameterKind(p.kind()));
+        o.put("inlineValue", p.inlineValue() == null ? null : inlineValueJson(p.inlineValue()));
+        if (p.tabularValue() == null) {
+            o.put("tabularValue", null);
+        } else {
+            Map<String, Object> t = new LinkedHashMap<>();
+            List<Object> columns = new ArrayList<>();
+            for (TabularParameterValue.TabularColumn c : p.tabularValue().columns()) {
+                Map<String, Object> co = new LinkedHashMap<>();
+                co.put("name", c.name());
+                co.put("isKey", c.isKey());
+                columns.add(co);
+            }
+            t.put("columns", columns);
+            List<Object> rows = new ArrayList<>();
+            for (TabularParameterValue.TabularRow r : p.tabularValue().rows()) {
+                Map<String, Object> ro = new LinkedHashMap<>();
+                ro.put("type", rowType(r.type()));
+                List<Object> values = new ArrayList<>();
+                for (TabularParameterValue.TabularCell c : r.values()) {
+                    Map<String, Object> vo = new LinkedHashMap<>();
+                    vo.put("value", c.value());
+                    vo.put("expectation", c.expectation());
+                    vo.put("status", verificationStatus(c.status()));
+                    values.add(vo);
+                }
+                ro.put("values", values);
+                rows.add(ro);
+            }
+            t.put("rows", rows);
+            t.put("isLinkedOutput", p.tabularValue().isLinkedOutput());
+            o.put("tabularValue", t);
+        }
+        if (p.treeValue() == null) {
+            o.put("treeValue", null);
+        } else {
+            Map<String, Object> tv = new LinkedHashMap<>();
+            tv.put("root", treeNodeJson(p.treeValue().root()));
+            o.put("treeValue", tv);
+        }
+        return o;
+    }
+
+    private static Map<String, Object> inlineValueJson(InlineParameterValue v) {
+        Map<String, Object> o = new LinkedHashMap<>();
+        o.put("value", v.value());
+        o.put("expectation", v.expectation());
+        o.put("status", verificationStatus(v.status()));
+        return o;
+    }
+
+    private static Map<String, Object> treeNodeJson(TreeParameterValue.TreeNode n) {
+        Map<String, Object> o = new LinkedHashMap<>();
+        if (n == null) {
+            return o;
+        }
+        o.put("path", n.path());
+        o.put("node", n.node());
+        o.put("value", n.value());
+        o.put("expectation", n.expectation());
+        o.put("status", verificationStatus(n.status()));
+        List<Object> children = new ArrayList<>();
+        for (TreeParameterValue.TreeNode child : n.children()) {
+            children.add(treeNodeJson(child));
+        }
+        o.put("children", children);
+        return o;
+    }
+
+    private static List<Object> textSegmentsJson(List<StepTextSegment> segments) {
+        List<Object> out = new ArrayList<>();
+        for (StepTextSegment seg : segments) {
+            Map<String, Object> o = new LinkedHashMap<>();
+            o.put("text", seg.text());
+            o.put("parameterName", seg.parameterName());
+            o.put("parameter", seg.parameter() == null ? null : inlineValueJson(seg.parameter()));
+            o.put("tableReference", seg.tableReference());
+            o.put("tableReferenceFormattedValue", seg.tableReferenceFormattedValue());
+            out.add(o);
+        }
+        return out;
+    }
+
+    private static String parameterKind(StepParameter.Kind kind) {
+        return switch (kind) {
+            case INLINE -> "Inline";
+            case TABULAR -> "Tabular";
+            case TREE -> "Tree";
+        };
+    }
+
+    private static String rowType(TableRowType type) {
+        return switch (type) {
+            case MATCHING -> "Matching";
+            case SURPLUS -> "Surplus";
+            case MISSING -> "Missing";
+        };
+    }
+
+    private static String verificationStatus(VerificationStatus status) {
+        return switch (status) {
+            case NOT_APPLICABLE -> "NotApplicable";
+            case SUCCESS -> "Success";
+            case FAILURE -> "Failure";
+            case EXCEPTION -> "Exception";
+            case NOT_PROVIDED -> "NotProvided";
+        };
     }
 
     private static List<Object> attachmentsJson(List<FileAttachment> attachments) {
@@ -123,12 +281,14 @@ public final class ReportDataSerializer {
             Map<String, Object> o = new LinkedHashMap<>();
             o.put("name", a.name());
             o.put("relativePath", a.relativePath());
+            o.put("mediaType", a.mediaType());
             out.add(o);
         }
         return out;
     }
 
-    private static Map<String, Object> logJson(RequestResponseLog log) {
+    private static Map<String, Object> logJson(RequestResponseLog log,
+                                               Map<UUID, Double> durations, String stepPath) {
         Map<String, Object> o = new LinkedHashMap<>();
         o.put("type", logType(log.type()));
         o.put("method", logMethod(log));
@@ -148,6 +308,16 @@ public final class ReportDataSerializer {
         o.put("traceId", log.traceId().toString());
         o.put("requestResponseId", log.requestResponseId().toString());
         o.put("timestamp", log.timestamp() == null ? null : LOG_TIME.format(log.timestamp()));
+        o.put("metaType", metaType(log));
+        o.put("dependencyCategory", log.dependencyCategory());
+        o.put("callerDependencyCategory", log.callerDependencyCategory());
+        o.put("phase", phase(log));
+        o.put("isUserAction", log.userAction());
+        o.put("activityTraceId", log.activityTraceId());
+        o.put("activitySpanId", log.activitySpanId());
+        o.put("capturedBy", log.capturedBy());
+        o.put("durationMs", durations.get(log.requestResponseId()));
+        o.put("stepPath", stepPath);
         return o;
     }
 
@@ -317,11 +487,13 @@ public final class ReportDataSerializer {
             }
         }
         if (data.logsByTestId() != null) {
-            List<RequestResponseLog> logs = logsFor(data, s.testId());
+            List<RequestResponseLog> stream = logsFor(data, s.testId());
+            InteractionAttribution.Result attribution = InteractionAttribution.attribute(stream, s);
+            List<RequestResponseLog> logs = InteractionAttribution.interactions(stream);
             if (!logs.isEmpty()) {
                 sb.append("          <HttpInteractions>").append(NL);
-                for (RequestResponseLog log : logs) {
-                    xmlLog(sb, "            ", log);
+                for (int i = 0; i < logs.size(); i++) {
+                    xmlLog(sb, "            ", logs.get(i), attribution.durations(), attribution.pathAt(i));
                 }
                 sb.append("          </HttpInteractions>").append(NL);
             }
@@ -342,6 +514,15 @@ public final class ReportDataSerializer {
         if (step.durationMs() != null) {
             xmlLeaf(sb, in, "DurationSeconds", f3(step.durationMs() / 1000.0));
         }
+        if (step.failureMessage() != null) {
+            xmlLeaf(sb, in, "FailureMessage", step.failureMessage());
+        }
+        if (step.sourceFile() != null) {
+            xmlLeaf(sb, in, "SourceFile", step.sourceFile());
+        }
+        if (step.sourceLine() != null) {
+            xmlLeaf(sb, in, "SourceLine", String.valueOf(step.sourceLine()));
+        }
         if (!step.subSteps().isEmpty()) {
             sb.append(in).append("<SubSteps>").append(NL);
             for (ScenarioStep sub : step.subSteps()) {
@@ -361,12 +542,16 @@ public final class ReportDataSerializer {
             sb.append(indent).append("  <Attachment>").append(NL);
             xmlLeaf(sb, indent + "    ", "Name", a.name());
             xmlLeaf(sb, indent + "    ", "RelativePath", a.relativePath());
+            if (a.mediaType() != null) {
+                xmlLeaf(sb, indent + "    ", "MediaType", a.mediaType());
+            }
             sb.append(indent).append("  </Attachment>").append(NL);
         }
         sb.append(indent).append("</Attachments>").append(NL);
     }
 
-    private static void xmlLog(StringBuilder sb, String indent, RequestResponseLog log) {
+    private static void xmlLog(StringBuilder sb, String indent, RequestResponseLog log,
+                               Map<UUID, Double> durations, String stepPath) {
         sb.append(indent).append("<HttpInteraction>").append(NL);
         String in = indent + "  ";
         xmlLeaf(sb, in, "Type", logType(log.type()));
@@ -395,6 +580,38 @@ public final class ReportDataSerializer {
         xmlLeaf(sb, in, "RequestResponseId", log.requestResponseId().toString());
         if (log.timestamp() != null) {
             xmlLeaf(sb, in, "Timestamp", LOG_TIME.format(log.timestamp()));
+        }
+        // XML omits what carries nothing rather than writing empty elements, as the rest of this writer does.
+        if (log.metaType() == io.kronikol.core.tracking.RequestResponseMetaType.EVENT) {
+            xmlLeaf(sb, in, "MetaType", "Event");
+        }
+        if (log.dependencyCategory() != null) {
+            xmlLeaf(sb, in, "DependencyCategory", log.dependencyCategory());
+        }
+        if (log.callerDependencyCategory() != null) {
+            xmlLeaf(sb, in, "CallerDependencyCategory", log.callerDependencyCategory());
+        }
+        if (log.phase() != io.kronikol.core.tracking.TestPhase.UNKNOWN) {
+            xmlLeaf(sb, in, "Phase", phase(log));
+        }
+        if (log.userAction()) {
+            xmlLeaf(sb, in, "IsUserAction", "true");
+        }
+        if (log.activityTraceId() != null) {
+            xmlLeaf(sb, in, "ActivityTraceId", log.activityTraceId());
+        }
+        if (log.activitySpanId() != null) {
+            xmlLeaf(sb, in, "ActivitySpanId", log.activitySpanId());
+        }
+        if (log.capturedBy() != null) {
+            xmlLeaf(sb, in, "CapturedBy", log.capturedBy());
+        }
+        Double xmlDuration = durations.get(log.requestResponseId());
+        if (xmlDuration != null) {
+            xmlLeaf(sb, in, "DurationMs", f3(xmlDuration));
+        }
+        if (stepPath != null) {
+            xmlLeaf(sb, in, "StepPath", stepPath);
         }
         sb.append(indent).append("</HttpInteraction>").append(NL);
     }
@@ -502,11 +719,13 @@ public final class ReportDataSerializer {
             }
         }
         if (data.logsByTestId() != null) {
-            List<RequestResponseLog> logs = logsFor(data, s.testId());
+            List<RequestResponseLog> stream = logsFor(data, s.testId());
+            InteractionAttribution.Result attribution = InteractionAttribution.attribute(stream, s);
+            List<RequestResponseLog> logs = InteractionAttribution.interactions(stream);
             if (!logs.isEmpty()) {
                 y.append("        HttpInteractions:").append(NL);
-                for (RequestResponseLog log : logs) {
-                    ymlLog(y, log, "          ");
+                for (int i = 0; i < logs.size(); i++) {
+                    ymlLog(y, logs.get(i), "          ", attribution.durations(), attribution.pathAt(i));
                 }
             }
         }
@@ -518,6 +737,15 @@ public final class ReportDataSerializer {
         y.append(indent).append("  Status: ").append(step.status() == null ? "" : step.status().displayName()).append(NL);
         if (step.durationMs() != null) {
             y.append(indent).append("  DurationSeconds: ").append(f3(step.durationMs() / 1000.0)).append(NL);
+        }
+        if (step.failureMessage() != null) {
+            y.append(indent).append("  FailureMessage: ").append(yml(step.failureMessage())).append(NL);
+        }
+        if (step.sourceFile() != null) {
+            y.append(indent).append("  SourceFile: ").append(yml(step.sourceFile())).append(NL);
+        }
+        if (step.sourceLine() != null) {
+            y.append(indent).append("  SourceLine: ").append(step.sourceLine()).append(NL);
         }
         if (!step.subSteps().isEmpty()) {
             y.append(indent).append("  SubSteps:").append(NL);
@@ -534,7 +762,8 @@ public final class ReportDataSerializer {
         }
     }
 
-    private static void ymlLog(StringBuilder y, RequestResponseLog log, String indent) {
+    private static void ymlLog(StringBuilder y, RequestResponseLog log, String indent,
+                               Map<UUID, Double> durations, String stepPath) {
         y.append(indent).append("- Type: ").append(logType(log.type())).append(NL);
         y.append(indent).append("  Method: ").append(logMethod(log)).append(NL);
         y.append(indent).append("  Uri: ").append(log.uri().toString()).append(NL);
@@ -551,6 +780,37 @@ public final class ReportDataSerializer {
         y.append(indent).append("  RequestResponseId: ").append(log.requestResponseId().toString()).append(NL);
         if (log.timestamp() != null) {
             y.append(indent).append("  Timestamp: ").append(LOG_TIME.format(log.timestamp())).append(NL);
+        }
+        if (log.metaType() == io.kronikol.core.tracking.RequestResponseMetaType.EVENT) {
+            y.append(indent).append("  MetaType: Event").append(NL);
+        }
+        if (log.dependencyCategory() != null) {
+            y.append(indent).append("  DependencyCategory: ").append(yml(log.dependencyCategory())).append(NL);
+        }
+        if (log.callerDependencyCategory() != null) {
+            y.append(indent).append("  CallerDependencyCategory: ").append(yml(log.callerDependencyCategory())).append(NL);
+        }
+        if (log.phase() != io.kronikol.core.tracking.TestPhase.UNKNOWN) {
+            y.append(indent).append("  Phase: ").append(phase(log)).append(NL);
+        }
+        if (log.userAction()) {
+            y.append(indent).append("  IsUserAction: true").append(NL);
+        }
+        if (log.activityTraceId() != null) {
+            y.append(indent).append("  ActivityTraceId: ").append(yml(log.activityTraceId())).append(NL);
+        }
+        if (log.activitySpanId() != null) {
+            y.append(indent).append("  ActivitySpanId: ").append(yml(log.activitySpanId())).append(NL);
+        }
+        if (log.capturedBy() != null) {
+            y.append(indent).append("  CapturedBy: ").append(yml(log.capturedBy())).append(NL);
+        }
+        Double ymlDuration = durations.get(log.requestResponseId());
+        if (ymlDuration != null) {
+            y.append(indent).append("  DurationMs: ").append(f3(ymlDuration)).append(NL);
+        }
+        if (stepPath != null) {
+            y.append(indent).append("  StepPath: ").append(stepPath).append(NL);
         }
         if (!log.headers().isEmpty()) {
             y.append(indent).append("  Headers:").append(NL);
@@ -590,6 +850,18 @@ public final class ReportDataSerializer {
 
     private static String logType(RequestResponseType type) {
         return type == RequestResponseType.REQUEST ? "Request" : "Response";
+    }
+
+    private static String metaType(RequestResponseLog log) {
+        return log.metaType() == io.kronikol.core.tracking.RequestResponseMetaType.EVENT ? "Event" : "Default";
+    }
+
+    private static String phase(RequestResponseLog log) {
+        return switch (log.phase()) {
+            case SETUP -> "Setup";
+            case ACTION -> "Action";
+            default -> "Unknown";
+        };
     }
 
     private static String logMethod(RequestResponseLog log) {

@@ -1,5 +1,5 @@
 <TestRunReport>
-  <KronikolVersion>3.0.43+de7b45a8cc2e3ef102d1455f3f100f4d8d10a17c</KronikolVersion>
+  <KronikolVersion>3.0.47+b6b73ddb1cefbb9e3dd0d42d8e73273cb3bb4790</KronikolVersion>
   <StartTime>2024-01-15T10:00:00Z</StartTime>
   <EndTime>2024-01-15T10:00:05Z</EndTime>
   <Features>
@@ -96,6 +96,8 @@ Test -&gt; OrderService
               <TraceId>00000000-0000-0000-0000-000000000007</TraceId>
               <RequestResponseId>00000000-0000-0000-0000-000000000107</RequestResponseId>
               <Timestamp>2024-01-15T10:00:01.234Z</Timestamp>
+              <DependencyCategory>HTTP</DependencyCategory>
+              <DurationMs>16.000</DurationMs>
             </HttpInteraction>
             <HttpInteraction>
               <Type>Response</Type>
@@ -108,12 +110,14 @@ Test -&gt; OrderService
               <TraceId>00000000-0000-0000-0000-000000000007</TraceId>
               <RequestResponseId>00000000-0000-0000-0000-000000000107</RequestResponseId>
               <Timestamp>2024-01-15T10:00:01.250Z</Timestamp>
+              <DependencyCategory>HTTP</DependencyCategory>
+              <DurationMs>16.000</DurationMs>
             </HttpInteraction>
           </HttpInteractions>
         </Scenario>
         <Scenario>
           <Id>s2</Id>
-          <StableId>478c03688cd2bdb0</StableId>
+          <StableId>15e9f0d49ff9bc08</StableId>
           <Name>Checkout rejects empty cart</Name>
           <Result>Failed</Result>
           <DurationSeconds>0.012</DurationSeconds>

@@ -30,7 +30,9 @@ public final class ReportDataSchema {
             "type", "object",
             "properties", obj(
                 "name", obj("type", "string"),
-                "relativePath", obj("type", "string")));
+                "relativePath", obj("type", "string"),
+                "mediaType", obj("type", "string", "nullable", true, "description",
+                    "IANA media type; image/* renders inline, anything else as a link")));
 
         Map<String, Object> stepDef = obj(
             "type", "object",
@@ -40,7 +42,27 @@ public final class ReportDataSchema {
                 "status", obj("type", "string", "enum", RESULT_ENUM, "nullable", true),
                 "durationSeconds", obj("type", "number", "nullable", true),
                 "subSteps", obj("type", "array", "items", ref("step")),
-                "attachments", obj("type", "array", "items", attachmentItems)));
+                "attachments", obj("type", "array", "items", attachmentItems),
+                "bypassReason", obj("type", "string", "nullable", true, "description",
+                    "Why the step was skipped, when its status is Bypassed"),
+                "docString", obj("type", "string", "nullable", true, "description",
+                    "The step's Gherkin doc-string body"),
+                "docStringMediaType", obj("type", "string", "nullable", true, "description",
+                    "Media type declared on the doc string, when the source gave one"),
+                "comments", obj("type", "array", "items", obj("type", "string"), "description",
+                    "Comment lines attached to the step in the source"),
+                "parameters", obj("type", "array", "description",
+                    "The step's inputs: inline values, data tables (columns and rows) and tree values. Present unless TestRunReportFullStepDetail is turned off.",
+                    "items", obj("type", "object")),
+                "textSegments", obj("type", "array", "nullable", true, "description",
+                    "The step text split into literal prose and inline parameter values, for highlighted rendering",
+                    "items", obj("type", "object")),
+                "failureMessage", obj("type", "string", "nullable", true, "description",
+                    "Why this step or assertion failed \u2014 the assertion message, or the exception that ended the step"),
+                "sourceFile", obj("type", "string", "nullable", true, "description",
+                    "File the assertion was written in (name only), when the caller supplied it"),
+                "sourceLine", obj("type", "integer", "nullable", true, "description",
+                    "Line in sourceFile")));
 
         Map<String, Object> httpInteractionDef = obj(
             "type", "object",
@@ -59,7 +81,26 @@ public final class ReportDataSchema {
                 "statusCode", obj("type", "string", "nullable", true),
                 "traceId", obj("type", "string", "format", "uuid"),
                 "requestResponseId", obj("type", "string", "format", "uuid"),
-                "timestamp", obj("type", "string", "format", "date-time", "nullable", true)));
+                "timestamp", obj("type", "string", "format", "date-time", "nullable", true),
+                "metaType", obj("type", "string", "enum", arr("Default", "Event"), "description",
+                    "Default for a request/response exchange, Event for a fire-and-forget publish"),
+                "dependencyCategory", obj("type", "string", "nullable", true, "description",
+                    "What kind of thing the callee is (database, cache, queue, ...) \u2014 drives participant shape and arrow colour in the diagram"),
+                "callerDependencyCategory", obj("type", "string", "nullable", true, "description",
+                    "The same, for the caller"),
+                "phase", obj("type", "string", "enum", arr("Unknown", "Setup", "Action"), "description",
+                    "Whether the call happened during Setup or the Action under test; Unknown when phase detection is off"),
+                "isUserAction", obj("type", "boolean", "description",
+                    "A UI interaction (click, navigate) rather than a dependency call"),
+                "activityTraceId", obj("type", "string", "nullable", true, "description",
+                    "W3C trace id \u2014 the bridge to OpenTelemetry traces and application logs. Unlike traceId, which is Kronikol's own identifier for the request/response pair."),
+                "activitySpanId", obj("type", "string", "nullable", true, "description", "W3C span id"),
+                "capturedBy", obj("type", "string", "nullable", true, "description",
+                    "Which capture path produced this entry: wire (proxy/TCP tap) or span (OpenTelemetry receiver)"),
+                "durationMs", obj("type", "number", "nullable", true, "description",
+                    "Wall-clock milliseconds between the request and its response, derived from the two timestamps. Repeated on both halves of the pair; null when the request went unanswered or timestamps are absent."),
+                "stepPath", obj("type", "string", "nullable", true, "description",
+                    "Which step this call happened under: an index into the scenario's steps, prefixed b for a background step (b0, 0, 1, ...). Null before the first step, and whenever attribution could not be trusted \u2014 see the StepAttributionMismatch diagnostic.")));
 
         Map<String, Object> scenarioItems = obj(
             "type", "object",
@@ -71,6 +112,8 @@ public final class ReportDataSchema {
                     + "derived from feature name + scenario display name (+ outline ID for parameterized "
                     + "scenarios). Use this for matching the same test across runs."),
                 "name", obj("type", "string"),
+                "description", obj("type", "string", "nullable", true, "description",
+                    "The scenario's own free-text description (the prose under Scenario:)"),
                 "result", obj("type", "string", "enum", RESULT_ENUM),
                 "durationSeconds", obj("type", "number"),
                 "isHappyPath", obj("type", "boolean"),
@@ -91,7 +134,30 @@ public final class ReportDataSchema {
                     "Scenario-level file attachments (added when no step was active)",
                     "items", attachmentItems),
                 "diagrams", obj("type", "array", "items", obj("type", "string")),
-                "httpInteractions", obj("type", "array", "items", ref("httpInteraction"))));
+                "httpInteractions", obj("type", "array", "items", ref("httpInteraction")),
+                "annotations", obj("type", "array", "description",
+                    "Diagram markers that carry information found nowhere else: which row of a tabular input was in flight, and fragments the test author injected. Step and assertion markers are excluded \u2014 those are already structured in steps.",
+                    "items", obj(
+                        "type", "object",
+                        "properties", obj(
+                            "index", obj("type", "integer", "description",
+                                "Position in httpInteractions the marker sat before"),
+                            "kind", obj("type", "string", "enum", arr("Row", "Custom")),
+                            "text", obj("type", "string"))))));
+
+        Map<String, Object> diagnosticDef = obj(
+            "type", "object",
+            "required", arr("kind", "message"),
+            "properties", obj(
+                "kind", obj("type", "string", "enum", arr(
+                    "RenderFailure", "OutputFailure", "MalformedLine", "StepsNotStartingWithCapital",
+                    "UnattributedInteractions", "DroppedUnattributed", "AttachmentFailure", "Other",
+                    "TitlesNotStartingWithCapital", "DroppedOutsideRunWindow", "CaptureDegraded",
+                    "StepAttributionMismatch"),
+                    "description", "What the entry is about (DiagnosticKind)"),
+                "message", obj("type", "string", "description", "One-line description, safe to print"),
+                "scenarioId", obj("type", "string", "nullable", true, "description",
+                    "The scenario the entry belongs to, when it is scenario-specific")));
 
         Map<String, Object> schema = obj(
             "$schema", "https://json-schema.org/draft/2020-12/schema",
@@ -106,6 +172,9 @@ public final class ReportDataSchema {
                     "UTC start time of the test run"),
                 "endTime", obj("type", "string", "format", "date-time", "description",
                     "UTC end time of the test run"),
+                "diagnostics", obj("type", "array", "description",
+                    "Everything worth knowing about how this report was produced: capture health handed in by the host (CaptureDegraded), skipped malformed lines, diagrams that could not be rendered, labels that still do not read as sentences. Empty is the happy path.",
+                    "items", ref("diagnostic")),
                 "features", obj("type", "array", "items", obj(
                     "type", "object",
                     "required", arr("name", "labels", "scenarios"),
@@ -116,6 +185,7 @@ public final class ReportDataSchema {
                         "labels", obj("type", "array", "items", obj("type", "string")),
                         "scenarios", obj("type", "array", "items", scenarioItems))))),
             "$defs", obj(
+                "diagnostic", diagnosticDef,
                 "step", stepDef,
                 "httpInteraction", httpInteractionDef));
 
@@ -141,6 +211,9 @@ public final class ReportDataSchema {
             el("xs:element").a("name", "Text").a("type", "xs:string"),
             el("xs:element").a("name", "Status").a("type", "ExecutionResult").a("minOccurs", "0"),
             el("xs:element").a("name", "DurationSeconds").a("type", "xs:decimal").a("minOccurs", "0"),
+            el("xs:element").a("name", "FailureMessage").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "SourceFile").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "SourceLine").a("type", "xs:int").a("minOccurs", "0"),
             listWrapper("SubSteps", "Step", "StepType", true),
             attachmentsWrapper()));
 
@@ -155,12 +228,23 @@ public final class ReportDataSchema {
             el("xs:element").a("name", "StatusCode").a("type", "xs:string").a("minOccurs", "0"),
             el("xs:element").a("name", "TraceId").a("type", "xs:string"),
             el("xs:element").a("name", "RequestResponseId").a("type", "xs:string"),
-            el("xs:element").a("name", "Timestamp").a("type", "xs:string").a("minOccurs", "0")));
+            el("xs:element").a("name", "Timestamp").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "MetaType").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "DependencyCategory").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "CallerDependencyCategory").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "Phase").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "IsUserAction").a("type", "xs:boolean").a("minOccurs", "0"),
+            el("xs:element").a("name", "ActivityTraceId").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "ActivitySpanId").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "CapturedBy").a("type", "xs:string").a("minOccurs", "0"),
+            el("xs:element").a("name", "DurationMs").a("type", "xs:decimal").a("minOccurs", "0"),
+            el("xs:element").a("name", "StepPath").a("type", "xs:string").a("minOccurs", "0")));
 
         Xml scenarioType = el("xs:complexType").a("name", "ScenarioType").c(el("xs:sequence").c(
             el("xs:element").a("name", "Id").a("type", "xs:string"),
             el("xs:element").a("name", "StableId").a("type", "xs:string"),
             el("xs:element").a("name", "Name").a("type", "xs:string"),
+            el("xs:element").a("name", "Description").a("type", "xs:string").a("minOccurs", "0"),
             el("xs:element").a("name", "Result").a("type", "ExecutionResult"),
             el("xs:element").a("name", "DurationSeconds").a("type", "xs:decimal"),
             el("xs:element").a("name", "IsHappyPath").a("type", "xs:boolean"),
@@ -211,7 +295,9 @@ public final class ReportDataSchema {
                 el("xs:element").a("name", "Attachment").a("minOccurs", "0").a("maxOccurs", "unbounded").c(
                     el("xs:complexType").c(el("xs:sequence").c(
                         el("xs:element").a("name", "Name").a("type", "xs:string"),
-                        el("xs:element").a("name", "RelativePath").a("type", "xs:string")))))));
+                        el("xs:element").a("name", "RelativePath").a("type", "xs:string"),
+                        el("xs:element").a("name", "MediaType").a("type", "xs:string")
+                            .a("minOccurs", "0")))))));
     }
 
     /** Serializes an {@link Xml} tree like .NET {@code XElement.ToString}: 2-space indent, attributes in

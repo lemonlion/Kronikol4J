@@ -4,6 +4,54 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
 ## [0.1.25] — unreleased
 
+### Added — report-data parity with .NET 3.0.47
+- **Interactions carry everything the diagram knows about them.** `metaType`, `dependencyCategory`,
+  `callerDependencyCategory`, `phase`, `isUserAction`, `activityTraceId`, `activitySpanId`, `capturedBy`,
+  and a derived `durationMs` computed from the request/response timestamp pair (or taken verbatim when a
+  capturer measured the call itself and set `RequestResponseLog.durationMs` — the only source for a call
+  sent as a single record). The W3C ids are the bridge from a report to OpenTelemetry traces and
+  application logs; `traceId` is Kronikol's own pair identifier and never was one. JSON, XML and YAML, with
+  XML and YAML omitting what carries nothing as the rest of those writers do.
+- **`stepPath` connects `steps` to `httpInteractions`.** Each interaction is stamped with the step it
+  happened under (`b0`, `0`, `1` — background steps first), via the new `InteractionAttribution`. Matching
+  is positional and sound because the log store is FIFO, so one test's records keep their relative order
+  however many tests run in parallel; it is not sound for a test working on a background thread, so the
+  marker's text is verified against the step's and a disagreement leaves the field null rather than
+  attributing a call to the wrong step.
+- **Scenario `annotations`.** `DiagramMarkerKind` (`Custom | Step | Assertion | Row | Phase`) on
+  `RequestResponseLog`, and `Row`/`Custom` markers exported as `{ index, kind, text }` — which example row
+  was in flight, and any fragment the test author injected. `Step` and `Assertion` markers are excluded:
+  they are already structured in `steps`.
+- **Full step detail in the data file.** `parameters` (inline values, data tables with columns and rows,
+  tree values), `textSegments`, `docString`, `docStringMediaType`, `comments` and the new `bypassReason` —
+  so a parameterised failure shows the inputs that produced it.
+- **`failureMessage`, `sourceFile` and `sourceLine` on steps and assertions.** Why a test failed and where,
+  in the file tooling reads rather than only in the sequence diagram.
+- **Fields the port had been missing since 3.0.43**, found by regenerating the golden fixtures: scenario
+  `description` and `exampleFlatValues`, attachment `mediaType`, the top-level `diagnostics` array, and the
+  `diagnostic` schema definition.
+
+### Fixed
+- **`TestRunReport.json` / `.xml` / `.yml` no longer export Gherkin steps and assertions as content-free
+  calls to `http://override.com/`.** The override start/end pair that splices a step bar, an assertion note
+  or a custom fragment into a sequence diagram — and the Setup/Action boundary marker — travel in the same
+  log stream as real traffic, carrying nothing but their PlantUML, and the data exports did not skip them.
+  In a comparable .NET run that was 424 of 1202 exported interactions. `RequestResponseLog.diagramMarker()`
+  now names the concept and every data writer filters on it. (.NET fixed this in 3.0.45.)
+
+### Changed
+- **`stableId` folds in a scenario's example values.** Every row of a scenario outline sharing a display
+  name previously hashed identically, so a cross-run diff could not tell row 1 from row 3 — which is
+  exactly what the field is documented for. Parameterised scenarios get new ids once; non-parameterised
+  scenarios are unaffected. Matches .NET 3.0.47.
+- **Golden parity fixtures regenerated against .NET 3.0.47** (`parity-harness/dotnet-capture`). Two of the
+  regenerated captures are *not* consumed as Java goldens yet, and record work still outstanding rather
+  than being reverted to hide it: `component-diagram-report.html` carries the split-fragment placeholder
+  CSS added in .NET 3.0.45 (`.puml-fragment:not([data-rendered])`), and `escaping.puml` carries the creole
+  escaping of note bodies added in 3.0.47. The port's renderers still produce the pre-3.0.45 output for
+  both, so its own test resources stay at the matching goldens until those are ported.
+
+
 **Cross-cutting capture infrastructure** (REMAINING_PARITY.md groundwork — the shared mechanisms every
 Tier-1 tracker depends on) **plus the first Tier-1 client adapter**.
 

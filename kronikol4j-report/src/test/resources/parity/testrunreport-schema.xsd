@@ -20,6 +20,9 @@
       <xs:element name="Text" type="xs:string" />
       <xs:element name="Status" type="ExecutionResult" minOccurs="0" />
       <xs:element name="DurationSeconds" type="xs:decimal" minOccurs="0" />
+      <xs:element name="FailureMessage" type="xs:string" minOccurs="0" />
+      <xs:element name="SourceFile" type="xs:string" minOccurs="0" />
+      <xs:element name="SourceLine" type="xs:int" minOccurs="0" />
       <xs:element name="SubSteps" minOccurs="0">
         <xs:complexType>
           <xs:sequence>
@@ -35,6 +38,7 @@
                 <xs:sequence>
                   <xs:element name="Name" type="xs:string" />
                   <xs:element name="RelativePath" type="xs:string" />
+                  <xs:element name="MediaType" type="xs:string" minOccurs="0" />
                 </xs:sequence>
               </xs:complexType>
             </xs:element>
@@ -62,6 +66,16 @@
       <xs:element name="TraceId" type="xs:string" />
       <xs:element name="RequestResponseId" type="xs:string" />
       <xs:element name="Timestamp" type="xs:string" minOccurs="0" />
+      <xs:element name="MetaType" type="xs:string" minOccurs="0" />
+      <xs:element name="DependencyCategory" type="xs:string" minOccurs="0" />
+      <xs:element name="CallerDependencyCategory" type="xs:string" minOccurs="0" />
+      <xs:element name="Phase" type="xs:string" minOccurs="0" />
+      <xs:element name="IsUserAction" type="xs:boolean" minOccurs="0" />
+      <xs:element name="ActivityTraceId" type="xs:string" minOccurs="0" />
+      <xs:element name="ActivitySpanId" type="xs:string" minOccurs="0" />
+      <xs:element name="CapturedBy" type="xs:string" minOccurs="0" />
+      <xs:element name="DurationMs" type="xs:decimal" minOccurs="0" />
+      <xs:element name="StepPath" type="xs:string" minOccurs="0" />
     </xs:sequence>
   </xs:complexType>
   <xs:complexType name="ScenarioType">
@@ -69,6 +83,7 @@
       <xs:element name="Id" type="xs:string" />
       <xs:element name="StableId" type="xs:string" />
       <xs:element name="Name" type="xs:string" />
+      <xs:element name="Description" type="xs:string" minOccurs="0" />
       <xs:element name="Result" type="ExecutionResult" />
       <xs:element name="DurationSeconds" type="xs:decimal" />
       <xs:element name="IsHappyPath" type="xs:boolean" />
@@ -111,6 +126,7 @@
                 <xs:sequence>
                   <xs:element name="Name" type="xs:string" />
                   <xs:element name="RelativePath" type="xs:string" />
+                  <xs:element name="MediaType" type="xs:string" minOccurs="0" />
                 </xs:sequence>
               </xs:complexType>
             </xs:element>

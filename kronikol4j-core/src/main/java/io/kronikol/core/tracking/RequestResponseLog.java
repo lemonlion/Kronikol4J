@@ -50,6 +50,10 @@ public final class RequestResponseLog {
     private TestPhase phase = TestPhase.UNKNOWN;
     private PhaseVariant setupVariant;
     private PhaseVariant actionVariant;
+    private boolean userAction;
+    private String capturedBy;
+    private Double durationMs;
+    private DiagramMarkerKind markerKind = DiagramMarkerKind.CUSTOM;
 
     private RequestResponseLog(Builder b) {
         this.testName = Objects.requireNonNull(b.testName, "testName");
@@ -165,6 +169,42 @@ public final class RequestResponseLog {
     public RequestResponseLog setupVariant(PhaseVariant v) { this.setupVariant = v; return this; }
     public PhaseVariant actionVariant() { return actionVariant; }
     public RequestResponseLog actionVariant(PhaseVariant v) { this.actionVariant = v; return this; }
+
+    /**
+     * A UI interaction (a click, a navigation) rather than a dependency call: one arrow from an actor to
+     * the service, with no response arrow.
+     */
+    public boolean userAction() { return userAction; }
+    public RequestResponseLog userAction(boolean v) { this.userAction = v; return this; }
+
+    /**
+     * Which capture path produced this entry — {@code wire} (a proxy or TCP tap that decoded the
+     * protocol) or {@code span} (an OpenTelemetry receiver). Matters when capture fidelity is the bug.
+     */
+    public String capturedBy() { return capturedBy; }
+    public RequestResponseLog capturedBy(String v) { this.capturedBy = v; return this; }
+
+    /**
+     * How long the call took, when the capturer measured it rather than leaving it to be inferred from
+     * the request and response timestamps. The only source for a call sent as a single record.
+     */
+    public Double durationMs() { return durationMs; }
+    public RequestResponseLog durationMs(Double v) { this.durationMs = v; return this; }
+
+    /** What kind of marker this is; meaningless on a record that is not one. */
+    public DiagramMarkerKind markerKind() { return markerKind; }
+    public RequestResponseLog markerKind(DiagramMarkerKind v) {
+        this.markerKind = v == null ? DiagramMarkerKind.CUSTOM : v;
+        return this;
+    }
+
+    /**
+     * True for the control records that carry no interaction of their own: the override start/end pair
+     * that splices {@link #plantUml()} into a sequence diagram (step delimiters, assertion notes, custom
+     * fragments) and the Setup/Action boundary marker. They travel in the same log stream as real
+     * traffic, so every consumer that reports interactions has to skip them.
+     */
+    public boolean diagramMarker() { return overrideStart || overrideEnd || actionStart; }
 
     /** Mutable builder for the final core fields. Required: testName, testId, method, uri,
      *  serviceName, callerName, type, traceId, requestResponseId. */

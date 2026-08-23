@@ -1,5 +1,5 @@
 {
-  "kronikolVersion": "3.0.43\u002Bbd0b671c8c4f5741b97ec6a1c25f4f7dc99fdbb9",
+  "kronikolVersion": "3.0.47\u002Bb6b73ddb1cefbb9e3dd0d42d8e73273cb3bb4790",
   "startTime": "2024-01-15T10:00:00Z",
   "endTime": "2024-01-15T10:00:05Z",
   "features": [
@@ -16,6 +16,7 @@
           "id": "s1",
           "stableId": "79b75f96aa4fced3",
           "name": "Checkout succeeds",
+          "description": null,
           "result": "Passed",
           "durationSeconds": 1.5,
           "isHappyPath": true,
@@ -30,11 +31,13 @@
           "rule": "Happy path",
           "outlineId": null,
           "exampleValues": null,
+          "exampleFlatValues": null,
           "exampleDisplayName": null,
           "attachments": [
             {
               "name": "trace.log",
-              "relativePath": "attachments/trace.log"
+              "relativePath": "attachments/trace.log",
+              "mediaType": null
             }
           ],
           "backgroundSteps": [
@@ -43,8 +46,17 @@
               "text": "a logged-in user",
               "status": "Passed",
               "durationSeconds": 0.01,
+              "bypassReason": null,
+              "docString": null,
+              "docStringMediaType": null,
+              "failureMessage": null,
+              "sourceFile": null,
+              "sourceLine": null,
+              "comments": [],
               "subSteps": [],
-              "attachments": []
+              "attachments": [],
+              "parameters": [],
+              "textSegments": null
             }
           ],
           "steps": [
@@ -53,38 +65,75 @@
               "text": "an empty cart",
               "status": "Passed",
               "durationSeconds": 0.02,
+              "bypassReason": null,
+              "docString": null,
+              "docStringMediaType": null,
+              "failureMessage": null,
+              "sourceFile": null,
+              "sourceLine": null,
+              "comments": [],
               "subSteps": [],
-              "attachments": []
+              "attachments": [],
+              "parameters": [],
+              "textSegments": null
             },
             {
               "keyword": "When",
               "text": "the user checks out \u0026 pays",
               "status": "Passed",
               "durationSeconds": 0.5,
+              "bypassReason": null,
+              "docString": null,
+              "docStringMediaType": null,
+              "failureMessage": null,
+              "sourceFile": null,
+              "sourceLine": null,
+              "comments": [],
               "subSteps": [
                 {
                   "keyword": null,
                   "text": "POST /checkout",
                   "status": "Passed",
                   "durationSeconds": 0.4,
+                  "bypassReason": null,
+                  "docString": null,
+                  "docStringMediaType": null,
+                  "failureMessage": null,
+                  "sourceFile": null,
+                  "sourceLine": null,
+                  "comments": [],
                   "subSteps": [],
-                  "attachments": []
+                  "attachments": [],
+                  "parameters": [],
+                  "textSegments": null
                 }
               ],
-              "attachments": []
+              "attachments": [],
+              "parameters": [],
+              "textSegments": null
             },
             {
               "keyword": "Then",
               "text": "the order is confirmed",
               "status": "Passed",
               "durationSeconds": 0.03,
+              "bypassReason": null,
+              "docString": null,
+              "docStringMediaType": null,
+              "failureMessage": null,
+              "sourceFile": null,
+              "sourceLine": null,
+              "comments": [],
               "subSteps": [],
               "attachments": [
                 {
                   "name": "receipt.pdf",
-                  "relativePath": "attachments/receipt.pdf"
+                  "relativePath": "attachments/receipt.pdf",
+                  "mediaType": null
                 }
-              ]
+              ],
+              "parameters": [],
+              "textSegments": null
             }
           ],
           "diagrams": [
@@ -107,7 +156,17 @@
               "statusCode": null,
               "traceId": "00000000-0000-0000-0000-000000000007",
               "requestResponseId": "00000000-0000-0000-0000-000000000107",
-              "timestamp": "2024-01-15T10:00:01.234Z"
+              "timestamp": "2024-01-15T10:00:01.234Z",
+              "metaType": "Default",
+              "dependencyCategory": "HTTP",
+              "callerDependencyCategory": null,
+              "phase": "Unknown",
+              "isUserAction": false,
+              "activityTraceId": null,
+              "activitySpanId": null,
+              "capturedBy": null,
+              "durationMs": 16,
+              "stepPath": null
             },
             {
               "type": "Response",
@@ -120,14 +179,26 @@
               "statusCode": "OK",
               "traceId": "00000000-0000-0000-0000-000000000007",
               "requestResponseId": "00000000-0000-0000-0000-000000000107",
-              "timestamp": "2024-01-15T10:00:01.250Z"
+              "timestamp": "2024-01-15T10:00:01.250Z",
+              "metaType": "Default",
+              "dependencyCategory": "HTTP",
+              "callerDependencyCategory": null,
+              "phase": "Unknown",
+              "isUserAction": false,
+              "activityTraceId": null,
+              "activitySpanId": null,
+              "capturedBy": null,
+              "durationMs": 16,
+              "stepPath": null
             }
-          ]
+          ],
+          "annotations": []
         },
         {
           "id": "s2",
-          "stableId": "478c03688cd2bdb0",
+          "stableId": "15e9f0d49ff9bc08",
           "name": "Checkout rejects empty cart",
+          "description": null,
           "result": "Failed",
           "durationSeconds": 0.012,
           "isHappyPath": false,
@@ -141,14 +212,17 @@
             "cart": "empty",
             "expected": "400"
           },
+          "exampleFlatValues": null,
           "exampleDisplayName": "Empty cart",
           "attachments": [],
           "backgroundSteps": [],
           "steps": [],
           "diagrams": [],
-          "httpInteractions": []
+          "httpInteractions": [],
+          "annotations": []
         }
       ]
     }
-  ]
+  ],
+  "diagnostics": []
 }

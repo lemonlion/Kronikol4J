@@ -12,7 +12,7 @@ test -> echoService: POST: /echo
 note left
 {
   "path": "C:\\\\temp\\\\f",
-  "name": "<a>&\\"x\\"",
+  "name": "~<a>&\\"x\\"",
   "emoji": "✓",
   "nested": {
     "a": [
