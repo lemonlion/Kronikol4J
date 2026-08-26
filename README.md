@@ -28,11 +28,15 @@ actual execution, not AI.
 > `plantuml-worker-host.js`), caches rendered SVG per fragment source, prefetches note-toggle fragments
 > (`collapsible-notes-script.js`), and exposes three `ReportConfigurationOptions`
 > (`BrowserRenderWorkers`, `BrowserRenderCacheMegabytes`, `BrowserFragmentMaxHeight`) that are baked
-> into the script as constants. This port still ships the pre-3.0.45 main-thread scripts, so the
-> report HTML is **no longer byte-identical** to .NET ≥ 3.0.45 in those two assets (everything else is
-> unchanged). Porting it means copying the two scripts + the worker host, JSON-escaping the host into
-> the render script in `DiagramContextMenu`'s Java counterpart, and plumbing the three options. See the
-> .NET wiki page *PlantUML Browser Rendering → How Rendering Runs (3.0.45+)*.
+> into the script as constants. .NET 3.0.50 (2026-08-25) additionally re-based the CDN engine on npm
+> `@plantuml/core` 1.2026.6 (`…plantuml_limit_size_98304@v1.2026.6-patched`, an ES module whose trailing
+> `export` every .NET consumer rewrites or `import()`s — this port's script-tag loading would need the
+> same treatment, and the old `@v1.2026.3beta6-patched` tag remains published for it). This port still
+> ships the pre-3.0.45 main-thread scripts, so the report HTML is **no longer byte-identical** to
+> .NET ≥ 3.0.45 in those two assets (everything else is unchanged). Porting it means copying the two
+> scripts + the worker host, JSON-escaping the host into the render script in `DiagramContextMenu`'s
+> Java counterpart, and plumbing the three options. See the .NET wiki page *PlantUML Browser Rendering →
+> How Rendering Runs (3.0.45+)*.
 
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
