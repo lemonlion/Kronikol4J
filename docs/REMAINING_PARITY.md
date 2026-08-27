@@ -1874,6 +1874,19 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ---
 
+## .NET-side features shipped after this audit (divergence ledger)
+
+- **OTLP export (.NET 3.0.60, 2026-08-27) — .NET-only for now.** `Kronikol.Extensions.Otlp` gained the
+  outbound direction: `OtlpSpanMapper`/`OtlpJsonEncoder` (pure pair→span mapping + OTLP/JSON encoding),
+  `OtlpExporter` (batch POST), `OtlpExportSink` (streaming `IRequestResponseSink` with bounded-queue/D3
+  discipline), and the `kronikol export` CLI verb — Kronikol captures pushed to Tempo/Jaeger/any collector
+  as OTel spans, captured W3C ids preserved, one test = one trace by default. Wiki:
+  `Exporting-to-OpenTelemetry.md`. The Java side gains the *inbound* tap first (see `OTLP_TAP_PLAN.md`);
+  export here is a later follow-on — when ported, the .NET encoder's golden strings and the
+  decode-back-through-`OtlpTraceReader` oracle are the parity fixtures to reuse.
+
+---
+
 ## Explicitly OUT OF SCOPE (locked boundaries — do not implement)
 
 - Server-side PlantUML image rendering (PlantUML-server / IKVM / Node.js / inline-SVG `ImgSrc` pre-render).
