@@ -1885,6 +1885,19 @@ fixes. Listed for completeness so nothing is silently dropped.
   export here is a later follow-on — when ported, the .NET encoder's golden strings and the
   decode-back-through-`OtlpTraceReader` oracle are the parity fixtures to reuse.
 
+- **Note backslash escaping REMOVED (.NET 3.0.62, 2026-08-28).** .NET deleted
+  `EscapeForPlantUmlNote` (the blanket `\`→`\\` doubling applied to `note left/right … end note` bodies):
+  probing plantuml.js 1.2026.6 AND the real PlantUML jar showed block notes render backslash sequences
+  literally (`\n`, `\r`, `\"`, `\\`, `\uXXXX`, trailing `\` all verbatim; the ONLY consumed sequence is
+  `\t`, always rendered as a real tab — the final `\t` pair of any backslash run is consumed, so doubling
+  never protected it and merely made a wire `\n` display as `\\n`). The browser script's
+  `reconstructNoteJson` no longer halves backslashes and `escapeNoteLine` no longer doubles them.
+  **Java still doubles** (`PlantUmlCreator` port, pinned "identical" in `JAVA_PORT_PLAN.md` §escaping) —
+  when re-syncing, remove the Java doubling AND take the ≥3.0.62 `collapsible-notes-script.js` in the same
+  commit (the script pair travels with the generator: a new script with a doubling generator, or vice
+  versa, corrupts the YAML toggle's reconstruction). Golden fixtures are pinned at 3.0.43 and unaffected
+  until recaptured.
+
 ---
 
 ## Explicitly OUT OF SCOPE (locked boundaries — do not implement)
