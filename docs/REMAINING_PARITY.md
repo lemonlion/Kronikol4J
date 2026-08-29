@@ -1876,6 +1876,23 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **PlantUML statement-length caps (.NET 3.0.48, 2026-08-23) — .NET-only.** (Entry added
+  2026-08-29; this divergence predates the two below but was not ledgered at the time.) .NET added
+  `PlantUmlStatementLimits` + `PlantUmlStatementGuard`: measured engine limits (message statements parse up
+  to 2,000 trimmed chars — PlantUML's OWN parser limit, confirmed against the real jar via IKVM, so it
+  binds every renderer including Java's; block openers ~1,471 and coloured `hnote across` bars ~1,400 are
+  TeaVM/plantuml.js-build artifacts — the coloured-bar overflow crashes the JS engine with `RangeError`,
+  losing the whole fragment's SVG). Generation now caps request/user-action/response/loop labels against
+  the real whole-statement length (prefix + `[[#iflow-…]]` wrapper + GraphQL suffix counted), preserves a
+  truncated request's full path in the request note under `[Full path]`, funnels every raw append through a
+  statement-classifying guard, and the browser failure block names the offending line/kind/length. **Java's
+  `PlantUmlCreator` has no equivalent**: a >2,000-char statement (e.g. a ~5,000-char Redis DELETE path)
+  makes the engine abandon the whole diagram with `Syntax Error? (Assumed diagram type: class)` on the Java
+  side while .NET truncates and renders. When porting, take `PlantUmlStatementLimits` (constants + XML-doc
+  measurement table), the `PlantUmlCreator` cap sites, and the `plantuml-browser-render-script.js`
+  diagnosis together; the .NET integration tests pinning the 2,000/1,471/1,400 boundaries are the parity
+  fixtures to reuse.
+
 - **OTLP export (.NET 3.0.60, 2026-08-27) — .NET-only for now.** `Kronikol.Extensions.Otlp` gained the
   outbound direction: `OtlpSpanMapper`/`OtlpJsonEncoder` (pure pair→span mapping + OTLP/JSON encoding),
   `OtlpExporter` (batch POST), `OtlpExportSink` (streaming `IRequestResponseSink` with bounded-queue/D3
