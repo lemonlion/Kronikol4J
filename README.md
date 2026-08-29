@@ -43,7 +43,13 @@ actual execution, not AI.
 > the two scripts + the worker host, JSON-escaping the host into the render script in
 > `DiagramContextMenu`'s Java counterpart, and plumbing the three options. See the .NET wiki pages
 > *PlantUML Browser Rendering → How Rendering Runs (3.0.45+)* and *→ Note Payload JSON ⇄ YAML Toggle
-> (3.0.59+)*.
+> (3.0.59+)*. .NET 3.0.66 (2026-08-29) extended the toggle further — pending sync here too: bulk
+> JSON/YAML `<select>` dropdowns at report + scenario level in `collapsible-notes-script.js` (+
+> `.note-format-select` rules in `collapsible-notes-styles.css`, a `__NOTE_FORMAT_DEFAULT__` token
+> substituted by `DiagramContextMenu.GetCollapsibleNotesScript(NotePayloadFormat)`, and a
+> `ReportConfigurationOptions.NotePayloadFormat` option threaded into `GenerateHtmlReport`'s toolbar
+> emission), plus copy-text fixes in `context-menu-script.js` (YAML notes copy the displayed YAML;
+> creole `~` escapes no longer leak into the clipboard in either view).
 
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
