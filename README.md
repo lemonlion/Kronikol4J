@@ -63,7 +63,12 @@ actual execution, not AI.
 > `clear_all_filters`, the report/scenario toolbars + `open` attributes + diagram-tab/panel visibility
 > are computed from the resolved record (five verbatim scenario-toolbar strings factored into one
 > builder), and the search reveal opens rule/steps/background sections. Options surface, markup and
-> five script assets all diverge further; this port is pinned to 3.0.43 assets.
+> five script assets all diverge further; this port is pinned to 3.0.43 assets. .NET 3.0.82
+> (2026-09-04) added the `isComponentDiagramContainer` guard to `collapsible-notes-script.js`
+> (the filter toggles — databases above all — no longer rewrite or re-render the embedded component
+> diagram; client-side script only, no report-output impact) and one new `.scenario-description
+> { margin: 1em 0 }` rule in `stylesheets.css` (the div previously had no rule at all — this one
+> DOES change generated-HTML bytes).
 > Report-**output** bytes also diverged earlier than the ledger previously recorded: .NET 3.0.77
 > (2026-09-04) made live Reqnroll runs emit scenario descriptions and dedented feature descriptions
 > (HTML `scenario-description` divs, YAML `Description:` lines, search corpus); .NET 3.0.78
