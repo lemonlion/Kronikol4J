@@ -49,7 +49,21 @@ actual execution, not AI.
 > substituted by `DiagramContextMenu.GetCollapsibleNotesScript(NotePayloadFormat)`, and a
 > `ReportConfigurationOptions.NotePayloadFormat` option threaded into `GenerateHtmlReport`'s toolbar
 > emission), plus copy-text fixes in `context-menu-script.js` (YAML notes copy the displayed YAML;
-> creole `~` escapes no longer leak into the clipboard in either view).
+> creole `~` escapes no longer leak into the clipboard in either view). .NET 3.0.79 (2026-09-04)
+> extended the YAML view's display normalisation in `collapsible-notes-script.js` (trailing space/tab
+> runs before line breaks and all-whitespace tails are stripped for multiline strings — client-side
+> script only, no report-output impact). .NET 3.0.80 (2026-09-04) added **configurable toggle default
+> start states** — a `ReportToggleDefaults` group pair on `ReportConfigurationOptions`
+> (`TestRunReportToggleDefaults` / `SpecificationsToggleDefaults`, inherit-unless-overridden) resolved
+> by a new `ReportToggleDefaultsResolver` into a `ResolvedToggleDefaults` record that
+> `GenerateHtmlReport` consumes: the whole `collapsible-notes-script.js` globals block became `__…__`
+> tokens (details state, truncate lines, headers/assertions/steps/databases, note format), the
+> dependency/category filter scripts gained `_depModeDefault`/`_catModeDefault` seeds consumed by
+> `report-url-hash-function.js` (now accepts `depmode=AND`/`catmode=OR` symmetrically) and
+> `clear_all_filters`, the report/scenario toolbars + `open` attributes + diagram-tab/panel visibility
+> are computed from the resolved record (five verbatim scenario-toolbar strings factored into one
+> builder), and the search reveal opens rule/steps/background sections. Options surface, markup and
+> five script assets all diverge further; this port is pinned to 3.0.43 assets.
 
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
