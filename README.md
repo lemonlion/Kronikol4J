@@ -64,6 +64,15 @@ actual execution, not AI.
 > are computed from the resolved record (five verbatim scenario-toolbar strings factored into one
 > builder), and the search reveal opens rule/steps/background sections. Options surface, markup and
 > five script assets all diverge further; this port is pinned to 3.0.43 assets.
+> Report-**output** bytes also diverged earlier than the ledger previously recorded: .NET 3.0.77
+> (2026-09-04) made live Reqnroll runs emit scenario descriptions and dedented feature descriptions
+> (HTML `scenario-description` divs, YAML `Description:` lines, search corpus); .NET 3.0.78
+> (2026-09-04) drew step tables/doc strings **inside** the step-delimiter bar — a new styled
+> `hnote across <<stepDelimiter>><<stepBody>>: text\n|= … |` single-line form, an injected `.stepBody`
+> style block per diagram, and (Cucumber ingest) pickle-substituted table values — and .NET 3.0.81
+> (2026-09-04) padded each such table/doc-string block with a blank display line above and below
+> (`…: text\n\n|= … |\n`, trailing `\n` included). Diagrams from a port of those capture paths would
+> need the same emitter to byte-match.
 
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
