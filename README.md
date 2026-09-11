@@ -104,7 +104,56 @@ actual execution, not AI.
 > creole-escaped whole rather than per chunk. Genuine form bodies keep the dividers, the per-chunk escape
 > and the 80-character chunk. A port matching diagram output must carry the gate: SQL notes are among the
 > most common in a real report, and their bytes differ on every line longer than 80 characters.
-> 
+>
+> .NET 3.0.85 (2026-09-11) changes **diagram output on several width axes at once**, and adds a
+> client-side-only note appearance control. A port matching diagram output must carry all of the
+> generation-time half:
+>
+> - **Participant names** are broken onto 80-character display lines (`participant "a\nb" as x`), and
+>   **user-action message labels**, **activity-diagram node labels and swimlane names**, and
+>   **diagram titles** onto 100-character lines, by one shared wrapper lifted out of the component
+>   diagram's 3.0.83 rules. Measured on real Java PlantUML: an 800-character participant name drew
+>   5,650 px and 610 after.
+> - **Internal-flow activity diagrams** gain `skinparam wrapWidth 800` in both header emitters — they
+>   were the only family with neither a cap nor a wrap.
+> - **Assertion notes** and **step-delimiter bars** are broken onto 110-character display lines, with
+>   the break characters differing by note form: a `note … end note` block honours only REAL newlines
+>   (a `\n` escape inside one draws as two literal characters and breaks nothing — measured), while
+>   the single-line `hnote across <<stepBody>>: …` form honours only the escape. The ingest-side
+>   assertion note therefore stops folding newlines into `\n` escapes, which also fixes multi-line
+>   failure messages drawing as one long line. A body line reading exactly `end note` is neutralised
+>   with a zero-width space.
+> - **Step-bar table cells** are elided against a shared ROW budget (creole cells never wrap, not even
+>   at spaces, and a row is the sum of its cells). A step whose label has to be broken now switches to
+>   the styled `<<stepBody>>` form.
+> - **Participant count** becomes a diagram-splitting trigger, and each fragment declares only the
+>   participants it draws (the prefix was previously rebuilt from the whole test's traces, so every
+>   fragment re-declared everyone and came out as wide as the unsplit diagram). Unlike the encoded
+>   length and estimated height triggers, this one is NOT gated on client-side splitting, because
+>   participant count does not change with note state.
+> - **`DiagramNoteWrapWidth`** (720-4096, default 800) replaces the hard-coded `skinparam wrapWidth`
+>   literal — an options-surface addition as well as an output one.
+>
+> Single-fragment diagrams inside the width budget — nearly all of them — are byte-identical.
+>
+> The same release extends the standing `collapsible-notes-script.js` divergence (client-side script
+> only; the port is pinned to 3.0.43 assets) with the per-note monospace and full-width controls, their
+> report/scenario dropdowns, and two new `ReportToggleDefaults` members (`NoteFont`, `NoteWidth`).
+> .NET 3.0.86 (unreleased) changes **`TestRunReport.schema.json`**, which this port pins byte-for-byte
+> (`ReportDataSchema.java` against the `.NET`-captured golden `testrunreport-schema.json`): `exampleFlatValues`
+> and `exampleDisplayName` are now declared (the writers on both sides already emitted them), every property
+> carries a `description`, `stableId` / `stepPath` / `activityTraceId` carry `examples`, and a top-level
+> `$comment` names the size trap and `kronikol query`. The report JSON's bytes are unchanged; only the schema
+> file differs, so re-capturing the golden and mirroring the dictionary is the whole port. The same release
+> made adapter-driven .NET runs record structured diagnostics (a collector is scoped when the host did not
+> scope one, so the `diagnostics` array is no longer always empty outside ingest) — the Java report finaliser
+> should scope its collector the same way if it ever records entries on that path.
+>
+> The same release also changes `report-export-function.js` (script-only): `export_html` now appends the
+> body's `application/json` data payloads to the exported file, with `#puml-data` pruned to the ids the
+> exported markup contains. Without it an exported filtered report carries the whole render machinery and
+> none of the diagram sources, and every diagram in it is silently blank.
+
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
 > tracker options, and several whole features/modules — are the remaining work toward *every-feature*
