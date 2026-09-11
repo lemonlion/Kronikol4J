@@ -139,7 +139,41 @@ actual execution, not AI.
 > The same release extends the standing `collapsible-notes-script.js` divergence (client-side script
 > only; the port is pinned to 3.0.43 assets) with the per-note monospace and full-width controls, their
 > report/scenario dropdowns, and two new `ReportToggleDefaults` members (`NoteFont`, `NoteWidth`).
-> .NET 3.0.86 (unreleased) changes **`TestRunReport.schema.json`**, which this port pins byte-for-byte
+> .NET 3.0.86 (2026-09-12) marks **every line break the width budget writes into a note body**, so a
+> port matching diagram output has to emit the markers too. Six sites: the 120-character
+> unbreakable-run wrapper (payload notes and user-action note bodies), the 80-character chunkers for
+> full paths, form-url-encoded field values and gray header values, and the 110-character
+> assertion-note wrapper. Each appends `<U+200B>` to the line it broke, and the assertion-note wrapper
+> appends `<U+200B><U+200B>` where the break fell between words and consumed the space that was there
+> — a rejoin that cannot tell the two apart puts a space inside a token or loses one between words.
+>
+> Three details a port will get wrong if it is not told:
+>
+> - **The escape form is load-bearing.** A literal U+200B character renders identically but is
+>   indistinguishable from one in the captured payload. `EscapeCreoleMarkup` escapes `<`, so a payload
+>   containing the text `<U+200B>` arrives as `~<U+200B>`, and an UNESCAPED marker is provably the
+>   generator's own. Every rejoin keys on that.
+> - **Order: rejoin before unescaping creole, never after.** Unescaping first turns a payload's
+>   `~<U+200B>` into a bare marker and the rejoin then eats a real newline.
+> - **Space runs are no longer collapsed.** The assertion-note wrapper used to split an over-budget
+>   line on single spaces with empty entries removed, so padding collapsed BEFORE any break was
+>   inserted. Bytes differ for any assertion message over 110 characters that carries aligned columns.
+>
+> Measured on real Java PlantUML: a marked note and an unmarked one draw at exactly the same size
+> (668x145), so this is a source change only — nothing about layout moves.
+>
+> The same release changes **search-index normalization**, which a port of the search index must
+> follow: the note-body rejoin moves from pass 5b to pass **1b** (ahead of the ASCII fold and the
+> creole-escape strip, because that strip deletes the `~` the marker guard depends on) and keys on the
+> marker instead of rejoining any note line that did not start with whitespace. The old guess welded
+> together the real line breaks of flush-left payloads. The shared cross-language vectors
+> (`tests/shared-vectors/search-index-vectors.json`) moved with it.
+>
+> Client-side only, extending the standing `collapsible-notes-script.js` and `context-menu-script.js`
+> divergence: the copy and open-in-new-tab paths undo the markers, and `report-search-index.js` carries
+> the rule-1b helpers in its Web Worker function roster.
+>
+> .NET 3.0.87 (unreleased) changes **`TestRunReport.schema.json`**, which this port pins byte-for-byte
 > (`ReportDataSchema.java` against the `.NET`-captured golden `testrunreport-schema.json`): `exampleFlatValues`
 > and `exampleDisplayName` are now declared (the writers on both sides already emitted them), every property
 > carries a `description`, `stableId` / `stepPath` / `activityTraceId` carry `examples`, and a top-level
