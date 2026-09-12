@@ -217,6 +217,31 @@ actual execution, not AI.
 > any kind, and no report-output impact**: `kronikol4j-cli` ships `Main.java` and `MergeCommand.java`
 > only — the query tool was never ported, and the schema pin (`ReportDataSchema.java`) is untouched by
 > this work. Recorded so the absence is a decision on the ledger rather than a gap someone rediscovers.
+>
+> .NET 3.1.0 adds **two new optional report outputs**, both off by default, so **no pinned golden moves
+> and a default run's bytes are unchanged on either side**:
+>
+> - **`ctrf-report.json`** (`GenerateCtrfReport`) — the run in
+>   [Common Test Report Format](https://ctrf.io), for CI tooling that already reads CTRF. There is no
+>   Java counterpart at all and no obligation to write one; the port's own `report-data.json` golden is
+>   untouched. If it is ever ported, three things are decided rather than obvious: `duration` is
+>   **milliseconds** (every other Kronikol writer emits `durationSeconds`), `summary.start`/`stop` are
+>   epoch milliseconds **truncated to whole seconds** so a document converted from a written report equals
+>   one produced during the run, and everything Kronikol knows that CTRF has no field for lives in the
+>   schema's `extra` object — including `kronikolAddress`, the `sN` that leads back into the query tool.
+> - **`Specifications.md`** (`GenerateSpecificationsMarkdown`) — the specification as prose. This one **is**
+>   a real spec-surface divergence: the port has `SpecificationsData.java` and `SpecificationsReport.java`
+>   and would need a third writer to match. Note it deliberately carries `Rule` and `Description`, which
+>   the YAML/JSON/XML trio drops, and deliberately does **not** follow the blank-on-a-failed-run rule the
+>   other spec outputs follow.
+>
+> .NET 3.1.0 also **fixes the feature ordering in `Failures.md`**, which used `StringComparer.Ordinal`
+> where every serializer uses the default culture-sensitive comparer, so the digest's `sN` addresses
+> disagreed with the report's own scenario order whenever two feature names differed by case, punctuation
+> or diacritics. **No port obligation today** — the digest is a .NET-only output — but the rule it
+> enforces is one the port already depends on: features are ordered by display name under the
+> **culture-sensitive** comparer everywhere, and any Java writer that sorts them must do the same or its
+> ordinals will not match the .NET goldens.
 
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
