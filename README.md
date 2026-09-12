@@ -173,7 +173,7 @@ actual execution, not AI.
 > divergence: the copy and open-in-new-tab paths undo the markers, and `report-search-index.js` carries
 > the rule-1b helpers in its Web Worker function roster.
 >
-> .NET 3.0.87 (unreleased) changes **`TestRunReport.schema.json`**, which this port pins byte-for-byte
+> .NET 3.1.0 (unreleased) changes **`TestRunReport.schema.json`**, which this port pins byte-for-byte
 > (`ReportDataSchema.java` against the `.NET`-captured golden `testrunreport-schema.json`): `exampleFlatValues`
 > and `exampleDisplayName` are now declared (the writers on both sides already emitted them), every property
 > carries a `description`, `stableId` / `stepPath` / `activityTraceId` carry `examples`, and a top-level
@@ -187,6 +187,29 @@ actual execution, not AI.
 > body's `application/json` data payloads to the exported file, with `#puml-data` pruned to the ids the
 > exported markup contains. Without it an exported filtered report carries the whole render machinery and
 > none of the diagram sources, and every diagram in it is silently blank.
+>
+> .NET 3.1.0 adds an eighth key to the report's `ciMetadata` block: **`runAttempt`**, from
+> `GITHUB_RUN_ATTEMPT`, counting from 1 and null off GitHub Actions. It is a **report-output divergence**
+> in every serialization the port pins - `report-data.json` / `.xml` / `.yaml` and both schema goldens
+> (`testrunreport-schema.json` gains a `runAttempt` property, the XSD a `RunAttempt` element with
+> `minOccurs="0"`). Note the port's `report-data.json` golden has no `ciMetadata` block at all yet, so this
+> rides the re-capture that run identity already owed rather than adding a cycle of its own. The reason the
+> field exists, if the port implements detection: a provider's run id does **not** change when a run is
+> re-run, so the id alone folds a retry onto the run it retried.
+>
+> .NET 3.1.0 also ships an **agent skill in its `dotnet new` templates** and a `kronikol init-agents`
+> command that installs it into an existing repository: `.claude/skills/kronikol-test-debugging/` plus a
+> `CLAUDE.md` and `AGENTS.md` carrying a short instruction block. **No report-output impact and no port
+> obligation for the rendering side** — the skill documents `kronikol query`, which is a .NET-tool-only
+> command by design. Two things are portable if wanted: the two `templates/kronikol4j-junit5-*` templates
+> could scaffold the same `CLAUDE.md`/`AGENTS.md` block (the text names no .NET-specific path beyond the
+> tool install line), and this repository's own root `CLAUDE.md` could carry it. Neither is done here.
+>
+> .NET 3.1.0 adds **`kronikol query --json`**, widens `--out` to every query verb, fixes three paging
+> defects and removes a UTF-16 copy of every payload from the report scanner. **No parity obligation of
+> any kind, and no report-output impact**: `kronikol4j-cli` ships `Main.java` and `MergeCommand.java`
+> only — the query tool was never ported, and the schema pin (`ReportDataSchema.java`) is untouched by
+> this work. Recorded so the absence is a decision on the ledger rather than a gap someone rediscovers.
 
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
