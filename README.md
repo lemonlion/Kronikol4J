@@ -188,6 +188,13 @@ actual execution, not AI.
 > exported markup contains. Without it an exported filtered report carries the whole render machinery and
 > none of the diagram sources, and every diagram in it is silently blank.
 >
+> .NET 3.1.0 also adds a `kronikol.test.result` attribute to every exported OTLP span, and a
+> `kronikol export --tests` flag that reads the verdict out of the run's companion tests NDJSON.
+> **No parity obligation**: this port has no OTLP export module, and the attribute is span output rather
+> than report output, so no pinned golden moves. Recorded only so the port knows the surface exists - if
+> an exporter is ever written here, note that the verdict cannot come from the captured record and has to
+> be supplied by whoever holds the finished run.
+>
 > .NET 3.1.0 adds an eighth key to the report's `ciMetadata` block: **`runAttempt`**, from
 > `GITHUB_RUN_ATTEMPT`, counting from 1 and null off GitHub Actions. It is a **report-output divergence**
 > in every serialization the port pins - `report-data.json` / `.xml` / `.yaml` and both schema goldens
