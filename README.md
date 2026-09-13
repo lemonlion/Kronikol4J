@@ -177,8 +177,52 @@ actual execution, not AI.
 > (`ReportDataSchema.java` against the `.NET`-captured golden `testrunreport-schema.json`): `exampleFlatValues`
 > and `exampleDisplayName` are now declared (the writers on both sides already emitted them), every property
 > carries a `description`, `stableId` / `stepPath` / `activityTraceId` carry `examples`, and a top-level
-> `$comment` names the size trap and `kronikol query`. The report JSON's bytes are unchanged; only the schema
-> file differs, so re-capturing the golden and mirroring the dictionary is the whole port. The same release
+> `$comment` names the size trap and `kronikol query`.
+>
+> **Correction, and it is the load-bearing sentence of this section.** An earlier draft said *"the report
+> JSON's bytes are unchanged; only the schema file differs, so re-capturing the golden and mirroring the
+> dictionary is the whole port."* **That is false.** Verified against the 3.1.0 build, what actually moves:
+>
+> - **All three data goldens** — `report-data.json`, `.xml` and `.yaml`. The port's goldens go
+>   `KronikolVersion` / `StartTime` / `EndTime` straight to `Features`; 3.1.0 writes a root
+>   **`formatVersion`** (first key, first element, first line), a root **`suite`**, the `ciMetadata` and
+>   `environment` blocks between `endTime` and `features`, plus `feature.sourceFile` and
+>   `scenario.sourceFile` / `sourceLine` / `attempt`.
+> - **Both schema goldens, not one** — `testrunreport-schema.json` and the `.xsd`. The change is **purely
+>   additive, no removals**, which is the one piece of good news and means the port can adopt it without a
+>   compatibility story.
+> - **42 of the 45 pinned HTML goldens**, because `data-stable-id` is new on every
+>   `<details class="scenario">`. Counted: 45 HTML goldens, 42 carrying that element, **0** carrying the
+>   attribute today. The count is a census; the byte move is an inference from it, because there is **no
+>   parity-fixture regeneration path in either repository** to confirm it with a diff. That absence is
+>   itself worth closing before the next cycle — nobody can currently diff a golden even when they want to.
+> - **The mergeable format** gained `Interactions`, `StepPaths`, `Annotations` and `Diagnostics`; the
+>   port's `ReportFragment` has none of the four.
+>
+> Three of those are new in this release and want a deliberate decision rather than a mechanical mirror:
+>
+> - **`formatVersion`** versions the *shape* of the data file, as distinct from `kronikolVersion`, which is
+>   the build that wrote it and moves on every release whether or not anything changed. It is `1`, it is
+>   first, and it is `required` in the JSON Schema. The .NET readers now **refuse** a version they do not
+>   understand rather than half-parsing it, and treat present-but-not-an-integer as different from absent.
+>   A port that writes reports should stamp it; a port that reads them should gate on it.
+> - **`suite`** scopes every `stableId`: the hash is now
+>   `suite::feature::[outline::]scenario[::values]`, and **an absent or empty suite reproduces the
+>   pre-3.1.0 id byte for byte**. That is the compatibility hinge — a port that cannot resolve a suite
+>   should write none rather than invent one, and its ids stay identical to today's. Measured scope: 145 of
+>   905 ids collided across suites and **0 of 1,043 within any single report**, so this is a fix for
+>   combined reports, not for an ordinary run.
+> - **`statusCode` is an integer now, with `statusText` beside it** (`400` + `"BadRequest"`), where it was
+>   the enum name alone. The port's golden still reads `"statusCode": "OK"`, so this moves data bytes. A
+>   reader must accept both shapes — .NET's does, because one that understood only the new shape would
+>   answer "no status" for every report written before this release.
+>
+> `Failures.jsonl` also gained a header line (`kind: "header"`, carrying `formatVersion`, `suite`, the
+> scenario count and the failure count) and stopped repeating `formatVersion` on every record; a green run
+> now writes that one line rather than zero bytes, so an empty file and a missing file stop being the same
+> bytes. The port emits no such file today — recorded so the shape is on the ledger if it ever does.
+>
+> The same release
 > made adapter-driven .NET runs record structured diagnostics (a collector is scoped when the host did not
 > scope one, so the `diagnostics` array is no longer always empty outside ingest) — the Java report finaliser
 > should scope its collector the same way if it ever records entries on that path.
@@ -242,6 +286,33 @@ actual execution, not AI.
 > enforces is one the port already depends on: features are ordered by display name under the
 > **culture-sensitive** comparer everywhere, and any Java writer that sorts them must do the same or its
 > ordinals will not match the .NET goldens.
+
+> .NET 3.2.0 rewrites the failures digest (`Failures.md` / `Failures.jsonl`). **No pinned golden moves
+> and there is no port obligation**: neither file is generated here, and the port's 45 HTML goldens are
+> untouched by all of it. Recorded because two pieces of it contradict code this port already has.
+>
+> - **`FailureClusterer` here is the implementation .NET has deleted.** .NET now has ONE first-line
+>   normaliser (`FailureText.FirstLine`) shared by the digest and the HTML cluster panel, because the two
+>   copies disagreed three reachable ways: one cut at the first CR **or** LF while the other split on LF
+>   alone, so a bare-CR message keyed the whole message on one surface and its first line on the other;
+>   one admitted a present-but-empty message and formed a cluster headed by a blank line where the other
+>   formed none; and they used different definitions of whitespace. If this port's clusterer carries the
+>   same shape, it carries the same three defects. The fix is one function, not a better regex.
+> - **Clustering suppression is now bounded.** A cluster contributes one worked example plus one more for
+>   every ten members, up to five, instead of exactly one — because grouping by a first line is a
+>   heuristic that was measurably wrong once already (an adapter prefixing every message with a
+>   five-valued classification collapsed fifteen unrelated failures into one group), and the protection
+>   cannot be a better key. If the port ever renders a cluster panel from the same data, the sampling rule
+>   is the part worth copying; the key is the easy half.
+>
+> The same release adds `scenario.failureCause` to the HTML **label text**: the error block is now
+> `Error:` with a separate `Cause:` line, where it used to be a single `Failure Cause:` label. That IS a
+> **report-output divergence** — `DotNetHtmlReportRenderer.java` emits the old label at two sites, and 9
+> of this port's 45 HTML goldens pin it — and all three data goldens (`report-data.json` / `.xml` /
+> `.yaml`) plus both schema goldens lack the `failureCause` field the .NET writers and schema now emit.
+> Counted, not estimated. The label was true
+> by coincidence on one adapter, which had spliced the cause onto the message, and a mislabel on the other
+> seven, where the text after it is the assertion.
 
 > **Scope note.** The report/diagram **output rendering** is byte-for-byte complete. The **capture
 > (instrumentation) breadth** and **configuration-options surface** — auto-capturing SDK adapters, per-
