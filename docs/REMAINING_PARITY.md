@@ -1876,6 +1876,31 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **Cross-run history (.NET 3.9.0–3.11.0, 2026-09-14) — .NET-only, and the first divergence that
+  depends on a file outside the report.** .NET added `Kronikol.History`: an append-only
+  `.kronikol/history.jsonl` ledger the run reads and appends to, per-scenario verdicts (`broke`,
+  `failing`, `always-failing`, `fixed`, `flaky` by flip rate, `new`, `slower`, `behaviour-changed`
+  from templated interaction fingerprints, `quarantined`, `unknown`), and every surface says what it
+  found: `Failures.md` opens with a `**History:**` line and orders regressions first, `Failures.jsonl`
+  carries a `history` member per failure, `ctrf-report.json` sets `flaky` and `extra.kronikolHistory`,
+  the pointer prints a `history:` line, and **3.11.0 renders it in `TestRunReport.html`**: a
+  `data-history-verdicts` attribute on every scenario `<details>` (and outline row), a
+  `<span class="history-sparkline">` plus `<span class="history-verdict …">` pill in each scenario
+  summary, a `<details id="history-section">` beside the timeline, new `.history-*` rules in
+  `stylesheets.css`, and a fifth `verdicts` argument threaded through `advancedSearchEvaluate` /
+  `advancedSearchMatch` / `kronDeepMatchesItem` and the worker item payload (`$flaky` in the search
+  box). Also new: `kronikol history` (record/init/show/verify/prune/compact/gate/quarantine/rename/
+  doctor/import), `kronikol query history`, `kronikol merge --history`, fifteen
+  `ReportConfigurationOptions` members (`HistoryFilePath`, `HistoryWindow`, `EmbedHistoryInReport`…),
+  a `History.run.json` fragment beside every report, and `Scenario.ResultDefaulted`.
+  **Byte parity holds whenever there is no ledger**: with no `.kronikol` or `.git` above the output, no
+  `KRONIKOL_HISTORY`, or `KRONIKOL_HISTORY=off`, every output is byte for byte what it was — the parity
+  harness must run with `KRONIKOL_HISTORY=off` (Kronikol's own test projects do, via `test.runsettings`)
+  or the .NET side will write `History.run.json` and, inside a repository, a ledger line. Porting is a
+  Tier-4 feature: the ledger format (`historyFormatVersion` 1, roster lines keyed by
+  `sha256(suite + ids)[..16]`, run lines with the `P F S B A ? .` alphabet) is the cross-language
+  contract, and the JS changes are in the shared scripts the port already copies verbatim.
+
 - **PlantUML statement-length caps (.NET 3.0.48, 2026-08-23) — .NET-only.** (Entry added
   2026-08-29; this divergence predates the two below but was not ledgered at the time.) .NET added
   `PlantUmlStatementLimits` + `PlantUmlStatementGuard`: measured engine limits (message statements parse up
