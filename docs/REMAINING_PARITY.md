@@ -1876,6 +1876,16 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **Timestamps on every capture, and no phantom Cosmos `Create` (.NET 3.15.1, 2026-09-14).**
+  `RequestResponseLogger.Log` stamps `Timestamp` when the capturer did not, so every non-HTTP
+  interaction now carries `timestamp` in the JSON, YAML and XML data files (it was null for Cosmos,
+  Kafka, SQL, MongoDB, Spanner, ClickHouse and BigQuery captures) and gets a `durationMs` where its
+  request and response were logged separately; and `CosmosOperationClassifier` reads
+  `x-ms-cosmos-is-query-plan-request` as `Other`, so the plan fetch the SDK makes before a query is
+  skipped in `Summarised` instead of rendering as a `Create` arrow. Java: the generic recorder's log
+  path should stamp the same way, and the Cosmos classifier port needs the header rule; fixtures
+  captured before 3.15.1 keep the phantom `Create`.
+
 - **Cross-run history (.NET 3.9.0–3.11.0, 2026-09-14) — .NET-only, and the first divergence that
   depends on a file outside the report.** .NET added `Kronikol.History`: an append-only
   `.kronikol/history.jsonl` ledger the run reads and appends to, per-scenario verdicts (`broke`,
