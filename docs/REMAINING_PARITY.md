@@ -1876,6 +1876,18 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **Alternating verdicts and failed sends (.NET 3.18.0, 2026-09-15).** Report output changes: every
+  interaction carries `error` (JSON/YAML; `Error` in XML, after `StatusText` in the XSD), null unless
+  the call threw, in which case `statusText` is the exception's type behind a bang
+  (`!HttpRequestException`) and `statusCode` is null; the history verdict names gain `alternating`
+  (`data-history-verdicts`, the pill, `$alternating` in the search box) and the stylesheet's
+  behaviour-changed group gains `.history-verdict-alternating`; the **Background calls** heading reads
+  `N: M after a scenario ended, K with no scenario` (or the single part) and its note names the
+  `(no scenario)` rows. Capture-side: `TestTrackingMessageHandler` and `CosmosTrackingMessageHandler`
+  log a response half on a thrown send (`FailedSend`); `HistoryAnalysisOptions.AlternatingRuns` and
+  `ReportConfigurationOptions.HistoryAlternatingRuns`. Java has none of it; a Java capture that throws
+  still leaves a bare request.
+
 - **A scenario's calls are the scenario's (.NET 3.17.0, 2026-09-15).** Report output changes: every
   scenario carries `endedAt` (JSON/YAML; `EndedAt` in XML and the XSD); every interaction carries
   `attributionSource` and `expiredFrom` (JSON/YAML/XML; XSD); the data files gain a root `background`
