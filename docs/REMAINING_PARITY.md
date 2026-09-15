@@ -1876,6 +1876,21 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **The owner window and count changes confirmed (.NET 3.20.0, 2026-09-15).** Report output change:
+  `attributionSource` gains the value `DocumentFlow` (JSON/YAML/XML; the schema's enum lists it and the
+  schema's description now names `DocumentOwner` and `DocumentFlow`; the XSD types the source as a string
+  and is unchanged): a detached flow that had just written a scenario's document made this call between
+  that write and its next operation on the document, so it is attributed to that scenario; expiry treats it
+  with the inherited sources. History: a count-only change is `behaviour-changed` on the second run that
+  holds it (`HistoryCountRuns`, default 2; `HistoryAnalysisOptions.CountRuns`; `--count-runs` on the gate and
+  on `query history`), and the evidence texts for a count change are new (`calls 5 in gh:41:1 to 6 now; a
+  count verdict needs the new count held for 2 runs`, `the same calls made a different number of times:
+  calls 5 to 6 in gh:42:1 and now, constant over the 12 runs before`, `calls 6 in gh:42:1 to 5 now; back to
+  the count held over the 12 runs before it`). Capture-side otherwise: `DocumentOperationKind`,
+  `DocumentOwnership.ForOperation` and `AfterWrite`, `TestIdentityScope.OwnerWindow`, a Mongo claim by
+  filter attributed by its reply, and the store registering attributed writers only. Java has none of it; a
+  Java reader of a .NET report only needs to accept the value.
+
 - **Attribution by document ownership (.NET 3.19.0, 2026-09-15).** Report output change: `attributionSource`
   gains the value `DocumentOwner` (JSON/YAML/XML; the schema's enum lists it, the XSD types the source as a
   string and is unchanged): nothing named a scenario, but the call named a document a scenario had written
