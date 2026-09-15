@@ -1876,6 +1876,16 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **Attribution by document ownership (.NET 3.19.0, 2026-09-15).** Report output change: `attributionSource`
+  gains the value `DocumentOwner` (JSON/YAML/XML; the schema's enum lists it, the XSD types the source as a
+  string and is unchanged): nothing named a scenario, but the call named a document a scenario had written
+  earlier in the run, so it is attributed to that writer for that one call; expiry treats it with
+  `TestContext` and `GlobalFallback`, so such a call after its owner ended appears in `background` as
+  `Expired` with `expiredFrom`. Capture-side otherwise: `DocumentOwnership.Resolve`,
+  `TestCorrelationStore.Lookup`, `AttributeByDocumentOwner` on the Cosmos and Mongo options, and the Mongo
+  classifier naming a single insert's, update's or findAndModify's `_id` (before, no Mongo write reached
+  the store). Java has none of it; a Java reader of a .NET report only needs to accept the value.
+
 - **Alternating verdicts and failed sends (.NET 3.18.0, 2026-09-15).** Report output changes: every
   interaction carries `error` (JSON/YAML; `Error` in XML, after `StatusText` in the XSD), null unless
   the call threw, in which case `statusText` is the exception's type behind a bang
