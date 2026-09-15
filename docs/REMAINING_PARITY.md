@@ -1876,6 +1876,20 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **A scenario's calls are the scenario's (.NET 3.17.0, 2026-09-15).** Report output changes: every
+  scenario carries `endedAt` (JSON/YAML; `EndedAt` in XML and the XSD); every interaction carries
+  `attributionSource` and `expiredFrom` (JSON/YAML/XML; XSD); the data files gain a root `background`
+  block (`calls`, `afterScenarioEnd`, `interactions`; required by the JSON schema; XML `<Background>`
+  before `<Diagnostics>` with empty containers omitted); the HTML gains a `<details
+  class="background-calls">` section with a table and the stylesheet the rules for it; the
+  diagnostics gain the `BackgroundCalls` kind; the history ledger gains a `shapes` line and the run
+  line `shapes`/`callSets`, and `behaviour-changed` evidence names `new:`/`gone:` calls. Capture-side:
+  `AttributionSource` on every log, `TestIdentityScope.Detach`/`ClearMessageIdentity`,
+  `DetachHostedServicesFromTestIdentity`, and a report-time `BackgroundAttribution.Expire` pass over
+  the logs before any output reads them. Java has none of it; fixtures captured before 3.17.0 have
+  no `endedAt`, no provenance and no `background` block, and the HTML golden gains a section only
+  when a run has background calls.
+
 - **Timestamps on every capture, and no phantom Cosmos `Create` (.NET 3.15.1, 2026-09-14).**
   `RequestResponseLogger.Log` stamps `Timestamp` when the capturer did not, so every non-HTTP
   interaction now carries `timestamp` in the JSON, YAML and XML data files (it was null for Cosmos,
