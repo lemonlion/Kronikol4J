@@ -1876,6 +1876,18 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **Two report sections left the HTML by default (.NET 3.21.0, 2026-09-16).** Report output change, and
+  a subtractive one: `TestRunReport.html` no longer carries the History section beside the timeline or the
+  "Report diagnostics" block under the summary unless the run asks for them, through the two new options
+  `ShowHistorySection` and `ShowReportDiagnosticsSection` (both `bool`, default `false`) or, on the CLI,
+  `kronikol ingest --diagnostics-section`. `kronikol merge --history` sets the history one for the report
+  it renders. Nothing else moved: the sparkline and verdict pill stay beside each scenario under the
+  unchanged `EmbedHistoryInReport`, and every diagnostic still reaches `TestRunReport.json`'s
+  `diagnostics` array, its schema, `IngestResult.Diagnostics` and the console. Java has neither section
+  (cross-run history is unported, and the diagnostics block was never rendered), so byte parity is
+  unaffected either way; what Java needs when it ports them is the two option defaults, and the rule that
+  a section's absence is the default rather than a sign of an empty run.
+
 - **A proxy tap's disposal (.NET 3.20.1, 2026-09-16).** No report output change, no capture semantics
   change, nothing for a Java reader to accept: `Kronikol.Extensions.ProxyTap` released its
   `HttpListener` with `Stop()` then `Close()`, and off Windows the second removal re-binds the port the
