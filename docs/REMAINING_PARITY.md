@@ -1876,6 +1876,15 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **A proxy tap's disposal (.NET 3.20.1, 2026-09-16).** No report output change, no capture semantics
+  change, nothing for a Java reader to accept: `Kronikol.Extensions.ProxyTap` released its
+  `HttpListener` with `Stop()` then `Close()`, and off Windows the second removal re-binds the port the
+  first one freed, so a disposal could throw `HttpListenerException: Address already in use` when
+  something took that port in between (.NET issue #74). `Close()` alone now, tolerating
+  `HttpListenerException`. Java has no ProxyTap equivalent, and the JDK's `HttpServer` has no such path;
+  the entry is here so the ledger has no gap at 3.20.1. Also in the release: two templates that a
+  release had left a version behind, and a test holding every template pin to one version.
+
 - **The owner window and count changes confirmed (.NET 3.20.0, 2026-09-15).** Report output change:
   `attributionSource` gains the value `DocumentFlow` (JSON/YAML/XML; the schema's enum lists it and the
   schema's description now names `DocumentOwner` and `DocumentFlow`; the XSD types the source as a string
