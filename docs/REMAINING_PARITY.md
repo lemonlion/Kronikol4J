@@ -1876,6 +1876,23 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **Note appearance controls: never ported, and .NET 3.22.0 changed what a default report emits
+  (2026-09-18).** The port has neither note-appearance select (`note-font-select`, `note-width-select`)
+  nor the hover glyphs: Part B of .NET's `NOTE_WRAP_AND_WIDTH_PLAN` (3.0.85) never reached it and had no
+  entry here. As of 3.22.0 a default .NET `BrowserJs` report that draws notes emits only the **width**
+  control: `<select class="note-width-select" …>` with
+  `<optgroup label="Note width"><option value="default" selected>Wrap</option><option value="full">Wide</option></optgroup>`
+  (the options read `Fit` / `Full` from 3.0.85 to 3.21.0), a two-state `title`, and the `↔` glyph. The
+  **font** control (`Aa` / `Mono` select, `M`/`A` glyph) is behind the new
+  `ReportConfigurationOptions.ShowNoteFontControls` (default `false`), so it need NOT be ported for default
+  parity; a configured `NoteFont = Monospace` still seeds `window._noteFontDefault = 'mono'` with the
+  controls hidden. The script gains one token, `__NOTE_FONT_CONTROLS__` to `window._noteFontControls`, and
+  `collapsible-notes-styles.css` now covers all three note selects in one rule and one `.details-pending`
+  rule. Byte parity for a report that draws notes stays broken until the width control is ported; take
+  the ≥3.22.0 script and stylesheet together with the markup (the JSON/YAML select is unchanged and
+  deliberately has no optgroup: Chromium draws a grouped select 15px wider closed). .NET record:
+  `plans/NOTE_APPEARANCE_CONTROLS_PLAN.md`.
+
 - **Two report sections left the HTML by default (.NET 3.21.0, 2026-09-16).** Report output change, and
   a subtractive one: `TestRunReport.html` no longer carries the History section beside the timeline or the
   "Report diagnostics" block under the summary unless the run asks for them, through the two new options
