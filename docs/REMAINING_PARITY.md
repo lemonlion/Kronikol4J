@@ -2048,6 +2048,19 @@ fixes. Listed for completeness so nothing is silently dropped.
   versa, corrupts the YAML toggle's reconstruction). Golden fixtures are pinned at 3.0.43 and unaffected
   until recaptured.
 
+- **Kept runs, `Run.json` and `--run` (.NET 3.27.0, 2026-09-21).** Before a run writes, .NET moves the
+  previous run's files to `<reports>/runs/<run>/` (`ReportConfigurationOptions.KeepRuns`,
+  `KRONIKOL_KEEP_RUNS`; 3 off CI, 0 on CI, the newest failing run never pruned, and on CI the earlier
+  attempts of the same run id kept even at 0), and every run writes a `Run.json` manifest last. Report
+  bytes are unchanged, so byte parity holds; **the parity harness must run with
+  `KRONIKOL_KEEP_RUNS=off` beside `KRONIKOL_HISTORY=off`** (Kronikol's own test projects do, via
+  `test.runsettings`) or the .NET side leaves a `runs/` folder behind on the second run, and the file
+  set differs by `Run.json` either way. Tool side: `--run` on every `kronikol query` verb, `history`
+  with no report (3.26.0), `history doctor <reports-dir>`, and retries recorded as `attempts`
+  (`HistoryFold.Attempts`, `HistoryLedgerWriter.Amend`). The ledger format did not move. Java has no
+  query tool, no history and no reports-folder option, so nothing here is portable yet; it rides with
+  the Tier-4 history port.
+
 ---
 
 ## Explicitly OUT OF SCOPE (locked boundaries — do not implement)
