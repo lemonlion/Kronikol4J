@@ -1876,6 +1876,15 @@ fixes. Listed for completeness so nothing is silently dropped.
 
 ## .NET-side features shipped after this audit (divergence ledger)
 
+- **Ingest: the wire and span merge moved ahead of the unattributed filter (.NET 3.22.3, 2026-09-21).**
+  Report-content change on the ingest lane only, and nothing to port today: this port has no
+  `InteractionMerger` and no `DropUnattributed`. Recorded so a future ingest port takes the right order
+  (content claims, window, phases, **merge**, then the drop), ranks merge candidates that already agree
+  on their test first, and keeps a wire record's test when its span twin has none. With contested
+  claims a .NET `TestRunReport.json` now holds records that 3.22.2 dropped. .NET record:
+  `plans/HISTORY_VERDICT_NOISE_PLAN.md` S2. The same plan's other slices (3.22.2 templater, and the
+  history analyzer releases that follow) touch cross-run history, which this port does not have.
+
 - **Note appearance controls: never ported, and .NET 3.22.0 changed what a default report emits
   (2026-09-18).** The port has neither note-appearance select (`note-font-select`, `note-width-select`)
   nor the hover glyphs: Part B of .NET's `NOTE_WRAP_AND_WIDTH_PLAN` (3.0.85) never reached it and had no
