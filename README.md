@@ -5,9 +5,17 @@ automatically captures real dependency interactions during tests (HTTP, SQL/NoSQ
 cloud SDKs) and generates interactive HTML reports with PlantUML diagrams. Deterministic diagrams from
 actual execution, not AI.
 
+> **What this port is, and is not (2026-09-22).** The report and diagram rendering is a byte-proven port
+> of .NET Kronikol 3.0.43. The .NET original is at 3.27.2, and what it added since is not here: no
+> cross-run history, no `kronikol query`, no kept runs or `Failures.md`, no ingest of external captures
+> and no out-of-process taps; the divergence ledger below lists the rendering changes one by one.
+> In-process capture is ported for the libraries under [Modules](#modules), with no NDJSON writer and no
+> ingest layer behind it. Read it as a rendering port with in-process capture, not as feature parity with
+> the .NET package.
+
 > **This repository is a fork/port of [lemonlion/Kronikol](https://github.com/lemonlion/Kronikol).** It
 > re-implements the .NET reporting pipeline in Java; the report + diagram output is **byte-for-byte
-> identical** to the .NET original (proven by golden-file parity tests captured from real .NET), minus
+> identical** to .NET Kronikol 3.0.43 (proven by golden-file parity tests captured from that release), minus
 > only server-side PlantUML image rendering — diagrams render in-browser via PlantUML-WASM instead. See
 > the [**Wiki**](https://github.com/lemonlion/Kronikol4J/wiki) for usage, architecture, and the parity
 > boundaries.
