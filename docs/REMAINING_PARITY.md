@@ -2061,6 +2061,20 @@ fixes. Listed for completeness so nothing is silently dropped.
   query tool, no history and no reports-folder option, so nothing here is portable yet; it rides with
   the Tier-4 history port.
 
+- **Ingest feed patch (.NET 3.27.4, 2026-09-23; `plans/INGEST_FEED_PLAN.md` S1).** Two strings Java
+  copies moved. The JSON schema's `durationMs` description now reads "Wall-clock milliseconds between
+  the request and its response: the capturer's own measurement when the record carried one (durationMs
+  on the NDJSON input), otherwise derived from the two timestamps. Repeated on both halves of the pair;
+  null when the request went unanswered and nothing was measured or timestamps are absent."
+  (`ReportDataSchema.java:101` and the schema golden hold the old sentence; the schema file differs by
+  that string until re-synced). And `ReportDiagnostics.Analyse` gained `internalFlowTracking` (default
+  true): the two `InternalFlowSpanStore` lines print only when the option is on, so `kronikol ingest`,
+  which turns it off, no longer warns that activity diagrams will be empty; `ReportDiagnostics.java:75`
+  is unconditional. Console only, no report bytes. The rest of the patch (`InteractionRecord.FromLog`
+  carries `DurationMs`, #94; the ingest builder sets `MarkerKind.Step`/`Assertion` on the markers it
+  builds from a tests file, so an ingested run carries `stepPath` and no raw-PlantUML annotations) is on
+  the NDJSON path Java does not have.
+
 ---
 
 ## Explicitly OUT OF SCOPE (locked boundaries — do not implement)
