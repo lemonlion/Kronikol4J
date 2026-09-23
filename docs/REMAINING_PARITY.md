@@ -2075,6 +2075,16 @@ fixes. Listed for completeness so nothing is silently dropped.
   builds from a tests file, so an ingested run carries `stepPath` and no raw-PlantUML annotations) is on
   the NDJSON path Java does not have.
 
+- **Ingest feed minor (.NET 3.29.0, 2026-09-23; `plans/INGEST_FEED_PLAN.md` S2).** The NDJSON contract
+  gains `kind: "marker"` with `markerKind`, `plantUml` and `markerEnd`, one record per override half;
+  Java has no NDJSON path, nothing due. Two report-side fixes worth checking against the port, both
+  console or data-file, no HTML bytes: `StepAttributionMismatch` was recorded twice per run because the
+  data file and `Failures.md` each derived the step attribution (.NET now derives it once in
+  `CreateStandardReportsWithDiagrams` and hands it to the standard writer, the mergeable writer and the
+  digest), and the mergeable data file was handed the internal-flow log set, null with
+  `InternalFlowTracking` off, so a shard written that way had no `httpInteractions` at all (now the
+  same log set as the standard file). Byte parity of a run with tracking on and no mismatch is untouched.
+
 ---
 
 ## Explicitly OUT OF SCOPE (locked boundaries — do not implement)
