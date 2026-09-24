@@ -2111,6 +2111,33 @@ fixes. Listed for completeness so nothing is silently dropped.
   `inline-svg-styles.css` by one (the fragment placeholder); `internal-flow-popup-styles.css` and
   `context-menu-styles.css` were identical and now differ by the moved rules.
 
+- **What a scenario holds stays inside it (.NET 3.29.3, 2026-09-24; roadmap 1.10, the toolbar plan's
+  Q7).** Report HTML changes in every report; not mirrored, a ledger entry only (D11 is still
+  unanswered). What moved, for whoever re-syncs:
+  - One markup change. .NET now emits `<div class="param-table-wrapper">` around every parameter table,
+    not only when the group has a flat view: the `if (hasFlatView)` guards on the opening and closing
+    `append` are gone. Java has both guards at `DotNetHtmlReportRenderer.java:1250` and `:1317`.
+  - `stylesheets.css`, in rule order:
+    - after `.scenario`: `.feature { overflow-wrap: anywhere; }` and
+      `.feature table, .error-diff { overflow-wrap: normal; }`.
+    - `.raw-plantuml pre { overflow-x: auto; }` is new, after `.raw-plantuml`.
+    - `overflow-x: auto` is added to `.example-image`, whose copy in the 768 px block is removed, and to
+      `.test-execution-summary`, `.step-param-table`, `.step-param-combined-table` and
+      `.features-summary-table-wrapper`.
+    - `white-space: nowrap` leaves `span.label`.
+    - The stray `rgb(100, 100, 100)` after the `.lightbox-overlay img` rule is removed. The browser
+      dropped the `.step-docstring` rule because of it, so a doc string is styled from 3.29.3. The Java
+      copy and the parity harness fixture carry the stray text at their line 748.
+    - `.attachment-image-link` gains `max-width: min(322px, 100%)` (behind a comment), and
+      `.attachment-image` becomes `max-width: 100%; max-height: 242px; box-sizing: border-box` instead
+      of `max-width: 320px; max-height: 240px`.
+    - Four hover rules and one selected rule are added among the parameterized row tints, after the
+      resting tints: `.param-test-table tbody tr.row-{passed,failed,skipped,bypassed}:hover` with
+      `#e3fae9`, `#fde5e4`, `#fef1cc` and `#e8e8fd` (behind a comment), then
+      `tr.row-active.row-bypassed` with `#dfe0fb`. `tr.row-active.row-skipped` changes from `#fef9e7`
+      to `#fce9b8`.
+  - The violet constant is untouched.
+
 ---
 
 ## Explicitly OUT OF SCOPE (locked boundaries — do not implement)
