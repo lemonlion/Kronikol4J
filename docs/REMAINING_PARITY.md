@@ -2085,6 +2085,32 @@ fixes. Listed for completeness so nothing is silently dropped.
   `InternalFlowTracking` off, so a shard written that way had no `httpInteractions` at all (now the
   same log set as the standard file). Byte parity of a run with tracking on and no mismatch is untouched.
 
+- **The toolbar at every width (.NET 3.29.2, 2026-09-24; `plans/TOOLBAR_AT_EVERY_WIDTH_PLAN.md`).** Report
+  HTML changes in every report, and none of it is mirrored here (D11, freeze or backfill, is unanswered,
+  so this is a ledger entry only). What moved, for whoever re-syncs:
+  `stylesheets.css` gains `white-space: nowrap` on `.export-btn`, `flex-wrap: wrap` on
+  `.filtering-box-header`, `.filtering-box-export` and `.toolbar-left`, a band block
+  `@media (min-width: 768.02px) and (max-width: 1160px) { .header-row { flex-wrap: wrap; } .filtering-box { flex-basis: 100%; } }`
+  (the lower bound is 768.02, not 769, so a fractional viewport cannot fall between it and the phone
+  block), and a CI-box cap (`.ci-metadata table { max-width: 100% }`, label cells `nowrap`, value cells
+  `overflow-wrap: anywhere`, `.ci-metadata { max-width: 20em }` from 768.02 px). The six `.diagram-toggle*`
+  rules left `internal-flow-popup-styles.css` for `stylesheets.css` (beside the `[data-layout="inline"]`
+  rules), with `flex-wrap: wrap` added, so the scenario toolbar is styled without internal-flow tracking.
+  The custom stylesheet moved: .NET now emits `HtmlReportStyleSheet + "\n"` first and the custom sheet
+  (`"\n" + stylesheet`) on the same template line as `internalFlowPopupStyles`, after the four component
+  sheets and before the `customCss` block; `DotNetHtmlReportRenderer.java:320-326` still appends it right
+  after the base sheet, where .NET had it until now. The trailing newline was kept, so a report without a
+  custom sheet gains no byte from the move (checked on six such shapes against 3.29.1); a Java
+  `Specifications.html` with the violet theme differs from .NET's by the move as well as by the rules.
+  The violet constant was reordered (hovers before active rules) and extended; this port has no copy of
+  it. `InternalFlowPopupCustomStyleSheet` is now applied: the two .NET call sites compose it after the
+  theme when `InternalFlowTracking` is on (`ReportGenerator.UserStylesheets`), so the Tier-4
+  InternalFlow item's reason for leaving it unported ("no consumer in the .NET source") no longer holds.
+  Before this release the Java copies were already behind: `stylesheets.css` by two hunks (the deep-search
+  chip and `.step-background`), `collapsible-notes-styles.css` by one (the note select) and
+  `inline-svg-styles.css` by one (the fragment placeholder); `internal-flow-popup-styles.css` and
+  `context-menu-styles.css` were identical and now differ by the moved rules.
+
 ---
 
 ## Explicitly OUT OF SCOPE (locked boundaries — do not implement)
