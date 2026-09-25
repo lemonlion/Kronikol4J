@@ -2153,6 +2153,32 @@ fixes. Listed for completeness so nothing is silently dropped.
     the in-row filtering box.
   - The violet constant and the other four sheets are untouched.
 
+- **Diagram colours and an honest theme option (.NET 3.29.6 and 3.30.0, 2026-09-25;
+  `plans/DIAGRAM_COLOURS_PLAN.md`, stage 1 P3).** Not mirrored, a ledger entry only (D11 is still
+  unanswered). What the port mirrors changes in four places:
+  1. **Header ink (3.30.0).** Note header lines are painted with a computed ink, `<color:#686868>` in
+     place of `<color:gray>`, at both .NET emitter sites (`BatchGray`, and the `[Full path]` block the
+     port does not have). This is a PlantUML-source divergence from every 3.0.43 fixture that carries a
+     header. `NoteFormatter.batchGray` keeps `<color:gray>`, and the port's 3.0.43 script assets keep
+     matching it literally. That stays self-consistent, because the port never renders .NET-produced
+     sources. The .NET scripts read either form through one pattern (`NOTE_HEADER_TAG`), so a
+     Java-produced source still collapses and copies correctly in a .NET 3.30.0 report.
+  2. **Escaping (3.29.6).** .NET's payload escaper now escapes `<&`, `<:` and `<$`, and so do its step
+     bars, test delimiters, assertion notes, UI action labels, internal-flow span labels, the
+     render-error placeholder and the YAML note view. The port has no creole escaper, so its notes and
+     bars still read them as PlantUML markup. On the port's pin, `v1.2026.3beta6-patched`, `<&name>` is
+     dropped from the text, and `<:name:>` asks for `emoji.js` by script tag (in Node, a 20 s timeout).
+  3. **Scripts (both releases).** `plantuml-browser-render-script.js` reads a link's rest and highlight
+     colours from the SVG instead of the `#000000` and `#0000FF` literals, and explains a bundle-load
+     failure. `plantuml-worker-host.js` and `plantuml-render.js` answer a script append with `onerror`,
+     and the Node renderer writes escaped XML. The port renders through its 3.0.43 assets, which predate
+     the worker host and the Node renderer, so none of this has a counterpart here.
+  4. **The report schema (3.30.0)** gains `DiagnosticKind.OptionNotApplied` (the port's pinned schema
+     already predates `ReportRotationFailed`), and the shared search-index vectors gain one,
+     `header-ink-tag`, which the port does not read. The port has `plantUmlTheme` on `DiagramOptions` and
+     on `ComponentDiagramRenderOptions`. On its pin a theme is a silent no-op, the state .NET was in from
+     3.0.45 to 3.0.75, and the port emits no diagnostic for it.
+
 ---
 
 ## Explicitly OUT OF SCOPE (locked boundaries — do not implement)
