@@ -2171,13 +2171,24 @@ fixes. Listed for completeness so nothing is silently dropped.
   3. **Scripts (both releases).** `plantuml-browser-render-script.js` reads a link's rest and highlight
      colours from the SVG instead of the `#000000` and `#0000FF` literals, and explains a bundle-load
      failure. `plantuml-worker-host.js` and `plantuml-render.js` answer a script append with `onerror`,
-     and the Node renderer writes escaped XML. The port renders through its 3.0.43 assets, which predate
-     the worker host and the Node renderer, so none of this has a counterpart here.
+     and the Node renderer writes escaped XML. The port has no worker host and no Node renderer, by scope
+     (.NET's Node renderer is older than 3.0.43), so those two have no counterpart here. The port's 3.0.43
+     assets do still carry three defects these releases fixed (corrected by the .NET 3.30.2 audit; this
+     entry said nothing here had a counterpart):
+     - `context-menu-script.js:235` offers "Copy all caller request payloads" only for a plain `caller ->`
+       arrow, so a source written with the default coloured arrows (`-[#…]>`) never gets it (.NET 3.29.6).
+     - `plantuml-browser-render-script.js:446` escapes only `<` in the raw PlantUML under a failure
+       message, so a source's `&lt;`, `&copy` or `&amp;` shows decoded (.NET 3.29.6 escapes `&` first).
+     - `plantuml-browser-render-script.js:486-488` repaints every `#0000ff` text black before it knows
+       which are links, and `:523` rests a link in `#000000`, so a focus field painted blue loses its
+       colour in any diagram with a link (.NET 3.30.0, S2).
   4. **The report schema (3.30.0)** gains `DiagnosticKind.OptionNotApplied` (the port's pinned schema
      already predates `ReportRotationFailed`), and the shared search-index vectors gain one,
      `header-ink-tag`, which the port does not read. The port has `plantUmlTheme` on `DiagramOptions` and
      on `ComponentDiagramRenderOptions`. On its pin a theme is a silent no-op, the state .NET was in from
-     3.0.45 to 3.0.75, and the port emits no diagnostic for it.
+     3.0.45 to 3.0.75, and the port emits no diagnostic for it. 3.29.6 also added a vector,
+     `creole-loader-markup-escapes`, and .NET's `kronikol query` read a LightBDD step's whole text; the port
+     has neither a search index nor the query tool, so neither applies.
 - **Captured text escaped from PlantUML's preprocessor and creole (.NET 3.30.1, 2026-09-25).** Three
   divergences:
   1. **The payload escaper (`PlantUmlCreator.EscapeCreoleMarkup`).** It now writes as a code point, `<U+hhhh>`:
@@ -2190,14 +2201,34 @@ fixes. Listed for completeness so nothing is silently dropped.
      escapes in place of the old zero-width space before `end note`. Line starts the width bound, the
      assertion wrap or the 15,000-character response split create are escaped too, and that split now cuts
      between lines. Any note whose text holds one of these differs from the port's bytes. The port has no
-     payload escaper at all.
+     creole escaper (its `NoteFormatter` only doubles backslashes).
   2. **The search normalizer** decodes `<U+hhhh>` in the same pass as the creole escapes, now before the ASCII
      fold, drops `<U+200B>`, and leaves the query's tildes alone (`kronNormalizeQueryText`). The shared vectors
-     gain six cases, and two change: a mid-line `<U+200B>` now normalizes to nothing. The port's normalizer
-     would fail those eight.
+     gain six cases, and two change: a mid-line `<U+200B>` now normalizes to nothing. The port has no search
+     index or normalizer, so it runs none of the vectors; they are the spec a port of the search index
+     would follow.
   3. **The report scripts.** Copy and the YAML view decode code points, the YAML view's escaper writes the
      generator's escapes, and the browser splitter reads `@startuml`/`@enduml` off whole lines. The port's
-     3.0.43 scripts predate all of it.
+     3.0.43 scripts predate all of it, and the splitter defect is live in them:
+     `plantuml-browser-render-script.js:325` and `:333` decide with `indexOf('@startuml')` and
+     `indexOf('@enduml')`, so a note quoting a PlantUML source mid-line loses its later parts.
+- **The audit of the diagram colours plan (.NET 3.30.2, 2026-09-26).** Not mirrored, a ledger entry only
+  (D11 is still unanswered). What changes against the port:
+  1. **The PlantUML source.** The request label (`{method}: {path}`) writes `~`, a `%name(` call, every `<`,
+     `[` and `]`, an odd trailing backslash and a doubled pair marker the line makes live as code points,
+     and breaks a decimal reference with a zero-width space. A step bar's doc string lines and table cells
+     write `~`, a `%name(` call and the first `.` of a separator or rule line as code points, add a
+     zero-width space after the `&` (already `<U+0026>`) of a decimal reference, and break a doubled `{`
+     like the other pairs. The render-error placeholder declares a transparent participant (`hide footbox`,
+     three skinparams, `participant " " as renderError`); the port has no placeholder.
+  2. **The processors.** A mid-processor now runs before the payload escaper, and a form body reaches it
+     one field per line, before the chunking and the `&` dividers; what it returns is escaped. The port has
+     no creole escaper for its processors to meet.
+  3. **The report script.** `extractIflowMap` decodes `<U+hhhh>` in a link's key, so a label with code
+     points still finds its segment. The port's script (`plantuml-browser-render-script.js:36`) has the key
+     regex that stopped at a `]`, and its label is unescaped, so a path holding `]` gives it a dead link.
+  4. **The tool** (`kronikol query note`, `grep --in notes`, number grep) reads a note as drawn; the port
+     has no query tool.
 
 ---
 
