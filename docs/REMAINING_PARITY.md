@@ -2178,6 +2178,26 @@ fixes. Listed for completeness so nothing is silently dropped.
      `header-ink-tag`, which the port does not read. The port has `plantUmlTheme` on `DiagramOptions` and
      on `ComponentDiagramRenderOptions`. On its pin a theme is a silent no-op, the state .NET was in from
      3.0.45 to 3.0.75, and the port emits no diagnostic for it.
+- **Captured text escaped from PlantUML's preprocessor and creole (.NET 3.30.1, 2026-09-25).** Three
+  divergences:
+  1. **The payload escaper (`PlantUmlCreator.EscapeCreoleMarkup`).** It now writes as a code point, `<U+hhhh>`:
+     - at a line's start: `'`, `/'`, `!`, `@start`/`@end`, and a whole-line `end note` or `{{`;
+     - creole's line markup: `=`, a `|…|` row, a `..x..` separator, and a rule of `-` or `_` alone;
+     - anywhere: a `%name(` call, a literal `~`, a `<<…>>` pair, and an odd trailing backslash.
+
+     A decimal character reference gets a zero-width space after its `&`. `~=` is gone, because the engine
+     painted its tilde. `EscapeLoaderMarkup` escapes `%name(`. An assertion note's lines get the line-start
+     escapes in place of the old zero-width space before `end note`. Line starts the width bound, the
+     assertion wrap or the 15,000-character response split create are escaped too, and that split now cuts
+     between lines. Any note whose text holds one of these differs from the port's bytes. The port has no
+     payload escaper at all.
+  2. **The search normalizer** decodes `<U+hhhh>` in the same pass as the creole escapes, now before the ASCII
+     fold, drops `<U+200B>`, and leaves the query's tildes alone (`kronNormalizeQueryText`). The shared vectors
+     gain six cases, and two change: a mid-line `<U+200B>` now normalizes to nothing. The port's normalizer
+     would fail those eight.
+  3. **The report scripts.** Copy and the YAML view decode code points, the YAML view's escaper writes the
+     generator's escapes, and the browser splitter reads `@startuml`/`@enduml` off whole lines. The port's
+     3.0.43 scripts predate all of it.
 
 ---
 
