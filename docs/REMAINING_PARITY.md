@@ -2138,6 +2138,21 @@ fixes. Listed for completeness so nothing is silently dropped.
       to `#fce9b8`.
   - The violet constant is untouched.
 
+- **The report fits its window with every section it can hold (.NET 3.29.4, 2026-09-25; the audit of
+  `plans/TOOLBAR_AT_EVERY_WIDTH_PLAN.md`).** Report HTML changes in every report; not mirrored, a ledger
+  entry only (D11 is still unanswered). No markup changes. What moved in `stylesheets.css`, for whoever
+  re-syncs:
+  - `body` gains `overflow-wrap: anywhere` (behind a comment), and the 3.29.3 pair after `.scenario`
+    becomes one rule: `.feature { overflow-wrap: anywhere; }` is gone and
+    `.feature table, .error-diff { overflow-wrap: normal; }` is now `table, .error-diff { overflow-wrap: normal; }`,
+    behind a shorter comment. A long token outside the features (a failure cluster's message, a test's
+    full name in the History section, a dependency chip) had scrolled the whole page sideways.
+  - `.search-help-panel` gains `overflow-x: auto`.
+  - `.export-btn` loses `white-space: nowrap` and gains `flex-shrink: 0` and `max-width: 100%` (behind a
+    comment): under WCAG text spacing, just above the 1160 px breakpoint, the export buttons ran out of
+    the in-row filtering box.
+  - The violet constant and the other four sheets are untouched.
+
 ---
 
 ## Explicitly OUT OF SCOPE (locked boundaries — do not implement)
