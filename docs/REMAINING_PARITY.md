@@ -2229,6 +2229,17 @@ fixes. Listed for completeness so nothing is silently dropped.
      regex that stopped at a `]`, and its label is unescaped, so a path holding `]` gives it a dead link.
   4. **The tool** (`kronikol query note`, `grep --in notes`, number grep) reads a note as drawn; the port
      has no query tool.
+- **A link's text capped for the render worker (.NET 3.30.4, 2026-09-26, `ENGINE_PIN_PLAN.md` S0).** Not
+  mirrored, a ledger entry only (D11 is still unanswered). .NET cuts the text inside a request arrow's
+  `[[#iflow-<id> …]]` link, and inside a component edge's `[[#iflow-rel-… …]]` link (its method list), to 350
+  characters (`PlantUmlStatementLimits.MaxLinkedLabelChars`). The Chromium worker a .NET `BrowserJs` report
+  renders in overflowed its stack parsing a longer link, from 980 characters with a cold JIT and from 475 with
+  V8's optimizing compilers off, and drew nothing of the diagram. The port emits both links
+  (`PlantUmlCreator.java:430`, and the component edge) and caps neither, since it never took .NET 3.0.48's
+  statement limits. Its report renders on the main thread with its 3.0.43 script, where no length up to 1,975
+  overflowed, so its own reports are not exposed. What differs in the source: a request label past 350
+  characters is cut there inside the link in .NET, with the whole path in the note under `[Full path]`, and a
+  long method list is cut before the link closes, so the stats line after it stays.
 
 ---
 
