@@ -2245,6 +2245,30 @@ fixes. Listed for completeness so nothing is silently dropped.
   overflowed, so its own reports are not exposed. What differs in the source: a request label past 350
   characters is cut there inside the link in .NET, with the whole path in the note under `[Full path]`, and a
   long method list is cut before the link closes, so the stats line after it stays.
+- **The second audit of the diagram colours plan (.NET 3.31.2, 2026-09-26).** Not mirrored, a ledger entry only
+  (D11 is still unanswered). What changes against the port:
+  1. **The payload escaper** (`EscapeCreoleMarkup`). A carriage return that ends no line is written
+     `<U+000D>`: the Java preprocessor ended a line there, past every line-start escape, so `!include` after
+     one drew a local file under .NET's `Local` and `Server`. A `<` that opens `<U+hhhh>` (four to six hex
+     digits, either case) is written `<U+003C><U+200B>`, since both engines decoded `~<U+0041>` to `A`. A
+     `<U+200B>` goes between a backslash and a `t` (both engines drew `\t` as a tab) and between a backslash
+     and a `~` the escaper writes (`\~<b>` drew `~<b>`). `|_` at a line's start is written `<U+007C>_`. An
+     assertion note's lines get the carriage return too, and the width bound never ends a line right after an
+     escape's `<U+200B>`. The port has no creole escaper at all, so all of this is inside the 3.30.1 divergence.
+  2. **Step bars** (`StepBarPlantUml.EscapeInline`). A backslash is written `<U+005C><U+200B>`, both as code
+     points; the `\<U+200B>` .NET wrote from 3.0.78 is an escape to the Java engine, which drew `U+200B>`. A `<` that
+     opens a code point gets `<U+200B>` after its `<U+003C>`, and U+0085, U+2028 and U+2029, which end the
+     bar's statement on both engines, are written as code points. The port draws only the legacy one-line bar
+     (`StepCollector.java:84`), with no doc string or table, so it has none of this.
+  3. **Labels and names.** `EscapeLoaderMarkup` (step names) and `EscapeCapturedLabel` (a request label) write
+     U+0085, U+2028 and U+2029 as code points, and the label writes a carriage return or a line feed as a space.
+     The response label, a status, goes through `EscapeCapturedLabel`, which leaves a title-cased status
+     unchanged and escapes one recorded as thrown (`!…`). The test delimiter folds a test name's line breaks to
+     spaces. The port writes all of these as given.
+  4. **The report scripts.** The YAML view's `escapeNoteLine` writes the escapes in 1; a collapsed note's
+     tooltip decodes the note like Copy box text; `bindIflowLinks` rests a link in the colour of the nearer of
+     the texts before and after it (a component diagram's first edge rested in its component's white). The
+     port's 3.0.43 scripts have no rest colour logic (.NET 3.30.0 S2), so a hover there still blacks a link out.
 
 ---
 
