@@ -77,6 +77,20 @@ actual execution, not AI.
 > diagram; client-side script only, no report-output impact) and one new `.scenario-description
 > { margin: 1em 0 }` rule in `stylesheets.css` (the div previously had no rule at all — this one
 > DOES change generated-HTML bytes).
+> .NET 3.31.1 (2026-09-26, its `plans/ENGINE_PIN_PLAN.md` S1 to S6) moved the render script's CDN engine to
+> the npm route, `https://cdn.jsdelivr.net/npm/@plantuml/core@1.2026.8`, PlantUML's own release (the
+> registry never lets a published name@version hold other bytes), and made the script hand both engine
+> files' known SHA-256 hashes to the browser's integrity check: `fetch(url, { integrity })` on the worker
+> path, and on the main-thread fallback a classic `viz-global.js` tag and an engine `<script type="module">`
+> carrying `integrity` and `crossorigin`, then a direct `import()` (the `new Function` import and the
+> classic-build `plantumlLoad` branch are gone). Two new tokens, `__PLANTUML_ENGINE_INTEGRITY__` and
+> `__PLANTUML_VIZ_INTEGRITY__`, are substituted by `DiagramContextMenu` from two internal constants beside
+> `PlantUmlJsCdnBase`, and `window.__kronikolRender` gains `engineIntegrity` and `vizIntegrity`. A refused
+> engine refuses every diagram with a message naming the file and its expected hash; a refused viz drops
+> Graphviz only. The .NET Node renderer, outside this port's scope, verifies its cached engine files and
+> checksums its V8 code cache. This port's 3.0.43 script and its `v1.2026.3beta6-patched` pin
+> (`DotNetHtmlReportRenderer.java:72`) are unaffected, and that tag stays published. A port of the render
+> side would take the npm URL and both constants together: the hashes belong to the URL.
 > Report-**output** bytes also diverged earlier than the ledger previously recorded: .NET 3.0.77
 > (2026-09-04) made live Reqnroll runs emit scenario descriptions and dedented feature descriptions
 > (HTML `scenario-description` divs, YAML `Description:` lines, search corpus); .NET 3.0.78
