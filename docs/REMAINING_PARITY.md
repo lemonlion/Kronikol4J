@@ -2236,7 +2236,12 @@ fixes. Listed for completeness so nothing is silently dropped.
   renders in overflowed its stack parsing a longer link, from 980 characters with a cold JIT and from 475 with
   V8's optimizing compilers off, and drew nothing of the diagram. The port emits both links
   (`PlantUmlCreator.java:430`, and the component edge) and caps neither, since it never took .NET 3.0.48's
-  statement limits. Its report renders on the main thread with its 3.0.43 script, where no length up to 1,975
+  statement limits. The component link is API-only on both sides: it is drawn only when stats are passed
+  (`ComponentDiagramGenerator.generatePlantUml(List, ComponentDiagramRenderOptions, Map)` here,
+  `GeneratePlantUml(…, stats)` in .NET), and no generated report passes them, in .NET since 2.0.92-beta and in
+  the port's three callers (`ComponentDiagramReportGenerator.java:37`, `HtmlReportGenerator.java:95`,
+  `MergeableReportRenderer.java:33`). The .NET changelog's "user-reported ClickHouse edge" is wrong: that
+  report was about a plain label's width, and the link was never in it (corrected 2026-09-26). Its report renders on the main thread with its 3.0.43 script, where no length up to 1,975
   overflowed, so its own reports are not exposed. What differs in the source: a request label past 350
   characters is cut there inside the link in .NET, with the whole path in the note under `[Full path]`, and a
   long method list is cut before the link closes, so the stats line after it stays.
