@@ -2300,6 +2300,19 @@ fixes. Listed for completeness so nothing is silently dropped.
   describe. The same release writes the .NET Node renderer's script as `plantuml-render.<hash>.js`, because every
   .NET version on one engine shares its cache directory; the port renders in the browser only, so nothing there
   corresponds.
+- **The third audit of .NET's `DIAGRAM_COLOURS_PLAN` (.NET 3.31.8, 2026-09-27).** Not mirrored, a ledger entry. Diagram
+  sources change: every line goes through `ReplaceXmlInvalidCharacters` (a C0 control other than tab, line feed and
+  carriage return, U+FFFE and U+FFFF, as a character, a `<U+hhhh>` or a decimal reference, become a Control Pictures
+  glyph or U+FFFD; a decimal reference past U+10FFFF gets `&<U+200B>#`); a backslash in a step name, a test name, a UI
+  action's label or a span name is written `<U+005C><U+200B>` (`EscapeOneLineMarkup`); an assertion note's `\t` and
+  `\~` get the zero-width space a payload note's got in 3.31.2; a span name's line breaks are written `\n`. Script
+  bytes change: the render script's splitter skips every block note's lines and no longer reads `else` as a block
+  (its pattern names were shadowed since 3.0.48), it gains an `ON_DEMAND` flag and binds links in inline SVGs;
+  `stripAssertionNotes` ends a note at a whole `end note` line; the context menu's `serializeSvg` and the Node
+  script write the same stand-ins; the tab toggle renders the view it shows. A NodeJs, Server or Local report with
+  internal-flow tracking carries the render script on demand, and its embedded component diagram is drawn by the
+  report's renderer. The port renders in the browser only, so the last two have no counterpart; the escapes and
+  the script changes do.
 
 ---
 

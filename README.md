@@ -102,6 +102,9 @@ actual execution, not AI.
 > port's markers carry no time, so its builder drops them.
 > .NET 3.31.6, published as 3.31.7 (2026-09-27), made the render script's main-thread fallback say what a refused `viz-global.js` costs,
 > as the worker path did (Graphviz not loaded, Smetana instead). Not mirrored: this port's script checks no hash.
+> .NET 3.31.8 (2026-09-27) changed diagram sources (control characters as Control Pictures, a backslash in a step name,
+> test name, action label or span name as `<U+005C><U+200B>`), the render script (note-aware splitting, an on-demand
+> engine) and the NodeJs/Server/Local report page. Not mirrored yet: see REMAINING_PARITY.
 > Report-**output** bytes also diverged earlier than the ledger previously recorded: .NET 3.0.77
 > (2026-09-04) made live Reqnroll runs emit scenario descriptions and dedented feature descriptions
 > (HTML `scenario-description` divs, YAML `Description:` lines, search corpus); .NET 3.0.78
