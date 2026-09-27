@@ -2269,6 +2269,17 @@ fixes. Listed for completeness so nothing is silently dropped.
      tooltip decodes the note like Copy box text; `bindIflowLinks` rests a link in the colour of the nearer of
      the texts before and after it (a component diagram's first edge rested in its component's white). The
      port's 3.0.43 scripts have no rest colour logic (.NET 3.30.0 S2), so a hover there still blacks a link out.
+- **A component diagram where WebAssembly is off (.NET 3.31.3, 2026-09-27).** Not mirrored, a ledger entry only
+  (D11 is still unanswered). Graphviz is WebAssembly. Under V8's `--jitless`, a content security policy without
+  `'wasm-unsafe-eval'` or a browser setting that turns WebAssembly off, .NET's render script loaded `viz-global.js`
+  anyway and every component diagram drew the engine's "dot/GraphViz has crashed" picture, in the worker and on the
+  main thread; its Node renderer, under `NODE_OPTIONS=--jitless`, exited before its first diagram. The script and the
+  Node renderer now compile the smallest WebAssembly module first and load Graphviz only when that works, so the
+  engine lays the diagram out with its Smetana port; `window.__kronikolRender` gains `webAssembly`, and the console
+  names the reason. The port's 3.0.43 script loads `viz-global.js` unconditionally too, so its component diagrams
+  draw the same picture there, and leaving Graphviz out would not help it: its `v1.2026.3beta6-patched` engine has no
+  `typeof Viz` check and no Smetana fallback (searched 2026-09-26), which the npm engine .NET pins since 3.31.1 has.
+  A port of this fix takes that pin first.
 
 ---
 

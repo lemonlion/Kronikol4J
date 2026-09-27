@@ -91,6 +91,11 @@ actual execution, not AI.
 > checksums its V8 code cache. This port's 3.0.43 script and its `v1.2026.3beta6-patched` pin
 > (`DotNetHtmlReportRenderer.java:72`) are unaffected, and that tag stays published. A port of the render
 > side would take the npm URL and both constants together: the hashes belong to the URL.
+> .NET 3.31.3 (2026-09-27) made its render script and its Node renderer load `viz-global.js` only where a
+> WebAssembly module compiles (V8's `--jitless`, a policy without `'wasm-unsafe-eval'` and a browser setting turn it
+> off), so the engine lays the component diagram out with its Smetana port there instead of drawing its Graphviz
+> error picture, and `window.__kronikolRender` gains `webAssembly`. Not mirrored: this port's engine has no Smetana
+> fallback, so a port takes the npm pin first.
 > Report-**output** bytes also diverged earlier than the ledger previously recorded: .NET 3.0.77
 > (2026-09-04) made live Reqnroll runs emit scenario descriptions and dedented feature descriptions
 > (HTML `scenario-description` divs, YAML `Description:` lines, search corpus); .NET 3.0.78
