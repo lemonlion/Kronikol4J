@@ -2293,7 +2293,7 @@ fixes. Listed for completeness so nothing is silently dropped.
   `InternalFlowSegmentBuilder.java` (`buildWholeTestSegments` `:46`, `buildSegments` `:77`) drop every marker
   (checked 2026-09-27). The three checks belong with the capture side's timestamps: port them together.
 - **A refused `viz-global.js` on the main-thread path, and the Node renderer's script file (.NET 3.31.6,
-  2026-09-27).** Not mirrored, a ledger entry only. An audit of .NET's `ENGINE_PIN_PLAN` made the render script's
+  published as 3.31.7, 2026-09-27).** Not mirrored, a ledger entry only. An audit of .NET's `ENGINE_PIN_PLAN` made the render script's
   main-thread fallback log, for a `viz-global.js` that failed its hash, the sentence the worker path already logged
   (Graphviz is not loaded, and the engine lays out with its Smetana port), through one `vizMissing` function, so
   the script's bytes change by that function. The port's 3.0.43 script checks no hash and has no refusal to

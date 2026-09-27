@@ -100,7 +100,7 @@ actual execution, not AI.
 > that made no call a whole-test flow, and a marker a line in the whole-test flame chart: since .NET 3.15.1 stamped a
 > time on every record, each step bar and assertion note had all three. Not mirrored and not needed yet: this
 > port's markers carry no time, so its builder drops them.
-> .NET 3.31.6 (2026-09-27) made the render script's main-thread fallback say what a refused `viz-global.js` costs,
+> .NET 3.31.6, published as 3.31.7 (2026-09-27), made the render script's main-thread fallback say what a refused `viz-global.js` costs,
 > as the worker path did (Graphviz not loaded, Smetana instead). Not mirrored: this port's script checks no hash.
 > Report-**output** bytes also diverged earlier than the ledger previously recorded: .NET 3.0.77
 > (2026-09-04) made live Reqnroll runs emit scenario descriptions and dedented feature descriptions
