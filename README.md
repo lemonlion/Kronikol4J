@@ -96,6 +96,10 @@ actual execution, not AI.
 > off), so the engine lays the component diagram out with its Smetana port there instead of drawing its Graphviz
 > error picture, and `window.__kronikolRender` gains `webAssembly`. Not mirrored: this port's engine has no Smetana
 > fallback, so a port takes the npm pin first.
+> .NET 3.31.4 (2026-09-27) stopped giving a diagram marker or a user action an internal-flow segment, a scenario
+> that made no call a whole-test flow, and a marker a line in the whole-test flame chart: since .NET 3.15.1 stamped a
+> time on every record, each step bar and assertion note had all three. Not mirrored and not needed yet: this
+> port's markers carry no time, so its builder drops them.
 > Report-**output** bytes also diverged earlier than the ledger previously recorded: .NET 3.0.77
 > (2026-09-04) made live Reqnroll runs emit scenario descriptions and dedented feature descriptions
 > (HTML `scenario-description` divs, YAML `Description:` lines, search corpus); .NET 3.0.78

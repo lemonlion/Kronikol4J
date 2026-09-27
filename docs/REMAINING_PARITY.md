@@ -2280,6 +2280,18 @@ fixes. Listed for completeness so nothing is silently dropped.
   draw the same picture there, and leaving Graphviz out would not help it: its `v1.2026.3beta6-patched` engine has no
   `typeof Viz` check and no Smetana fallback (searched 2026-09-26), which the npm engine .NET pins since 3.31.1 has.
   A port of this fix takes that pin first.
+- **Marker records get no internal-flow segment (.NET 3.31.4, 2026-09-27).** Not mirrored, a ledger entry only, and
+  not needed yet. Since .NET 3.15.1 every captured record carries a time, marker records included, and .NET's
+  `InternalFlowSegmentBuilder` then made a segment of each step bar, assertion note and Setup/Action marker out of the
+  test's spans after it, which no arrow links (55% of a real report's segment map, #100); a scenario whose only
+  records were markers got a whole-test flow of every span of the run; and each marker drew a dashed line labelled
+  `: /` in the whole-test flame chart. .NET now gives no segment to a diagram marker or a user action (both stay
+  points in time, so a call with no response still ends at the next record and no call's segment changes), groups
+  the whole-test spans by calls only, and draws no boundary line for a marker (`BuildWholeTestBoundaries`, which the
+  page and the mergeable data file now share). The port has none of the three today: its `RequestResponseLogger.log`
+  stamps no time and `TrackingDiagramOverride.marker` sets none, so the time filters in
+  `InternalFlowSegmentBuilder.java` (`buildWholeTestSegments` `:46`, `buildSegments` `:77`) drop every marker
+  (checked 2026-09-27). The three checks belong with the capture side's timestamps: port them together.
 
 ---
 
