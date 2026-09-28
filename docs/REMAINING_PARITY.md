@@ -2358,6 +2358,17 @@ fixes. Listed for completeness so nothing is silently dropped.
   the data file schema's `$comment`. It is a .NET 10 file-based app that loads the .NET engine, with no JVM
   counterpart: where the port writes those files, they differ from .NET's by those lines. Nothing in the report's
   HTML or data file changed. Drafted in Kronikol's `plans/QUERY_FALLBACK_PLAN.md` §11.6.
+- **The report's copies work on a page without a secure context (.NET 3.32.2, 2026-09-28).** Not mirrored, a ledger
+  entry only. A browser gives `navigator.clipboard` only to `https://`, `localhost` and `file://` pages, so on a report
+  served over plain http from another machine every copy of .NET's diagram menu and its scenario copy button threw.
+  .NET now copies text through one function, `copyTextToClipboard` in `report-copy-text-function.js`, which falls back
+  to a selection copy (`document.execCommand('copy')` on a read-only text area), and leaves the PNG copies out of the
+  menu where `navigator.clipboard.write` or `ClipboardItem` is missing (`window.canCopyImagesToClipboard`). The
+  report's script block and the context-menu script both carry that file. The port's `context-menu-script.js` and
+  `report-copy-scenario-name-function.js` (kronikol4j-report assets) call `navigator.clipboard` directly, so the same
+  copies fail on such a page. To mirror: add the file, include it with both scripts as .NET does, and route their text
+  copies through it and gate their PNG copies. The same audit of .NET's `ENGINE_PIN_PLAN` changed its Node renderer's
+  cache handling, which the port does not have.
 
 ---
 
