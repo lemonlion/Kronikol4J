@@ -2369,6 +2369,19 @@ fixes. Listed for completeness so nothing is silently dropped.
   copies fail on such a page. To mirror: add the file, include it with both scripts as .NET does, and route their text
   copies through it and gate their PNG copies. The same audit of .NET's `ENGINE_PIN_PLAN` changed its Node renderer's
   cache handling, which the port does not have.
+- **The fourth audit of .NET's `DIAGRAM_COLOURS_PLAN` (.NET 3.32.3, 2026-09-28).** Not mirrored, a ledger entry
+  only. Script bytes change in `plantuml-browser-render-script.js`. `bindIflowLinks` keeps the fill it paints a link
+  in as `data-iflow-fill` and reads it back, to find link text and as the hover highlight, so a copy of a bound diagram
+  (Export Filtered HTML) binds again. Its anchor half (the Java engine's `<a>`, under Server and Local) groups each
+  segment's anchors, reads the segment from the href or the title, and binds their texts by the text half's rules
+  (the ink beside the link at rest, the painted fill and an underline on hover, the ink and no underline with no
+  flow), where in the hover mode it took the href away and added a class. `bindInlineSvg` binds an SVG holding an
+  `<a>` too, and finds link text by `data-iflow-fill` as well as by its fill. A note statement needs where it goes
+  after the keyword and any stereotype (`left`, `right`, `over`, `across`), so a service called "Note" writes
+  messages again, and `findOverLongStatement` reads notes by the splitter's functions. The run report's component
+  panel under Server with inline SVG is the server's SVG, fetched when the report is written, where it was an
+  `<img>` of the server's address. The port renders in the browser only, so the panel has no counterpart; the
+  script changes do.
 
 ---
 
