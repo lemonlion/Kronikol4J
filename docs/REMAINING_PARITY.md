@@ -2333,6 +2333,24 @@ fixes. Listed for completeness so nothing is silently dropped.
   `data-flame-z`. The mergeable JSON's `internalFlowSegments` keeps its shape; its `content` strings carry the raw
   attribute. Until ported, a Java report keeps working with the scripts it carries, and a Java report given the new
   scripts with the old emitter works too, through the scripts' legacy-object check.
+- **Long jumps land on their scenario (.NET 3.31.10, 2026-09-27, published 2026-09-28).** Not mirrored, a ledger entry
+  only. .NET's `reveal_url_anchor` (`report-url-hash-function.js`), `jump_to_next_failure`
+  (`report-jump-to-failure-function.js`) and the failure-cluster links' `onclick`, which `ReportGenerator` writes, no
+  longer call `scrollIntoView({ behavior: 'smooth' })`. They call a new `jump_into_view(target, block)`, defined in
+  `report-url-hash-function.js`, which jumps (`behavior: 'instant'`) and re-aims for up to ten frames while the
+  target's top moves: a smooth scroll aimed across features `content-visibility: auto` had not drawn yet ran past its
+  target to the bottom of the page. The cluster link's `onclick` fragment
+  `el.scrollIntoView({behavior:'smooth',block:'start'});` is now `jump_into_view(el,'start');`. And
+  `report-init-script.js` calls `parse_url_hash()` last in its `DOMContentLoaded` handler, after the two phone-width
+  blocks, where it was first. Copy the three scripts verbatim and move the generator's `onclick` string with them.
+  Whether the port's scripts are .NET's byte for byte today was not checked.
+- **The internal-flow element's list is counted over the page's own diagrams (.NET 3.31.10, 2026-09-27, published
+  2026-09-28).** Not mirrored, a ledger entry only. .NET's run report chooses the `iflow-segments` element's list
+  (`has` or `hidden`, whichever is shorter) over the diagrams of the scenarios the page lists: `ReportGenerator`
+  passes `WrapSegmentData` only the diagrams whose test id is one of the features' scenario ids, with the component
+  diagram, where it passed every diagram the fetcher made. The element differs only for a run that logged tests its
+  features do not name. If the port counts over every diagram, count the same way; `InternalFlowSegmentMapReportTests`
+  has the fact.
 
 ---
 
