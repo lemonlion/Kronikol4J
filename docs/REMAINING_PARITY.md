@@ -2382,6 +2382,14 @@ fixes. Listed for completeness so nothing is silently dropped.
   panel under Server with inline SVG is the server's SVG, fetched when the report is written, where it was an
   `<img>` of the server's address. The port renders in the browser only, so the panel has no counterpart; the
   script changes do.
+- **An internal-flow popup that cannot start to decode says so, and an export drops the inline "bound" mark (.NET 3.32.4, 2026-09-28).** Not
+  mirrored, a ledger entry only. .NET's `internal-flow-popup-script.js`: `loadSegments` calls the decompressor inside
+  `new Promise(function(resolve) { resolve(window.decompressGzipBase64(z)); })`, so a browser without
+  `DecompressionStream`, or a `z` that `atob` refuses, rejects into the popup's failure message ("Internal flow data
+  could not be decompressed: …") where the throw had left the popup on "Loading…". `report-export-function.js`:
+  `export_undrawn` removes `data-iflow-bound` from every `.plantuml-inline-svg` in the copy, so the mark means "bound
+  in this page". Copy both scripts verbatim. The port renders in the browser only, so it writes no inline diagram, but
+  the export function is the same script.
 
 ---
 
