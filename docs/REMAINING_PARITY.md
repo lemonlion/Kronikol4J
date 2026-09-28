@@ -2351,6 +2351,13 @@ fixes. Listed for completeness so nothing is silently dropped.
   diagram, where it passed every diagram the fetcher made. The element differs only for a run that logged tests its
   features do not name. If the port counts over every diagram, count the same way; `InternalFlowSegmentMapReportTests`
   has the fact.
+- **`query.cs` beside the report (.NET 3.32.0, 2026-09-28).** Not mirrored, a ledger entry only. .NET writes
+  `query.cs` into the reports directory beside a JSON data file (`ReportConfigurationOptions.WriteQueryScript`,
+  default on), and names it in the `CLAUDE.md` and `AGENTS.md` instructions, in a failing run's console pointer
+  (`no tool: dotnet run --file …`), in the CI summary's *Debug this run*, in `Failures.md`'s command blocks, and in
+  the data file schema's `$comment`. It is a .NET 10 file-based app that loads the .NET engine, with no JVM
+  counterpart: where the port writes those files, they differ from .NET's by those lines. Nothing in the report's
+  HTML or data file changed. Drafted in Kronikol's `plans/QUERY_FALLBACK_PLAN.md` §11.6.
 
 ---
 
