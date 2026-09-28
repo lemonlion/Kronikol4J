@@ -2313,6 +2313,26 @@ fixes. Listed for completeness so nothing is silently dropped.
   internal-flow tracking carries the render script on demand, and its embedded component diagram is drawn by the
   report's renderer. The port renders in the browser only, so the last two have no counterpart; the escapes and
   the script changes do.
+- **Internal-flow segments as one gzip blob, and the export redraws what it copies (.NET 3.31.9, 2026-09-27).** Not
+  mirrored, a ledger entry only. .NET's `WrapSegmentData` now writes
+  `<script id="iflow-segments" type="application/json">{"hidden":[…],"z":"…"}</script>` (or `"has":[…]`,
+  whichever list is shorter, a tie giving `has`) in the head where `<script>window.__iflowSegments = {…};</script>` was.
+  `z` is the unchanged `System.Text.Json` map, gzipped at `Optimal` and base64'd, written raw (the `puml-data`
+  convention, so `GzipBase64.encode(CompactJson.write(data))` reproduces it). `hidden` is every `[[#iflow-…` id in the
+  report's diagram sources (the sequence diagrams and the embedded component diagram) that has no map entry, `has`
+  every map key some source links, in first-seen order; the public wrapper, given no sources, writes `has` with every
+  key; an empty map writes no element. The map's activity-diagram divs carry `data-plantuml="<PlantUML with &, \" and <
+  escaped>"` instead of `data-plantuml-z`; the whole-test-flow divs keep `data-plantuml-z`. Changed and to be copied
+  verbatim: `internal-flow-popup-script.js` (the map decoded once on the first popup; the popup attached before its
+  content with "Loading…"; a decode failure message; `_iflowLoadSegments` and `_iflowHasSegment`; a server-drawn `<a>`
+  whose id has no segment loses its href), `internal-flow-popup-styles.css` (`.iflow-loading`, `.iflow-load-failed`),
+  `plantuml-browser-render-script.js` (`bindIflowLinks` asks `hasSegment`) and `report-export-function.js`
+  (`export_undrawn`: a filtered export resets a drawn or queued diagram and a drawn flame chart, so the export draws
+  and binds them; a copied SVG had kept no listener). `InternalFlowHtmlGeneratorTest` byte-compares the script and
+  must become a decoded compare, and `GoldenHtmlParityTest` masks a third gzip island beside `puml-data` and
+  `data-flame-z`. The mergeable JSON's `internalFlowSegments` keeps its shape; its `content` strings carry the raw
+  attribute. Until ported, a Java report keeps working with the scripts it carries, and a Java report given the new
+  scripts with the old emitter works too, through the scripts' legacy-object check.
 
 ---
 
