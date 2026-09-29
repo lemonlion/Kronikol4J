@@ -2390,6 +2390,7 @@ fixes. Listed for completeness so nothing is silently dropped.
   `export_undrawn` removes `data-iflow-bound` from every `.plantuml-inline-svg` in the copy, so the mark means "bound
   in this page". Copy both scripts verbatim. The port renders in the browser only, so it writes no inline diagram, but
   the export function is the same script.
+- **`TestRunReport.json` is written with the relaxed encoder, and `kronikol query` prints JSON the same way (.NET 3.34.2, 2026-09-29).** Not mirrored, a ledger entry only. .NET serializes every form of the file (the standard one, the mergeable one and a merge's output) with `JavaScriptEncoder.UnsafeRelaxedJsonEscaping`: a quote inside a string is written `\"`, and `<`, `>`, `&`, `'`, `+` and non-ASCII text in the Basic Multilingual Plane are written as they are, where the default encoder wrote each as a six-byte `\uXXXX` escape. Characters outside that plane are still written as surrogate-pair escapes. The JSON value is the same, and so is every `b:` address. The port writes the file's 3.0.4x shape with its own writer, so there is nothing to copy; a writer that later matches .NET byte for byte needs these escaping rules. `kronikol query` prints a body and a `--path` value the same way, which the port has no counterpart of.
 
 ---
 
