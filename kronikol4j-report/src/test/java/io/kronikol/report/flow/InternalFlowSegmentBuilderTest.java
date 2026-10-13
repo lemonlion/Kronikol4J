@@ -9,10 +9,10 @@ import io.kronikol.core.tracking.RequestResponseType;
 import java.net.URI;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link InternalFlowSegmentBuilder} (a port of .NET BuildWholeTestSegments). */
@@ -151,6 +151,43 @@ class InternalFlowSegmentBuilderTest {
     }
 
     @Test
+    void buildSegments_callOfTheTestThatRecordsNoSpanId_keepsEverySpanOfTheTraceInItsTime() {
+        // A tracker that records the trace but no span gives the tree nothing to tell its call by, so the call
+        // keeps every span of the trace in its time; the test's calls that record span ids are still told apart.
+        List<RequestResponseLog> a = call("t1", 0, 100, "traceA", "a");
+        List<RequestResponseLog> b = call("t1", 10, 110, "traceA", "b");
+        List<RequestResponseLog> c = call("t1", 20, 120, "traceA", null);
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(a, b, c), List.of(
+            span("a-server", 30, "traceA", "a"),
+            span("b-server", 35, "traceA", "b")));
+
+        assertEquals(List.of("a-server", "b-server"), names(segs.get(key(c))), "c keeps every span of the trace in its time");
+        assertEquals(List.of("a-server"), names(segs.get(key(a))), "a keeps only its own span");
+        assertEquals(List.of("b-server"), names(segs.get(key(b))), "b keeps only its own span");
+    }
+
+    @Test
+    void buildSegments_traceOfSeveralTests_callWithNothingUnderItsSpanKeepsItsTestsOtherCallsSpans() {
+        // A trace that calls of several tests record is not split by one test's span ids. .NET gives such a
+        // trace #87's rule: aFirst, whose span id has nothing under it, takes every span of the trace in its
+        // time, and b-server, which test-b's call takes too, goes to neither. The port does not mirror #87 and
+        // keeps every span. Either way aFirst keeps a-second-server, which the rule for one test's calls would
+        // give to aSecond alone. Presence only, so the port's pre-#87 output is not pinned.
+        List<RequestResponseLog> aFirst = call("test-a", 0, 100, "traceA", "a1");
+        List<RequestResponseLog> aSecond = call("test-a", 10, 110, "traceA", "a2");
+        List<RequestResponseLog> b = call("test-b", 0, 100, "traceA", "b");
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(
+            logsOf(aFirst, aSecond, b), List.of(
+                span("a-second-server", 20, "traceA", "a2"),
+                span("b-server", 25, "traceA", "b")));
+
+        assertTrue(names(segs.get(key(aFirst))).contains("a-second-server"),
+            "aFirst keeps its test's other call's span: one test's span ids do not split a trace of several tests");
+    }
+
+    @Test
     void emptyInputs_yieldNoSegments() {
         assertTrue(InternalFlowSegmentBuilder.buildWholeTestSegments(List.of(), List.of()).isEmpty());
         assertTrue(InternalFlowSegmentBuilder.buildWholeTestSegments(
@@ -175,8 +212,13 @@ class InternalFlowSegmentBuilderTest {
             boundary(testId, traceId, RequestResponseType.RESPONSE, id, T0.plusMillis(toMs)).activitySpanId(spanId));
     }
 
-    private static List<RequestResponseLog> logsOf(List<RequestResponseLog> first, List<RequestResponseLog> second) {
-        return Stream.concat(first.stream(), second.stream()).toList();
+    @SafeVarargs
+    private static List<RequestResponseLog> logsOf(List<RequestResponseLog>... calls) {
+        List<RequestResponseLog> logs = new ArrayList<>();
+        for (List<RequestResponseLog> call : calls) {
+            logs.addAll(call);
+        }
+        return logs;
     }
 
     /** The popup segment's key for a call made by {@link #call}. */
