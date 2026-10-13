@@ -1,6 +1,7 @@
 package io.kronikol.report.flow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.kronikol.core.tracking.Method;
@@ -188,6 +189,51 @@ class InternalFlowSegmentBuilderTest {
     }
 
     @Test
+    void buildSegments_callKeepsTheSpansOfTheCallsMadeInsideIt_whateverSpanTheyRecorded() {
+        // The shape of a Jest and OpenTelemetry capture: the test's call is recorded under the span of the
+        // service's request hook, and the calls the service makes while handling it under its resolver's span,
+        // a sibling of the hook's. Those calls ran inside the test's call (made by the service handling it,
+        // while it waited), so their spans are its work too; each inner call keeps out the hook's.
+        List<RequestResponseLog> outer = call("t1", 0, 100, "traceA", "hook", "Payments", "Test", null);
+        List<RequestResponseLog> psp = call("t1", 20, 50, "traceA", "resolver", "PSP", "Payments", null);
+        List<RequestResponseLog> risk = call("t1", 55, 80, "traceA", "resolver", "Risk", "Payments", null);
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(outer, psp, risk), List.of(
+            span("server", 5, "traceA", null),
+            span("hook", 6, "traceA", "server"),
+            span("resolver", 10, "traceA", "server"),
+            span("psp-post", 25, "traceA", "resolver"),
+            span("risk-get", 60, "traceA", "resolver")));
+
+        assertEquals(List.of("server", "hook", "resolver", "psp-post", "risk-get"), names(segs.get(key(outer))),
+            "the test's call keeps the spans of the calls its service made inside it");
+        assertEquals(List.of("server", "resolver", "psp-post"), names(segs.get(key(psp))),
+            "an inner call keeps out the hook's span");
+        assertFalse(names(segs.get(key(risk))).contains("hook"), "an inner call keeps out the hook's span");
+        assertTrue(names(segs.get(key(risk))).contains("risk-get"), "an inner call keeps its own spans");
+    }
+
+    @Test
+    void buildSegments_callKeepsTheSpansOfADeliveryOnItsKronikolTrace() {
+        // A message published inside the test's call is delivered broker to consumer: the broker is not the
+        // service the test called, but the delivery carries the call's Kronikol trace id, which is how kronikol
+        // query flow nests it inside the call. Its handler's spans are the call's work too.
+        UUID kronikolTrace = UUID.randomUUID();
+        List<RequestResponseLog> order = call("t1", 0, 100, "traceA", "order-span", "Orders", "Test", kronikolTrace);
+        List<RequestResponseLog> delivery =
+            call("t1", 30, 60, "traceA", "delivery-span", "Worker", "Broker", kronikolTrace);
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(order, delivery), List.of(
+            span("orders-server", 10, "traceA", "order-span"),
+            span("worker-handler", 40, "traceA", "delivery-span")));
+
+        assertEquals(List.of("orders-server", "worker-handler"), names(segs.get(key(order))),
+            "the call keeps the spans of the delivery on its Kronikol trace");
+        assertEquals(List.of("worker-handler"), names(segs.get(key(delivery))),
+            "the delivery keeps out the call's own span");
+    }
+
+    @Test
     void emptyInputs_yieldNoSegments() {
         assertTrue(InternalFlowSegmentBuilder.buildWholeTestSegments(List.of(), List.of()).isEmpty());
         assertTrue(InternalFlowSegmentBuilder.buildWholeTestSegments(
@@ -206,10 +252,21 @@ class InternalFlowSegmentBuilderTest {
 
     /** A request and its response, {@code fromMs} to {@code toMs} after T0, both recording the trace and span id. */
     private static List<RequestResponseLog> call(String testId, int fromMs, int toMs, String traceId, String spanId) {
+        return call(testId, fromMs, toMs, traceId, spanId, "Svc", "Test", null);
+    }
+
+    /**
+     * As {@link #call(String, int, int, String, String)}, made by {@code caller} to {@code service}. Each record
+     * carries {@code kronikolTrace} as its Kronikol trace id, or a fresh one of its own when that is null.
+     */
+    private static List<RequestResponseLog> call(String testId, int fromMs, int toMs, String traceId, String spanId,
+                                                 String service, String caller, UUID kronikolTrace) {
         UUID id = UUID.randomUUID();
         return List.of(
-            boundary(testId, traceId, RequestResponseType.REQUEST, id, T0.plusMillis(fromMs)).activitySpanId(spanId),
-            boundary(testId, traceId, RequestResponseType.RESPONSE, id, T0.plusMillis(toMs)).activitySpanId(spanId));
+            boundary(testId, traceId, RequestResponseType.REQUEST, id, T0.plusMillis(fromMs), service, caller,
+                kronikolTrace != null ? kronikolTrace : UUID.randomUUID()).activitySpanId(spanId),
+            boundary(testId, traceId, RequestResponseType.RESPONSE, id, T0.plusMillis(toMs), service, caller,
+                kronikolTrace != null ? kronikolTrace : UUID.randomUUID()).activitySpanId(spanId));
     }
 
     @SafeVarargs
@@ -232,11 +289,17 @@ class InternalFlowSegmentBuilderTest {
 
     private static RequestResponseLog boundary(String testId, String traceId, RequestResponseType type,
                                                UUID rrid, Instant ts) {
+        return boundary(testId, traceId, type, rrid, ts, "Svc", "Test", UUID.randomUUID());
+    }
+
+    private static RequestResponseLog boundary(String testId, String traceId, RequestResponseType type,
+                                               UUID rrid, Instant ts, String service, String caller,
+                                               UUID kronikolTrace) {
         RequestResponseLog l = RequestResponseLog.builder()
             .testName(testId).testId(testId)
             .method(Method.Http.GET).uri(URI.create("http://svc/x"))
-            .serviceName("Svc").callerName("Test")
-            .type(type).traceId(UUID.randomUUID()).requestResponseId(rrid)
+            .serviceName(service).callerName(caller)
+            .type(type).traceId(kronikolTrace).requestResponseId(rrid)
             .build();
         l.timestamp(ts.atOffset(java.time.ZoneOffset.UTC));
         l.activityTraceId(traceId);
