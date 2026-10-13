@@ -32,6 +32,14 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
   `diagnostic` schema definition.
 
 ### Fixed
+- **Two calls an app made at once through a tap no longer show each other's queries in their internal flow** (.NET
+  4.19.4, the audit of #170). `InternalFlowSegmentBuilder` keeps in a call's popup the work of the calls that ran
+  inside it, and decided "inside" by the rule `kronikol query flow` nests calls by, so the queries a service made for
+  two of an app's calls at once went inside whichever call opened last. The span tree decides first now: an open call
+  whose span id is above a call's span ran it, and the rule only where the tree says nothing. Each call's own span
+  ids are worked out once, as in .NET, where asking again per span took 22 s for a test of 300 calls; the port checked
+  only the spans in a call's time, so it never took long. Facts: two calls at once to one service, nesting two deep,
+  two calls recording one span, and 300 calls under one ambient span.
 - **The Spring WebClient connector records a call before the caller has its body.** It wrote both records when the
   response body's stream had finished (`doFinally`), which Reactor runs after the end of the body has reached the
   caller, so a caller could have the body, and its test could end, before the call was recorded. CI saw the request

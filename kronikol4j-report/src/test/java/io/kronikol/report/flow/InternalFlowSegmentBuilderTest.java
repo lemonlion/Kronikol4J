@@ -268,6 +268,93 @@ class InternalFlowSegmentBuilderTest {
     }
 
     @Test
+    void buildSegments_overlappingCallsToOneService_keepTheDatabaseCallsMadeUnderTheirOwnSpan() {
+        // The .NET #170 audit: an app's parallel calls through a tap to one service, whose database spans the OTLP
+        // tap records as calls of the test, each claiming its own span id. The nesting rule alone put each query inside
+        // the call opened last, whose popup then showed the other call's query; the span tree says which call each
+        // query ran under.
+        List<RequestResponseLog> a = call("t1", 0, 100, "traceA", "a-fwd", "Api", "App", null);
+        List<RequestResponseLog> b = call("t1", 10, 110, "traceA", "b-fwd", "Api", "App", null);
+        List<RequestResponseLog> aDb = call("t1", 30, 35, "traceA", "a-query", "Shop", "Api", null);
+        List<RequestResponseLog> bDb = call("t1", 40, 45, "traceA", "b-query", "Shop", "Api", null);
+        List<InternalFlowSpan> spans = List.of(span("a-query", 30, "traceA", "a-fwd"), span("b-query", 40, "traceA", "b-fwd"));
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(a, b, aDb, bDb), spans);
+
+        assertEquals(List.of("a-query"), names(segs.get(key(a))), "a keeps its own query");
+        assertEquals(List.of("b-query"), names(segs.get(key(b))), "b keeps its own query, not a's");
+        assertEquals(List.of("a-query"), names(segs.get(key(aDb))), "a's query call keeps its span");
+        assertEquals(List.of("b-query"), names(segs.get(key(bDb))), "b's query call keeps its span");
+    }
+
+    @Test
+    void buildSegments_callKeepsTheSpansOfTheCallsNestedTwoDeepInsideIt() {
+        // The test calls the API, the API an inner service, and that service the database; none records its span under
+        // the one above, so only the nesting says whose work the query is (the .NET #170 audit).
+        List<RequestResponseLog> outer = call("t1", 0, 100, "traceA", "o", "Api", "Test", null);
+        List<RequestResponseLog> middle = call("t1", 10, 90, "traceA", "m", "Inner", "Api", null);
+        List<RequestResponseLog> inner = call("t1", 20, 80, "traceA", "i", "Db", "Inner", null);
+        List<InternalFlowSpan> spans = List.of(span("query", 30, "traceA", "i"));
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(outer, middle, inner), spans);
+
+        assertEquals(List.of("query"), names(segs.get(key(outer))), "the outer call keeps the work two calls down");
+        assertEquals(List.of("query"), names(segs.get(key(middle))), "the middle call keeps it");
+        assertEquals(List.of("query"), names(segs.get(key(inner))), "the inner call keeps it");
+    }
+
+    @Test
+    void buildSegments_callDoesNotRunInsideAnotherThatRecordsTheSameSpan() {
+        // A page's two requests record the page's one span, and the second is made while the first is open. The tree
+        // says nothing about which ran inside which, and one party's calls never nest, so the work of the call the
+        // second request's service made stays with the second request (the .NET #170 audit).
+        List<RequestResponseLog> first = call("t1", 0, 100, "traceA", "page", "Web", "Browser", null);
+        List<RequestResponseLog> second = call("t1", 10, 110, "traceA", "page", "Web", "Browser", null);
+        List<RequestResponseLog> lookup = call("t1", 20, 40, "traceA", "lookup", "Stock", "Web", null);
+        List<InternalFlowSpan> spans = List.of(span("page", 0, "traceA", null), span("stock-query", 25, "traceA", "lookup"));
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(first, second, lookup), spans);
+
+        assertEquals(List.of("page"), names(segs.get(key(first))), "the first request does not take the lookup's work");
+        assertEquals(List.of("page", "stock-query"), names(segs.get(key(second))), "the second request keeps it");
+    }
+
+    @Test
+    void buildSegments_manyCallsOfOneTestInOneTrace_keepTheirOwnSpansInTimeThatGrowsWithTheCalls() {
+        // .NET 4.18.3 asked, for each span of the trace and each call recording a span id above it, whether that call
+        // ran inside the one whose popup it built, walking the nesting again each time: 22 s for a test of 300 calls
+        // under one ambient span, each with a downstream call of its own. The port asked only of the spans in the
+        // call's time, so it never took long here, but walked the nesting per claiming call too. Both now work out each
+        // call's own span ids once; this holds what each downstream call keeps.
+        List<RequestResponseLog> logs = new ArrayList<>();
+        List<List<RequestResponseLog>> downstream = new ArrayList<>();
+        List<InternalFlowSpan> spans = new ArrayList<>();
+        spans.add(span("test", 0, "traceA", null));
+        for (int i = 0; i < 300; i++) {
+            int at = 20 * i + 1;
+            logs.addAll(call("t1", at, at + 16, "traceA", "test", "Api", "Test", null));
+            spans.add(span("s" + i, at + 1, "traceA", "test"));
+            List<RequestResponseLog> down = call("t1", at + 2, at + 14, "traceA", "s" + i, "Db", "Api", null);
+            downstream.add(down);
+            logs.addAll(down);
+            for (int j = 0; j < 10; j++) {
+                spans.add(span("w" + i + "_" + j, at + 3 + j, "traceA", "s" + i));
+            }
+        }
+
+        Map<String, InternalFlowSegment> segs = assertTimeoutPreemptively(Duration.ofSeconds(20),
+            () -> InternalFlowSegmentBuilder.buildSegments(logs, spans));
+
+        for (int i = 0; i < downstream.size(); i++) {
+            List<String> own = new ArrayList<>(List.of("s" + i));
+            for (int j = 0; j < 10; j++) {
+                own.add("w" + i + "_" + j);
+            }
+            assertEquals(own, names(segs.get(key(downstream.get(i)))), "downstream call " + i + " keeps its own spans");
+        }
+    }
+
+    @Test
     void emptyInputs_yieldNoSegments() {
         assertTrue(InternalFlowSegmentBuilder.buildWholeTestSegments(List.of(), List.of()).isEmpty());
         assertTrue(InternalFlowSegmentBuilder.buildWholeTestSegments(

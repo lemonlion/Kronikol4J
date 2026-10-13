@@ -154,10 +154,9 @@ public final class InternalFlowSegmentBuilder {
     }
 
     /**
-     * The span ids each test's calls record in each trace, and which calls record each, which tell one test's
-     * calls apart in a trace they share (.NET #170): a span whose chain names the span id of another of those
-     * calls is that call's, unless that call ran inside this one, whose work it then is. Worked out once per
-     * {@link #buildSegments} call.
+     * The span ids each test's calls record in each trace, which tell one test's calls apart in a trace they share
+     * (.NET #170): a span whose chain names the span id of another of those calls is that call's, unless that call
+     * ran inside this one, whose work it then is. Worked out once per {@link #buildSegments} call.
      */
     private static final class OneTestCalls {
 
@@ -167,10 +166,15 @@ public final class InternalFlowSegmentBuilder {
         private final List<InternalFlowSpan> spans;
         /** Per trace id, the tests whose calls record it. */
         private final Map<String, Set<String>> testsByTrace = new HashMap<>();
-        /** Per trace and test, each span id the test's calls record in the trace, with the calls that record it. */
-        private final Map<TraceAndTest, Map<String, List<RequestResponseLog>>> claimers = new HashMap<>();
+        /** Per trace and test, each span id the test's calls record in the trace. */
+        private final Map<TraceAndTest, Set<String>> claimed = new HashMap<>();
         /** Per call (a request record, told apart by identity), the call it ran inside. */
         private final Map<RequestResponseLog, RequestResponseLog> outerOf = new IdentityHashMap<>();
+        /**
+         * Per call, the calls that ran inside it at any depth, from one walk up each call's outer calls (the .NET
+         * #170 audit): asking again for every span took .NET 22 s for a test of 300 calls under one span.
+         */
+        private final Map<RequestResponseLog, List<RequestResponseLog>> innerOf = new IdentityHashMap<>();
         /** Per trace id, its spans by span id (the first span of each id), built when first needed. */
         private final Map<String, Map<String, InternalFlowSpan>> spanById = new HashMap<>();
         /** Per span, told apart by identity as .NET tells spans apart, the claimed span ids on its chain. */
@@ -191,11 +195,21 @@ public final class InternalFlowSegmentBuilder {
                     testsByTrace.computeIfAbsent(trace, k -> new HashSet<>()).add(l.testId());
                     // A call is its request: only a request claims the span id it records.
                     if (l.type() == RequestResponseType.REQUEST && l.activitySpanId() != null) {
-                        claimers.computeIfAbsent(new TraceAndTest(trace, l.testId()), k -> new HashMap<>())
-                            .computeIfAbsent(l.activitySpanId(), k -> new ArrayList<>()).add(l);
+                        claimed.computeIfAbsent(new TraceAndTest(trace, l.testId()), k -> new HashSet<>())
+                            .add(l.activitySpanId());
                     }
                 }
                 nest(testLogs);
+            }
+            for (Map.Entry<RequestResponseLog, RequestResponseLog> link : outerOf.entrySet()) {
+                RequestResponseLog inner = link.getKey();
+                // Each link leads to a call opened earlier, so the walk ends; the bound guards records handed in
+                // twice, whose links can still lead back to one another.
+                RequestResponseLog at = link.getValue();
+                for (int hops = 0; at != null && at != inner && hops < outerOf.size(); hops++) {
+                    innerOf.computeIfAbsent(at, k -> new ArrayList<>()).add(inner);
+                    at = outerOf.get(at);
+                }
             }
         }
 
@@ -205,9 +219,12 @@ public final class InternalFlowSegmentBuilder {
         }
 
         /**
-         * Which of a test's calls ran inside which, by the rule {@code kronikol query flow} nests calls by (.NET
-         * {@code CallNesting}, rule R4): made while the other was still waiting for its answer, by the service
-         * handling it, or by another party on its Kronikol trace. Two calls from one party are never nested.
+         * Which of a test's calls ran inside which, made while the other was still waiting for its answer. The span
+         * tree says first: an open call whose span id is above this call's span ran it. Where the tree says nothing,
+         * the rule {@code kronikol query flow} nests calls by (.NET {@code CallNesting}, rule R4): by the service
+         * handling it, or by another party on its Kronikol trace, never two calls from one party. That rule alone put
+         * the queries a service made for two of an app's parallel calls inside whichever call opened last (the .NET
+         * #170 audit).
          */
         private void nest(List<RequestResponseLog> testLogs) {
             // In time order, as the segments are cut; records that tie keep the order they were captured in.
@@ -230,22 +247,52 @@ public final class InternalFlowSegmentBuilder {
                 if (!isCall(entry)) {
                     continue;
                 }
-                for (int k = open.size() - 1; k >= 0; k--) {
+                // A record handed in twice is one call, and never runs inside itself.
+                Set<String> above = entry.activityTraceId() != null && entry.activitySpanId() != null
+                    ? idsAbove(entry.activityTraceId(), entry.activitySpanId()) : Set.of();
+                RequestResponseLog outer = null;
+                for (int k = open.size() - 1; k >= 0 && outer == null && !above.isEmpty(); k--) {
                     RequestResponseLog candidate = open.get(k);
-                    // A record handed in twice is one call, and never runs inside itself.
-                    if (candidate == entry) {
-                        continue;
+                    if (candidate != entry && candidate.activitySpanId() != null
+                            && entry.activityTraceId().equals(candidate.activityTraceId())
+                            && above.contains(candidate.activitySpanId())) {
+                        outer = candidate;
                     }
-                    if (madeInside(entry, candidate)) {
-                        outerOf.put(entry, candidate);
-                        break;
+                }
+                for (int k = open.size() - 1; k >= 0 && outer == null; k--) {
+                    RequestResponseLog candidate = open.get(k);
+                    if (candidate != entry && madeInside(entry, candidate)) {
+                        outer = candidate;
                     }
+                }
+                if (outer != null) {
+                    outerOf.put(entry, outer);
                 }
                 Integer answer = answeredAt.get(entry.requestResponseId());
                 if (answer != null && answer > i) {
                     open.add(entry);
                 }
             }
+        }
+
+        /**
+         * The span ids above a call's span: its parent's, and up through every parent the store holds, the first it
+         * does not hold included. None when the store does not hold the call's own span.
+         */
+        private Set<String> idsAbove(String trace, String spanId) {
+            Map<String, InternalFlowSpan> byId = spanById.computeIfAbsent(trace, this::spansById);
+            Set<String> ids = new HashSet<>();
+            InternalFlowSpan own = byId.get(spanId);
+            String id = own != null ? own.parentSpanId() : null;
+            while (id != null && ids.add(id)) {
+                InternalFlowSpan held = byId.get(id);
+                if (held == null) {
+                    break;
+                }
+                id = held.parentSpanId();
+            }
+            ids.remove(spanId);
+            return ids;
         }
 
         /**
@@ -256,20 +303,6 @@ public final class InternalFlowSegmentBuilder {
             return open.serviceName().equals(call.callerName())
                 || (!open.callerName().equals(call.callerName())
                     && !NO_TRACE.equals(call.traceId()) && open.traceId().equals(call.traceId()));
-        }
-
-        /** Whether {@code call} is {@code outer} or ran inside it, following the outer links up. */
-        private boolean isOrRanInside(RequestResponseLog call, RequestResponseLog outer) {
-            // Each link leads to a call opened earlier, so the walk ends; the bound guards records handed in twice,
-            // whose links can still lead back to one another.
-            RequestResponseLog at = call;
-            for (int hops = 0; at != null && hops <= outerOf.size(); hops++) {
-                if (at == outer) {
-                    return true;
-                }
-                at = outerOf.get(at);
-            }
-            return false;
         }
 
         /**
@@ -283,20 +316,27 @@ public final class InternalFlowSegmentBuilder {
                     || testsByTrace.getOrDefault(trace, Set.of()).size() > 1) {
                 return s -> true;
             }
-            Map<String, List<RequestResponseLog>> claimed = claimers.get(new TraceAndTest(trace, call.testId()));
-            if (claimed == null || claimed.size() < 2) {
+            Set<String> ofTest = claimed.get(new TraceAndTest(trace, call.testId()));
+            if (ofTest == null || ofTest.size() < 2) {
                 return s -> true;
             }
+            // The span ids this call and the calls that ran inside it record in this trace: a span under one of
+            // them is this call's work.
+            Set<String> own = new HashSet<>();
+            own.add(call.activitySpanId());
+            for (RequestResponseLog inner : innerOf.getOrDefault(call, List.of())) {
+                if (inner.activitySpanId() != null && trace.equals(inner.activityTraceId())) {
+                    own.add(inner.activitySpanId());
+                }
+            }
             return s -> {
-                Set<String> above = claimedAbove(trace, s, claimed.keySet());
+                Set<String> above = claimedAbove(trace, s, ofTest);
                 if (above.isEmpty()) {
                     return true;
                 }
                 for (String id : above) {
-                    for (RequestResponseLog by : claimed.get(id)) {
-                        if (isOrRanInside(by, call)) {
-                            return true;
-                        }
+                    if (own.contains(id)) {
+                        return true;
                     }
                 }
                 return false;
