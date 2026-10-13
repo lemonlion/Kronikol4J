@@ -12,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link InternalFlowSegmentBuilder} (a port of .NET BuildWholeTestSegments). */
@@ -75,6 +76,80 @@ class InternalFlowSegmentBuilderTest {
         assertEquals("request", s.boundaryType());
     }
 
+    // ─── One test's calls in one trace (.NET #170, F4) ───
+    // .NET's facts also check that no segment counts the other call's spans as left out; the port has no
+    // SpansLeftOut (.NET #87 is not mirrored), so that check has no Java form.
+
+    @Test
+    void buildSegments_overlappingCallsOfOneTestInOneTrace_keepTheirOwnSpans() {
+        // One trace per test, as a browser test sends or a tap minting the test's trace forwards: two calls
+        // that overlap in time, each forwarded under its own span id, which the store does not hold (the
+        // tap's client span is in another process). The span tree gives each server span to one call.
+        List<RequestResponseLog> a = call("t1", 0, 100, "traceA", "a-call");
+        List<RequestResponseLog> b = call("t1", 10, 110, "traceA", "b-call");
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(a, b), List.of(
+            span("a-server", 20, "traceA", "a-call"),
+            span("b-server", 25, "traceA", "b-call"),
+            span("a-query", 30, "traceA", "a-server"),
+            span("b-query", 35, "traceA", "b-server")));
+
+        assertEquals(List.of("a-server", "a-query"), names(segs.get(key(a))), "a's popup holds only a's spans");
+        assertEquals(List.of("b-server", "b-query"), names(segs.get(key(b))), "b's popup holds only b's spans");
+    }
+
+    @Test
+    void buildSegments_nestedCallOfOneTest_stillShowsInsideItsOuterCall() {
+        // The outer call's service calls onward inside it, and the nested call is forwarded under the span the
+        // service started for that: its spans descend from both calls' span ids, so both popups show them. A
+        // span of the outer call's own work is the outer call's, though it starts inside the nested call's time.
+        List<RequestResponseLog> outer = call("t1", 0, 200, "traceA", "outer-call");
+        List<RequestResponseLog> nested = call("t1", 40, 150, "traceA", "outer-client");
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(outer, nested), List.of(
+            span("outer-server", 10, "traceA", "outer-call"),
+            span("outer-client", 40, "traceA", "outer-server"),
+            span("nested-server", 50, "traceA", "outer-client"),
+            span("nested-query", 60, "traceA", "nested-server"),
+            span("outer-side", 70, "traceA", "outer-server")));
+
+        assertEquals(List.of("outer-server", "outer-client", "nested-server", "nested-query", "outer-side"),
+            names(segs.get(key(outer))), "the outer popup holds its own spans and the nested call's");
+        assertEquals(List.of("outer-client", "nested-server", "nested-query"), names(segs.get(key(nested))),
+            "the nested popup holds the nested call's spans, not the outer call's own work");
+    }
+
+    @Test
+    void buildSegments_spansThatDescendFromNoCall_stayInEveryOverlappingWindow() {
+        // A span whose chain names neither call's span id (in process, its parent was a span no listener kept)
+        // cannot be given to either call by the tree, so it stays where its time puts it, as before.
+        List<RequestResponseLog> a = call("t1", 0, 100, "traceA", "a-call");
+        List<RequestResponseLog> b = call("t1", 10, 110, "traceA", "b-call");
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(a, b), List.of(
+            span("a-server", 20, "traceA", "a-call"),
+            span("b-server", 25, "traceA", "b-call"),
+            span("unlinked", 30, "traceA", "unkept-parent")));
+
+        assertEquals(List.of("a-server", "unlinked"), names(segs.get(key(a))), "a keeps its span and the unlinked one");
+        assertEquals(List.of("b-server", "unlinked"), names(segs.get(key(b))), "b keeps its span and the unlinked one");
+    }
+
+    @Test
+    void buildSegments_oneTestsCallsUnderOneSpanId_keepTodaysSelection() {
+        // In process, every call of a test may record the one ambient span it runs under: nothing tells the
+        // calls apart by tree, so each keeps every span of the trace in its time.
+        List<RequestResponseLog> a = call("t1", 0, 100, "traceA", "ambient");
+        List<RequestResponseLog> b = call("t1", 10, 110, "traceA", "ambient");
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(a, b), List.of(
+            span("under", 20, "traceA", "ambient"),
+            span("beside", 30, "traceA", "unkept-parent")));
+
+        assertEquals(List.of("under", "beside"), names(segs.get(key(a))), "a keeps every span of the trace in its time");
+        assertEquals(List.of("under", "beside"), names(segs.get(key(b))), "b keeps every span of the trace in its time");
+    }
+
     @Test
     void emptyInputs_yieldNoSegments() {
         assertTrue(InternalFlowSegmentBuilder.buildWholeTestSegments(List.of(), List.of()).isEmpty());
@@ -85,6 +160,32 @@ class InternalFlowSegmentBuilderTest {
     private static InternalFlowSpan span(String id, String parent, String name, Instant start,
                                          double durMs, String traceId) {
         return new InternalFlowSpan(id, parent, "Svc", null, name, start, durMs, traceId);
+    }
+
+    /** A 5 ms span of {@code traceId} starting {@code startMs} after T0 under {@code parentSpanId}; its id is its name. */
+    private static InternalFlowSpan span(String name, int startMs, String traceId, String parentSpanId) {
+        return span(name, parentSpanId, name, T0.plusMillis(startMs), 5, traceId);
+    }
+
+    /** A request and its response, {@code fromMs} to {@code toMs} after T0, both recording the trace and span id. */
+    private static List<RequestResponseLog> call(String testId, int fromMs, int toMs, String traceId, String spanId) {
+        UUID id = UUID.randomUUID();
+        return List.of(
+            boundary(testId, traceId, RequestResponseType.REQUEST, id, T0.plusMillis(fromMs)).activitySpanId(spanId),
+            boundary(testId, traceId, RequestResponseType.RESPONSE, id, T0.plusMillis(toMs)).activitySpanId(spanId));
+    }
+
+    private static List<RequestResponseLog> logsOf(List<RequestResponseLog> first, List<RequestResponseLog> second) {
+        return Stream.concat(first.stream(), second.stream()).toList();
+    }
+
+    /** The popup segment's key for a call made by {@link #call}. */
+    private static String key(List<RequestResponseLog> call) {
+        return "iflow-" + call.get(0).requestResponseId();
+    }
+
+    private static List<String> names(InternalFlowSegment segment) {
+        return segment.spans().stream().map(InternalFlowSpan::operationName).toList();
     }
 
     private static RequestResponseLog boundary(String testId, String traceId, RequestResponseType type,
