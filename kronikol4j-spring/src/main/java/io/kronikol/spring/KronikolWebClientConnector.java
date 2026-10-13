@@ -221,13 +221,19 @@ public final class KronikolWebClientConnector implements ClientHttpConnector {
 
         @Override
         public Flux<DataBuffer> getBody() {
+            // doOnTerminate runs before the end of the body reaches the caller (doFinally ran after it, so the caller
+            // could have the body, and its test could end, before the call was recorded); doOnCancel covers a caller
+            // that stops reading early.
             return super.getBody()
                 .doOnNext(buffer -> teeInto(buffer, sink))
-                .doFinally(signal -> {
-                    if (emitted.compareAndSet(false, true)) {
-                        onComplete.run();
-                    }
-                });
+                .doOnTerminate(this::emitOnce)
+                .doOnCancel(this::emitOnce);
+        }
+
+        private void emitOnce() {
+            if (emitted.compareAndSet(false, true)) {
+                onComplete.run();
+            }
         }
     }
 }

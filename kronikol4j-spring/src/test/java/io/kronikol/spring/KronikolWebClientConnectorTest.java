@@ -16,6 +16,8 @@ import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.client.reactive.JdkClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -81,6 +83,35 @@ class KronikolWebClientConnectorTest {
         assertThat(request.serviceName()).isEqualTo("Orders");
         assertThat(responseLog.content()).isEqualTo("{\"ok\":true}");
         assertThat(responseLog.statusCode()).isEqualTo(io.kronikol.core.tracking.StatusCode.of(200));
+    }
+
+    @Test
+    void recordsTheCallBeforeTheCallerHasTheBody() {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"ok\":true}"));
+        WebClient client = clientWith(baseConfig().build());
+
+        // Counted at the moment the caller receives the body: the call must already be recorded, or a test that
+        // ends with this call can lose it (the records were written after the caller had the body).
+        Integer logged = client.post().uri(server.url("/checkout").uri())
+            .bodyValue("{\"item\":\"egg\"}")
+            .retrieve().bodyToMono(String.class)
+            .map(body -> RequestResponseLogger.getAllLogs().size())
+            .block();
+
+        assertThat(logged).isEqualTo(2);
+    }
+
+    @Test
+    void recordsTheCallWhenTheCallerStopsReadingTheBodyEarly() {
+        server.enqueue(new MockResponse().setResponseCode(200).setChunkedBody("{\"items\":[1,2,3,4,5,6,7,8]}", 4));
+        WebClient client = clientWith(baseConfig().build());
+
+        client.get().uri(server.url("/items").uri())
+            .retrieve().bodyToFlux(DataBuffer.class)
+            .take(1).doOnNext(DataBufferUtils::release)
+            .blockLast();
+
+        assertThat(RequestResponseLogger.getAllLogs()).hasSize(2);
     }
 
     @Test

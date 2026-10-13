@@ -32,6 +32,12 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
   `diagnostic` schema definition.
 
 ### Fixed
+- **The Spring WebClient connector records a call before the caller has its body.** It wrote both records when the
+  response body's stream had finished (`doFinally`), which Reactor runs after the end of the body has reached the
+  caller, so a caller could have the body, and its test could end, before the call was recorded. CI saw the request
+  record missing once (`KronikolWebClientConnectorTest`, JDK 21). The records are now written as the body ends
+  (`doOnTerminate`) or when the caller stops reading it (`doOnCancel`); a fact counts the records at the moment the
+  caller receives the body, and another reads one buffer and stops.
 - **`TestRunReport.json` / `.xml` / `.yml` no longer export Gherkin steps and assertions as content-free
   calls to `http://override.com/`.** The override start/end pair that splices a step bar, an assertion note
   or a custom fragment into a sequence diagram — and the Setup/Action boundary marker — travel in the same
