@@ -2,12 +2,14 @@ package io.kronikol.report.flow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.kronikol.core.tracking.Method;
 import io.kronikol.core.tracking.RequestResponseLog;
 import io.kronikol.core.tracking.RequestResponseType;
 import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -231,6 +233,38 @@ class InternalFlowSegmentBuilderTest {
             "the call keeps the spans of the delivery on its Kronikol trace");
         assertEquals(List.of("worker-handler"), names(segs.get(key(delivery))),
             "the delivery keeps out the call's own span");
+    }
+
+    @Test
+    void buildSegments_callMadeAfterAnotherWasAnswered_didNotRunInsideIt() {
+        // A request is open only until its answer. The service's call made after the test's call was answered
+        // did not run inside it, so the spans under the span that later call recorded stay out of the test's call.
+        List<RequestResponseLog> first = call("t1", 0, 50, "traceA", "call", "Api", "Test", null);
+        List<RequestResponseLog> later = call("t1", 70, 90, "traceA", "job", "Db", "Api", null);
+
+        Map<String, InternalFlowSegment> segs = InternalFlowSegmentBuilder.buildSegments(logsOf(first, later), List.of(
+            span("api-server", 5, "traceA", "call"),
+            span("job", 35, "traceA", null),
+            span("job-step", 40, "traceA", "job")));
+
+        assertEquals(List.of("api-server"), names(segs.get(key(first))),
+            "the call keeps out the spans of a call made after it was answered");
+    }
+
+    @Test
+    void buildSegments_callRecordHandedInTwice_doesNotHangTheBuilder() {
+        // A record handed in twice is one call and never runs inside itself, and the walk up the calls a call ran
+        // inside always ends. a's service is its own caller, so its second record would otherwise sit inside its first.
+        List<RequestResponseLog> a = call("t1", 0, 100, "traceA", "a", "Orders", "Orders", null);
+        List<RequestResponseLog> b = call("t1", 10, 110, "traceA", "b");
+        List<InternalFlowSpan> spans = List.of(span("a-server", 20, "traceA", "a"), span("b-server", 25, "traceA", "b"));
+
+        // Preemptively: a walk that never ends does not answer an interrupt.
+        Map<String, InternalFlowSegment> segs = assertTimeoutPreemptively(Duration.ofSeconds(30),
+            () -> InternalFlowSegmentBuilder.buildSegments(logsOf(a, b, List.of(a.get(0))), spans));
+
+        assertEquals(List.of("a-server"), names(segs.get(key(a))), "a keeps its own span");
+        assertEquals(List.of("b-server"), names(segs.get(key(b))), "b keeps its own span");
     }
 
     @Test

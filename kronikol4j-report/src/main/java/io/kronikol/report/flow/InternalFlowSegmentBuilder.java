@@ -231,8 +231,13 @@ public final class InternalFlowSegmentBuilder {
                     continue;
                 }
                 for (int k = open.size() - 1; k >= 0; k--) {
-                    if (madeInside(entry, open.get(k))) {
-                        outerOf.put(entry, open.get(k));
+                    RequestResponseLog candidate = open.get(k);
+                    // A record handed in twice is one call, and never runs inside itself.
+                    if (candidate == entry) {
+                        continue;
+                    }
+                    if (madeInside(entry, candidate)) {
+                        outerOf.put(entry, candidate);
                         break;
                     }
                 }
@@ -255,8 +260,8 @@ public final class InternalFlowSegmentBuilder {
 
         /** Whether {@code call} is {@code outer} or ran inside it, following the outer links up. */
         private boolean isOrRanInside(RequestResponseLog call, RequestResponseLog outer) {
-            // Each link leads to a call opened earlier, so the walk ends; the bound only guards a record handed in
-            // twice, which could otherwise become its own outer call.
+            // Each link leads to a call opened earlier, so the walk ends; the bound guards records handed in twice,
+            // whose links can still lead back to one another.
             RequestResponseLog at = call;
             for (int hops = 0; at != null && hops <= outerOf.size(); hops++) {
                 if (at == outer) {
