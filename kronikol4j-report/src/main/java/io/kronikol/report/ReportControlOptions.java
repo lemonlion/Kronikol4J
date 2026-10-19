@@ -30,20 +30,24 @@ package io.kronikol.report;
  * @param generateTestRunReport  master switch for the HTML test-run report itself (the .NET
  *                            {@code GenerateTestRunReport}, default {@code true}); when {@code false} the
  *                            finalizer skips writing {@code TestRunReport.html} (data/specs/component still run)
+ * @param compressTestRunReport  write the JSON data file compressed whole, as {@code TestRunReport.krkl} in place of
+ *                            {@code TestRunReport.json} (the .NET {@code CompressTestRunReport}, default {@code false}):
+ *                            compact, {@code formatVersion} 3, the keys that hold nothing left out unless the schema
+ *                            requires them, gzipped; read by {@code kronikol} 4.30.0 and later
  */
 public record ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
                                    boolean generateComponentDiagram, boolean generateMergeableData,
                                    boolean generateTestRunReportData, Integer expectedTestCount,
-                                   boolean generateTestRunReport) {
+                                   boolean generateTestRunReport, boolean compressTestRunReport) {
 
     /** The .NET-default file name (without extension). */
     public static final String DEFAULT_HTML_FILE_NAME = "TestRunReport";
 
     /** The .NET defaults: no title override (caller's title used), {@code "TestRunReport"} file name,
      *  component diagram on, no standalone mergeable fragment, test-run data on, no expected-count guard,
-     *  HTML test-run report on. */
+     *  HTML test-run report on, the data file not compressed. */
     public static final ReportControlOptions DEFAULTS =
-        new ReportControlOptions(null, DEFAULT_HTML_FILE_NAME, true, false, true, null, true);
+        new ReportControlOptions(null, DEFAULT_HTML_FILE_NAME, true, false, true, null, true, false);
 
     public ReportControlOptions {
         htmlReportFileName = (htmlReportFileName == null || htmlReportFileName.isBlank())
@@ -52,20 +56,20 @@ public record ReportControlOptions(String testRunReportTitle, String htmlReportF
 
     /** Two-arg shape (component diagram on, no mergeable data, data on, no guard, HTML report on). */
     public ReportControlOptions(String testRunReportTitle, String htmlReportFileName) {
-        this(testRunReportTitle, htmlReportFileName, true, false, true, null, true);
+        this(testRunReportTitle, htmlReportFileName, true, false, true, null, true, false);
     }
 
     /** Three-arg shape — back-compatible. */
     public ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
                                 boolean generateComponentDiagram) {
-        this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, false, true, null, true);
+        this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, false, true, null, true, false);
     }
 
     /** Four-arg shape — back-compatible. */
     public ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
                                 boolean generateComponentDiagram, boolean generateMergeableData) {
         this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, generateMergeableData, true,
-            null, true);
+            null, true, false);
     }
 
     /** Five-arg shape — back-compatible. */
@@ -73,7 +77,7 @@ public record ReportControlOptions(String testRunReportTitle, String htmlReportF
                                 boolean generateComponentDiagram, boolean generateMergeableData,
                                 boolean generateTestRunReportData) {
         this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, generateMergeableData,
-            generateTestRunReportData, null, true);
+            generateTestRunReportData, null, true, false);
     }
 
     /** Six-arg shape (HTML test-run report on) — back-compatible with the pre-{@code generateTestRunReport} record. */
@@ -81,43 +85,58 @@ public record ReportControlOptions(String testRunReportTitle, String htmlReportF
                                 boolean generateComponentDiagram, boolean generateMergeableData,
                                 boolean generateTestRunReportData, Integer expectedTestCount) {
         this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, generateMergeableData,
-            generateTestRunReportData, expectedTestCount, true);
+            generateTestRunReportData, expectedTestCount, true, false);
+    }
+
+    /** Seven-arg shape (the data file not compressed) — back-compatible with the pre-{@code compressTestRunReport} record. */
+    public ReportControlOptions(String testRunReportTitle, String htmlReportFileName,
+                                boolean generateComponentDiagram, boolean generateMergeableData,
+                                boolean generateTestRunReportData, Integer expectedTestCount,
+                                boolean generateTestRunReport) {
+        this(testRunReportTitle, htmlReportFileName, generateComponentDiagram, generateMergeableData,
+            generateTestRunReportData, expectedTestCount, generateTestRunReport, false);
     }
 
     public ReportControlOptions withTestRunReportTitle(String value) {
         return new ReportControlOptions(value, htmlReportFileName, generateComponentDiagram,
-            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport);
+            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport, compressTestRunReport);
     }
 
     public ReportControlOptions withHtmlReportFileName(String value) {
         return new ReportControlOptions(testRunReportTitle, value, generateComponentDiagram,
-            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport);
+            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport, compressTestRunReport);
     }
 
     public ReportControlOptions withGenerateComponentDiagram(boolean value) {
         return new ReportControlOptions(testRunReportTitle, htmlReportFileName, value,
-            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport);
+            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport, compressTestRunReport);
     }
 
     public ReportControlOptions withGenerateMergeableData(boolean value) {
         return new ReportControlOptions(testRunReportTitle, htmlReportFileName, generateComponentDiagram,
-            value, generateTestRunReportData, expectedTestCount, generateTestRunReport);
+            value, generateTestRunReportData, expectedTestCount, generateTestRunReport, compressTestRunReport);
     }
 
     public ReportControlOptions withGenerateTestRunReportData(boolean value) {
         return new ReportControlOptions(testRunReportTitle, htmlReportFileName, generateComponentDiagram,
-            generateMergeableData, value, expectedTestCount, generateTestRunReport);
+            generateMergeableData, value, expectedTestCount, generateTestRunReport, compressTestRunReport);
     }
 
     public ReportControlOptions withExpectedTestCount(Integer value) {
         return new ReportControlOptions(testRunReportTitle, htmlReportFileName, generateComponentDiagram,
-            generateMergeableData, generateTestRunReportData, value, generateTestRunReport);
+            generateMergeableData, generateTestRunReportData, value, generateTestRunReport, compressTestRunReport);
     }
 
     /** Master switch for the HTML test-run report (the .NET {@code GenerateTestRunReport}). */
     public ReportControlOptions withGenerateTestRunReport(boolean value) {
         return new ReportControlOptions(testRunReportTitle, htmlReportFileName, generateComponentDiagram,
-            generateMergeableData, generateTestRunReportData, expectedTestCount, value);
+            generateMergeableData, generateTestRunReportData, expectedTestCount, value, compressTestRunReport);
+    }
+
+    /** Writes the JSON data file compressed whole, as {@code TestRunReport.krkl} (the .NET {@code CompressTestRunReport}). */
+    public ReportControlOptions withCompressTestRunReport(boolean value) {
+        return new ReportControlOptions(testRunReportTitle, htmlReportFileName, generateComponentDiagram,
+            generateMergeableData, generateTestRunReportData, expectedTestCount, generateTestRunReport, value);
     }
 
     /** The report title to use given a caller-supplied default: the override when set, else {@code fallback}. */

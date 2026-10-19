@@ -203,8 +203,9 @@ public final class ReportFinalizer {
         return out;
     }
 
-    /** The generated report files eligible for CI artifact publishing (matches the .NET extension filter). */
-    private static List<String> collectReportFiles(Path outputDir) throws IOException {
+    /** The generated report files eligible for CI artifact publishing (matches the .NET extension filter, the compressed
+     *  {@code TestRunReport.krkl} included). Package-private for its test. */
+    static List<String> collectReportFiles(Path outputDir) throws IOException {
         if (!Files.isDirectory(outputDir)) {
             return List.of();
         }
@@ -213,7 +214,8 @@ public final class ReportFinalizer {
             entries.filter(Files::isRegularFile).forEach(p -> {
                 String name = p.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
                 if (name.endsWith(".html") || name.endsWith(".yaml") || name.endsWith(".yml")
-                    || name.endsWith(".md") || name.endsWith(".json") || name.endsWith(".xml")) {
+                    || name.endsWith(".md") || name.endsWith(".json") || name.endsWith(".xml")
+                    || name.endsWith(".krkl")) {
                     files.add(p.toString());
                 }
             });
@@ -249,8 +251,14 @@ public final class ReportFinalizer {
             RunResults.startedAt(), Instant.now(), features, diagrams, logsByTestId);
         Files.createDirectories(outputDir);
         for (ReportDataFormat format : formats) {
-            Files.writeString(outputDir.resolve("TestRunReport." + format.extension()),
-                format.serialize(data), StandardCharsets.UTF_8);
+            if (format == ReportDataFormat.JSON && options.compressTestRunReport()) {
+                // The JSON compressed whole, in place of TestRunReport.json (plans/REPORT_FORMAT_PLAN.md R6).
+                io.kronikol.report.data.CompressedReportFile.write(
+                    outputDir.resolve(io.kronikol.report.data.CompressedReportFile.FILE_NAME), format.serialize(data));
+            } else {
+                Files.writeString(outputDir.resolve("TestRunReport." + format.extension()),
+                    format.serialize(data), StandardCharsets.UTF_8);
+            }
             if (options.generateSchema()) {
                 Files.writeString(outputDir.resolve("TestRunReport.schema." + schemaExtension(format)),
                     schemaContent(format), StandardCharsets.UTF_8);

@@ -101,6 +101,9 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
     /** System property (boolean) master-switching the machine-readable test-run-report data file(s)
      *  (default {@code true}). */
     public static final String GENERATE_TEST_RUN_REPORT_DATA_PROPERTY = "kronikol.report.generateTestRunReportData";
+    /** System property (boolean) writing the JSON data file compressed, as {@code TestRunReport.krkl}
+     *  (default {@code false}). */
+    public static final String COMPRESS_TEST_RUN_REPORT_PROPERTY = "kronikol.report.compressTestRunReport";
     /** System property (int) the expected scenario count; fewer suppresses the specifications report/data. */
     public static final String EXPECTED_TEST_COUNT_PROPERTY = "kronikol.report.expectedTestCount";
     /** System property (boolean) writing the markdown run summary to the detected CI platform. */
@@ -396,6 +399,17 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
         return control.generateTestRunReportData();
     }
 
+    /** Writes the JSON data file compressed whole, as {@code TestRunReport.krkl} in place of {@code TestRunReport.json}
+     *  (the .NET {@code CompressTestRunReport}); read by {@code kronikol} 4.30.0 and later. */
+    public ReportOptions withCompressTestRunReport(boolean value) {
+        return withControl(control.withCompressTestRunReport(value));
+    }
+
+    /** Whether the JSON data file is written compressed (delegates to {@link #control()}). */
+    public boolean compressTestRunReport() {
+        return control.compressTestRunReport();
+    }
+
     /** Sets the expected scenario count guard (the .NET {@code ExpectedTestCount}); {@code null} disables it. */
     public ReportOptions withExpectedTestCount(Integer value) {
         return withControl(control.withExpectedTestCount(value));
@@ -442,7 +456,8 @@ public record ReportOptions(DiagramOptions diagram, Set<ReportDataFormat> dataFo
             boolProperty(GENERATE_COMPONENT_DIAGRAM_PROPERTY, true),
             boolProperty(GENERATE_MERGEABLE_DATA_PROPERTY, false),
             boolProperty(GENERATE_TEST_RUN_REPORT_DATA_PROPERTY, true),
-            intPropertyOrNull(EXPECTED_TEST_COUNT_PROPERTY));
+            intPropertyOrNull(EXPECTED_TEST_COUNT_PROPERTY))
+            .withCompressTestRunReport(boolProperty(COMPRESS_TEST_RUN_REPORT_PROPERTY, false));
     }
 
     /** An {@code Integer} system property, or {@code null} when unset/blank/non-numeric. */

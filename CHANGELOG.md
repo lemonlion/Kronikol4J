@@ -4,6 +4,20 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
 
 ## [0.1.25] — unreleased
 
+### Added: the compressed report data file, `TestRunReport.krkl` (.NET 4.32.0's `CompressTestRunReport`; REPORT_FORMAT_PLAN.md R6)
+- **`ReportOptions.withCompressTestRunReport(true)`** (or the system property `kronikol.report.compressTestRunReport`;
+  on `ReportControlOptions`, default off) writes the JSON data file compressed whole, as `TestRunReport.krkl` in place
+  of `TestRunReport.json`: the JSON written compact, `formatVersion` 3 first, every key whose value is `null`, `[]` or
+  `{}` left out unless the report schema requires it where it stands (read from `ReportDataSchema`'s own `required`
+  lists at every depth, as .NET reads its schema; an open part is kept as written), and the whole gzipped with
+  `java.util.zip`, so the report module takes no dependency. `kronikol` 4.30.0 and later reads it by its first bytes,
+  as it reads the zstd file .NET writes; `kronikol decode` writes its JSON out. The file is written beside its name
+  and moved over it, so a reader never sees half a file. XML and YAML are unchanged, and the standalone mergeable
+  fragment stays JSON.
+- **The CI artifact upload takes `.krkl`**, as .NET's does from 4.30.0.
+- Parity is of content, not bytes: the JSON inside escapes only what JSON needs, where `TestRunReport.json` escapes as
+  System.Text.Json's default encoder does, and a reader decodes the same text either way.
+
 ### Added — report-data parity with .NET 3.0.47
 - **Interactions carry everything the diagram knows about them.** `metaType`, `dependencyCategory`,
   `callerDependencyCategory`, `phase`, `isUserAction`, `activityTraceId`, `activitySpanId`, `capturedBy`,

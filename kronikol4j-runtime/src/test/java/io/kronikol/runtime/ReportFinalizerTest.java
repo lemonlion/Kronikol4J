@@ -308,6 +308,51 @@ class ReportFinalizerTest {
     }
 
     @Test
+    void finalizeWritesTheCompressedReportInPlaceOfTheJsonWhenAsked(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+
+        ReportFinalizer.finalizeRun(dir, "Run", ReportOptions.defaults().withCompressTestRunReport(true));
+
+        assertThat(dir.resolve("TestRunReport.json")).doesNotExist();
+        byte[] bytes = Files.readAllBytes(dir.resolve("TestRunReport.krkl"));
+        String json;
+        try (GZIPInputStream in = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
+            json = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        assertThat(json).startsWith("{\"formatVersion\":3,").contains("\"Checkout succeeds\"").doesNotContain("\n");
+        assertThat(io.kronikol.diagram.json.Json.parse(json)).isInstanceOf(java.util.Map.class);
+        assertThat(dir.resolve("TestRunReport.html")).exists();
+    }
+
+    @Test
+    void finalizeRunToDefaultReadsTheCompressSystemProperty(@TempDir Path dir) throws IOException {
+        trackCheckout();
+        RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
+        System.setProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY, dir.toString());
+        System.setProperty(ReportOptions.COMPRESS_TEST_RUN_REPORT_PROPERTY, "true");
+        try {
+            ReportFinalizer.finalizeRunToDefault("Run");
+            assertThat(dir.resolve("TestRunReport.krkl")).exists();
+            assertThat(dir.resolve("TestRunReport.json")).doesNotExist();
+        } finally {
+            System.clearProperty(ReportFinalizer.OUTPUT_DIR_PROPERTY);
+            System.clearProperty(ReportOptions.COMPRESS_TEST_RUN_REPORT_PROPERTY);
+        }
+    }
+
+    @Test
+    void theArtifactUploadTakesTheCompressedReport(@TempDir Path dir) throws IOException {
+        for (String name : List.of("TestRunReport.html", "TestRunReport.krkl", "notes.txt")) {
+            Files.writeString(dir.resolve(name), "x");
+        }
+
+        assertThat(ReportFinalizer.collectReportFiles(dir))
+            .extracting(path -> Path.of(path).getFileName().toString())
+            .containsExactly("TestRunReport.html", "TestRunReport.krkl");
+    }
+
+    @Test
     void finalizeSkipsDataWhenGenerateTestRunReportDataDisabled(@TempDir Path dir) throws IOException {
         trackCheckout();
         RunResults.record("Checkout", Scenario.passed("Checkout succeeds", "t1"));
