@@ -1,11 +1,14 @@
 package io.kronikol.report.data;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.kronikol.diagram.json.Json;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -103,6 +106,27 @@ class CompressedReportFileTest {
         assertThat(gunzip(bytes)).isEqualTo(CompressedReportFile.compact(json));
         try (var listing = Files.list(dir)) {
             assertThat(listing.map(p -> p.getFileName().toString())).containsExactly(CompressedReportFile.FILE_NAME);
+        }
+    }
+
+    @Test
+    void aFileThisProcessMayNotWriteIsLeftAsItIs(@TempDir Path dir) throws IOException {
+        // As Files.writeString leaves a read-only TestRunReport.json: a rename needs only the directory, so it would
+        // replace the file on Linux and macOS (.NET 4.32.1).
+        Path target = dir.resolve(CompressedReportFile.FILE_NAME);
+        Files.writeString(target, "an earlier run");
+        assumeTrue(target.toFile().setWritable(false) && !Files.isWritable(target),
+            "this process writes read-only files (root), so no file here is one it may not write");
+        try {
+            AccessDeniedException refused = assertThrows(AccessDeniedException.class,
+                () -> CompressedReportFile.write(target, "{\"features\": []}"));
+            assertThat(refused.getFile()).isEqualTo(target.toString());
+            assertThat(Files.readString(target)).isEqualTo("an earlier run");
+            try (var listing = Files.list(dir)) {
+                assertThat(listing.map(p -> p.getFileName().toString())).containsExactly(CompressedReportFile.FILE_NAME);
+            }
+        } finally {
+            target.toFile().setWritable(true);
         }
     }
 

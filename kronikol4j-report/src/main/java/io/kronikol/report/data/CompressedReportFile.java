@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +45,11 @@ public final class CompressedReportFile {
         byte[] bytes = encode(json);
         Path directory = target.toAbsolutePath().getParent();
         Files.createDirectories(directory);
+        // A file this process may not write stays as it is, as Files.writeString leaves a read-only TestRunReport.json: a
+        // rename needs only the directory, so it would replace the file on Linux and macOS (.NET 4.32.1).
+        if (Files.exists(target) && !Files.isWritable(target)) {
+            throw new AccessDeniedException(target.toString(), null, "the file is not writable");
+        }
         Path temporary = Files.createTempFile(directory, target.getFileName().toString() + ".", ".tmp");
         try {
             Files.write(temporary, bytes);

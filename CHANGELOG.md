@@ -15,6 +15,9 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
   and moved over it, so a reader never sees half a file. XML and YAML are unchanged, and the standalone mergeable
   fragment stays JSON.
 - **The CI artifact upload takes `.krkl`**, as .NET's does from 4.30.0.
+- **A file this process may not write is left as it is,** as `Files.writeString` leaves a read-only
+  `TestRunReport.json`: the write throws `AccessDeniedException` naming the file, where a rename would replace it on
+  Linux and macOS (.NET 4.32.1 fixed the same in its own writer).
 - Parity is of content, not bytes: the JSON inside escapes only what JSON needs, where `TestRunReport.json` escapes as
   System.Text.Json's default encoder does, and a reader decodes the same text either way.
 
