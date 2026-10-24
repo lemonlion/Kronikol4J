@@ -283,7 +283,7 @@ void CaptureHtml()
     };
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report.html"), content);
     Console.WriteLine($"=== report.html ({content.Length} chars) ===");
 
@@ -342,7 +342,7 @@ void CaptureHtmlRich()
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-rich.html", "Kronikol Run",
         includeTestRunData: false, componentDiagramPlantUml: componentDiagram);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-rich.html"), content);
     Console.WriteLine($"=== report-rich.html ({content.Length} chars) ===");
 }
@@ -378,7 +378,7 @@ void CaptureHtmlSteps()
     };
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-steps.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-steps.html"), content);
     Console.WriteLine($"=== report-steps.html ({content.Length} chars) ===");
 }
@@ -410,7 +410,7 @@ void CaptureHtmlStatuses()
     };
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-statuses.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-statuses.html"), content);
     Console.WriteLine($"=== report-statuses.html ({content.Length} chars) ===");
 }
@@ -441,7 +441,7 @@ void CaptureHtmlAttachments()
     };
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-attachments.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-attachments.html"), content);
     Console.WriteLine($"=== report-attachments.html ({content.Length} chars) ===");
 }
@@ -458,7 +458,7 @@ void CaptureHtmlRules()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-rules.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-rules.html"), content);
     Console.WriteLine($"=== report-rules.html ({content.Length} chars) ===");
 }
@@ -478,7 +478,7 @@ void CaptureHtmlErrorDiff()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-errordiff.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-errordiff.html"), content);
     Console.WriteLine($"=== report-errordiff.html ({content.Length} chars) ===");
 }
@@ -505,7 +505,7 @@ void CaptureHtmlParameterized()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-parameterized.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-parameterized.html"), content);
     Console.WriteLine($"=== report-parameterized.html ({content.Length} chars) ===");
 }
@@ -546,7 +546,7 @@ void CaptureHtmlEscaping()
     };
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-escaping.html", "Title " + M, includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-escaping.html"), content);
     Console.WriteLine($"=== report-escaping.html ({content.Length} chars) ===");
 }
@@ -585,7 +585,7 @@ void CaptureHtmlBackgroundDetect()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-background.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-background.html"), content);
     Console.WriteLine($"=== report-background.html ({content.Length} chars) ===");
 }
@@ -606,7 +606,7 @@ void CaptureHtmlBlankName()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-blankname.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-blankname.html"), content);
     Console.WriteLine($"=== report-blankname.html ({content.Length} chars) ===");
 }
@@ -625,7 +625,7 @@ void CaptureHtmlDuplicateNames()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-dupnames.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-dupnames.html"), content);
     Console.WriteLine($"=== report-dupnames.html ({content.Length} chars) ===");
 }
@@ -652,7 +652,7 @@ void CaptureHtmlFailureClusters()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-failureclusters.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-failureclusters.html"), content);
     Console.WriteLine($"=== report-failureclusters.html ({content.Length} chars) ===");
 }
@@ -675,7 +675,7 @@ void CaptureHtmlFiltersToggles()
     var diagrams = new[] { new DefaultDiagramsFetcher.DiagramAsCode("s1", "", diagram) };
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-filterstoggles.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-filterstoggles.html"), content);
     Console.WriteLine($"=== report-filterstoggles.html ({content.Length} chars) ===");
 }
@@ -696,7 +696,7 @@ void CaptureHtmlEmptyFeature()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [populated, empty], start, end, null, "report-emptyfeature.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-emptyfeature.html"), content);
     Console.WriteLine($"=== report-emptyfeature.html ({content.Length} chars) ===");
 }
@@ -723,7 +723,7 @@ void CaptureHtmlParamEdgeValues()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-paramedge.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-paramedge.html"), content);
     Console.WriteLine($"=== report-paramedge.html ({content.Length} chars) ===");
 }
@@ -748,7 +748,7 @@ void CaptureHtmlEdgeFields()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-edgefields.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-edgefields.html"), content);
     Console.WriteLine($"=== report-edgefields.html ({content.Length} chars) ===");
 }
@@ -774,7 +774,7 @@ void CaptureHtmlEscapingParams()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-escaping-params.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-escaping-params.html"), content);
     Console.WriteLine($"=== report-escaping-params.html ({content.Length} chars) ===");
 }
@@ -794,13 +794,13 @@ void CaptureHtmlParamOptions()
     // titleizeParameterNames:false → raw "input"/"result" sub-headers (not "Input"/"Result").
     var f1 = new Feature { DisplayName = "Math", Scenarios = squares() };
     var p1 = ReportGenerator.GenerateHtmlReport(diagrams, [f1], start, end, null, "report-paramnotitleize.html", "Kronikol Run", includeTestRunData: false, titleizeParameterNames: false);
-    File.WriteAllText(Path.Combine(outDir, "report-paramnotitleize.html"), File.ReadAllText(p1).ReplaceLineEndings("\n"));
+    File.WriteAllText(Path.Combine(outDir, "report-paramnotitleize.html"), Kronikol.Reports.HtmlReportFile.ReadPlain(p1).ReplaceLineEndings("\n"));
     Console.WriteLine("=== report-paramnotitleize.html ===");
 
     // maxParameterColumns:1 → 2 keys > 1 → Fallback single "Test Case" column.
     var f2 = new Feature { DisplayName = "Math", Scenarios = squares() };
     var p2 = ReportGenerator.GenerateHtmlReport(diagrams, [f2], start, end, null, "report-parammaxcols.html", "Kronikol Run", includeTestRunData: false, maxParameterColumns: 1);
-    File.WriteAllText(Path.Combine(outDir, "report-parammaxcols.html"), File.ReadAllText(p2).ReplaceLineEndings("\n"));
+    File.WriteAllText(Path.Combine(outDir, "report-parammaxcols.html"), Kronikol.Reports.HtmlReportFile.ReadPlain(p2).ReplaceLineEndings("\n"));
     Console.WriteLine("=== report-parammaxcols.html ===");
 
     // groupParameterizedTests:false → non-OutlineId prefix scenarios render individually.
@@ -808,7 +808,7 @@ void CaptureHtmlParamOptions()
     var l2 = new Scenario { Id = "l2", DisplayName = "Login(user: sue, role: guest)", Result = ExecutionResult.Passed, Duration = TimeSpan.FromMilliseconds(60) };
     var f3 = new Feature { DisplayName = "Security", Scenarios = [l1, l2] };
     var p3 = ReportGenerator.GenerateHtmlReport(diagrams, [f3], start, end, null, "report-paramnogroup.html", "Kronikol Run", includeTestRunData: false, groupParameterizedTests: false);
-    File.WriteAllText(Path.Combine(outDir, "report-paramnogroup.html"), File.ReadAllText(p3).ReplaceLineEndings("\n"));
+    File.WriteAllText(Path.Combine(outDir, "report-paramnogroup.html"), Kronikol.Reports.HtmlReportFile.ReadPlain(p3).ReplaceLineEndings("\n"));
     Console.WriteLine("=== report-paramnogroup.html ===");
 }
 
@@ -850,7 +850,7 @@ void CaptureHtmlParamWholeTestFlow()
         diagrams, [feature], start, end, null, "report-paramwtf.html", "Kronikol Run", includeTestRunData: false,
         internalFlowTracking: true, wholeTestSegments: wholeTestSegments,
         wholeTestVisualization: WholeTestFlowVisualization.Both);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-paramwtf.html"), content);
     Console.WriteLine($"=== report-paramwtf.html ({content.Length} chars) ===");
 }
@@ -895,7 +895,7 @@ void CaptureHtmlParamWholeTestFlowSame()
         diagrams, [feature], start, end, null, "report-paramwtfsame.html", "Kronikol Run", includeTestRunData: false,
         internalFlowTracking: true, wholeTestSegments: wholeTestSegments,
         wholeTestVisualization: WholeTestFlowVisualization.FlameChart);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-paramwtfsame.html"), content);
     Console.WriteLine($"=== report-paramwtfsame.html ({content.Length} chars) ===");
 }
@@ -938,7 +938,7 @@ void CaptureHtmlWholeTestFlow()
         diagrams, [feature], start, end, null, "report-wholetestflow.html", "Kronikol Run", includeTestRunData: false,
         internalFlowTracking: true, wholeTestSegments: wholeTestSegments,
         wholeTestVisualization: WholeTestFlowVisualization.Both);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-wholetestflow.html"), content);
     Console.WriteLine($"=== report-wholetestflow.html ({content.Length} chars) ===");
 }
@@ -1038,7 +1038,7 @@ void CaptureHtmlPopup()
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-popup.html", "Kronikol Run", includeTestRunData: false,
         internalFlowTracking: true, internalFlowDataScript: idScript);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-popup.html"), content);
     Console.WriteLine($"=== report-popup.html ({content.Length} chars) ===");
 }
@@ -1168,7 +1168,7 @@ void CaptureHtmlDiagramToggles()
     var diagrams = new[] { new DefaultDiagramsFetcher.DiagramAsCode("s1", "", puml) };
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-diagramtoggles.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-diagramtoggles.html"), content);
     Console.WriteLine($"=== report-diagramtoggles.html ({content.Length} chars) ===");
 }
@@ -1202,7 +1202,7 @@ void CaptureHtmlStepNumbers()
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-stepnumbers.html", "Kronikol Run", includeTestRunData: false,
         showStepNumbers: true);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-stepnumbers.html"), content);
     Console.WriteLine($"=== report-stepnumbers.html ({content.Length} chars) ===");
 }
@@ -1218,7 +1218,7 @@ void CaptureHtmlBlankOnFail()
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-blankonfail.html", "Kronikol Run", includeTestRunData: false,
         generateBlankOnFailedTests: true);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-blankonfail.html"), content);
     Console.WriteLine($"=== report-blankonfail.html ({content.Length} chars) ===");
 }
@@ -1242,7 +1242,7 @@ void CaptureHtmlCustomAssets()
         customCss: ".kx-banner { color: #c0ffee; }",
         customFaviconBase64: "data:image/png;base64,AAAA",
         customLogoHtml: "<img src=\"logo.png\" alt=\"Acme\">");
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-customassets.html"), content);
     Console.WriteLine($"=== report-customassets.html ({content.Length} chars) ===");
 }
@@ -1265,7 +1265,7 @@ void CaptureHtmlCustomStyleSheet()
         diagrams, [feature], start, end, ".kx-spec { margin: 0 }\n.kx-spec h2 { color: #336699 }",
         "report-customstylesheet.html", "Kronikol Run", includeTestRunData: false,
         customCss: ".kx-after { color: #c0ffee; }");
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-customstylesheet.html"), content);
     Console.WriteLine($"=== report-customstylesheet.html ({content.Length} chars) ===");
 }
@@ -1362,7 +1362,7 @@ void CaptureDiagnosticReport()
 void CaptureReportDataSchema()
 {
     var path = ReportGenerator.GenerateTestRunReportSchema("testrunreport.schema.json", DataFormat.Json);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "testrunreport-schema.json"), content);
     Console.WriteLine($"=== testrunreport-schema.json ({content.Length} chars) ===");
 
@@ -1416,7 +1416,7 @@ void CaptureHtmlCiMetadata()
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-cimetadata.html", "Kronikol Run", includeTestRunData: true,
         ciMetadata: ci);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-cimetadata.html"), content);
     Console.WriteLine($"=== report-cimetadata.html ({content.Length} chars) ===");
 }
@@ -1447,7 +1447,7 @@ void CaptureHtmlSummary()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [loginFeature, checkoutFeature], start, end, null, "report-summary.html", "Kronikol Run", includeTestRunData: true);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-summary.html"), content);
     Console.WriteLine($"=== report-summary.html ({content.Length} chars) ===");
 }
@@ -1474,7 +1474,7 @@ void CaptureHtmlStepDetails()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-stepdetails.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-stepdetails.html"), content);
     Console.WriteLine($"=== report-stepdetails.html ({content.Length} chars) ===");
 }
@@ -1506,7 +1506,7 @@ void CaptureHtmlStepSegments()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-stepsegments.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-stepsegments.html"), content);
     Console.WriteLine($"=== report-stepsegments.html ({content.Length} chars) ===");
 }
@@ -1535,7 +1535,7 @@ void CaptureHtmlStepParams()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-stepparams.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-stepparams.html"), content);
     Console.WriteLine($"=== report-stepparams.html ({content.Length} chars) ===");
 }
@@ -1577,7 +1577,7 @@ void CaptureHtmlStepTables()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-steptables.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-steptables.html"), content);
     Console.WriteLine($"=== report-steptables.html ({content.Length} chars) ===");
 }
@@ -1620,7 +1620,7 @@ void CaptureHtmlCombinedTable()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-combinedtable.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-combinedtable.html"), content);
     Console.WriteLine($"=== report-combinedtable.html ({content.Length} chars) ===");
 }
@@ -1657,7 +1657,7 @@ void CaptureHtmlComplexParams()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-complexparams.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-complexparams.html"), content);
     Console.WriteLine($"=== report-complexparams.html ({content.Length} chars) ===");
 }
@@ -1704,7 +1704,7 @@ void CaptureHtmlParamComplexCells()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-paramcells.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-paramcells.html"), content);
     Console.WriteLine($"=== report-paramcells.html ({content.Length} chars) ===");
 }
@@ -1737,7 +1737,7 @@ void CaptureHtmlR2Flatten()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-r2flatten.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-r2flatten.html"), content);
     Console.WriteLine($"=== report-r2flatten.html ({content.Length} chars) ===");
 }
@@ -1772,7 +1772,7 @@ void CaptureHtmlFlattenToggle()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-flattentoggle.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-flattentoggle.html"), content);
     Console.WriteLine($"=== report-flattentoggle.html ({content.Length} chars) ===");
 }
@@ -1800,7 +1800,7 @@ void CaptureHtmlPrefixGroup()
     var diagrams = Array.Empty<DefaultDiagramsFetcher.DiagramAsCode>();
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-prefixgroup.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-prefixgroup.html"), content);
     Console.WriteLine($"=== report-prefixgroup.html ({content.Length} chars) ===");
 }
@@ -1828,7 +1828,7 @@ void CaptureHtmlParamDiagrams()
     };
     var path = ReportGenerator.GenerateHtmlReport(
         diagrams, [feature], start, end, null, "report-paramdiagrams.html", "Kronikol Run", includeTestRunData: false);
-    var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+    var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
     File.WriteAllText(Path.Combine(outDir, "report-paramdiagrams.html"), content);
     Console.WriteLine($"=== report-paramdiagrams.html ({content.Length} chars) ===");
 }
@@ -1914,7 +1914,7 @@ void CaptureReportData()
     {
         var path = ReportGenerator.GenerateTestRunReportData(
             [feature], start, end, $"report-data.{ext}", fmt, diagrams, logs);
-        var content = File.ReadAllText(path).ReplaceLineEndings("\n");
+        var content = Kronikol.Reports.HtmlReportFile.ReadPlain(path).ReplaceLineEndings("\n");
         File.WriteAllText(Path.Combine(outDir, $"report-data.{ext}"), content);
         Console.WriteLine($"=== report-data.{ext} ({content.Length} chars) ===");
     }
