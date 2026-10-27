@@ -155,4 +155,27 @@ class KronikolWebClientConnectorTest {
         assertThat(response).isEqualTo("ok");        // pass-through still works
         assertThat(RequestResponseLogger.getAllLogs()).isEmpty(); // nothing tracked
     }
+
+    @Test
+    void namesAnUnmappedRemoteHostByItsHostAndPort() {
+        // .NET #190 R0: a remote host keeps its name. The mock server is the client's proxy, so the call reaches it under
+        // a remote host's name, which URI.getHost() hands over in the case it was written.
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("ok"));
+        var jdk = java.net.http.HttpClient.newBuilder()
+            .version(java.net.http.HttpClient.Version.HTTP_1_1)
+            .proxy(java.net.ProxySelector.of(new java.net.InetSocketAddress(server.getHostName(), server.getPort())))
+            .build();
+        WebClient client = WebClient.builder()
+            .clientConnector(new KronikolWebClientConnector(new JdkClientHttpConnector(jdk), HttpTrackingConfig.builder()
+                .callerName("Test")
+                .testInfoFetcher(() -> new TestInfo("MyTest", "id-1"))
+                .ids(IdGenerator.seeded(5))
+                .build()))
+            .build();
+
+        String body = client.get().uri("http://Pricing.Example.COM:5141/v1/prices").retrieve().bodyToMono(String.class).block();
+
+        assertThat(body).isEqualTo("ok");
+        assertThat(RequestResponseLogger.getAllLogs().get(0).serviceName()).isEqualTo("pricing.example.com:5141");
+    }
 }

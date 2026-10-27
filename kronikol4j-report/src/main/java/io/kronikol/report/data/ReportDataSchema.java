@@ -96,7 +96,7 @@ public final class ReportDataSchema {
                     "W3C trace id \u2014 the bridge to OpenTelemetry traces and application logs. Unlike traceId, which is Kronikol's own identifier for the request/response pair."),
                 "activitySpanId", obj("type", "string", "nullable", true, "description", "W3C span id"),
                 "capturedBy", obj("type", "string", "nullable", true, "description",
-                    "Which capture path produced this entry: wire (proxy/TCP tap) or span (OpenTelemetry receiver)"),
+                    "Which capture path produced this entry, when the capturer says: span (OpenTelemetry receiver), wire (an external capturer that decoded the protocol) or wire + span (both views merged)"),
                 "durationMs", obj("type", "number", "nullable", true, "description",
                     "Wall-clock milliseconds between the request and its response, derived from the two timestamps. Repeated on both halves of the pair; null when the request went unanswered or timestamps are absent."),
                 "stepPath", obj("type", "string", "nullable", true, "description",

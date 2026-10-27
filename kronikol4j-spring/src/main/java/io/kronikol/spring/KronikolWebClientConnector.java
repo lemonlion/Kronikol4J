@@ -82,7 +82,7 @@ public final class KronikolWebClientConnector implements ClientHttpConnector {
         boolean withBody = config.effectiveVerbosity().includesPayload();
         TestPhase phase = TestPhaseContext.current();
         Method httpMethod = methodOf(method.name());
-        String serviceName = resolver.resolve(effectivePort(uri));
+        String serviceName = resolver.resolve(uri.getHost(), effectivePort(uri));
         Capture capture = new Capture();
 
         Function<ClientHttpRequest, Mono<Void>> wrapped = request -> {

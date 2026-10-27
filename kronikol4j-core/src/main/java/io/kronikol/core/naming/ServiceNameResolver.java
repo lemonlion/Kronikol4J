@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 
 /**
  * Resolves the participant/service name for a tracked outbound call from the configured mappings.
- * Java port of the .NET {@code TestTrackingMessageHandler.ResolveServiceName} chain (lines 63-105),
+ * Java port of the .NET {@code TestTrackingMessageHandler.ResolveServiceName} chain,
  * extracted as a standalone, reusable component because both the HTTP and cloud adapters share it.
  *
  * <p>Resolution priority (first match wins):
@@ -19,7 +19,9 @@ import java.util.function.Consumer;
  *       match. Assembly qualification (a {@code ", "} separator, e.g. {@code "Foo.IClient, MyAsm, Version=…"})
  *       is stripped before matching; its presence is what enables the looser {@code contains} fallback,
  *       avoiding false positives like {@code "Client"} matching {@code "MyBetterClient"} on simple names.</li>
- *   <li><b>Port mapping</b> — {@code portsToServiceNames[port]}, else {@code "localhost:<port>"}.</li>
+ *   <li><b>Port mapping</b> — {@code portsToServiceNames[port]}, else the host and port in .NET's form
+ *       ({@code "pricing.example.com:443"}), or {@code "localhost:<port>"} for a loopback host or none
+ *       (.NET 5.13.0, #190).</li>
  * </ol>
  *
  * <p>When a non-null client name matches nothing in steps 2-3, {@link Builder#onUnmatchedClientName} is
@@ -42,8 +44,18 @@ public final class ServiceNameResolver {
         this.onUnmatchedClientName = b.onUnmatchedClientName;
     }
 
-    /** Resolves the service name for a call to the given destination port. */
+    /** Resolves the service name for a call to the given destination port on this machine. */
     public String resolve(int port) {
+        return resolve(null, port);
+    }
+
+    /**
+     * Resolves the service name for a call to {@code host} on {@code port}. A call nothing maps is named by its host and
+     * port ({@code pricing.example.com:443}), or {@code localhost:<port>} when the host is this machine or there is none
+     * (.NET #190 R0): before, two remote APIs on one port were one party called localhost. {@code host} may come in any
+     * form a client library gives it; it is put in the form .NET's {@code Uri.Host} gives ({@link #hostName}).
+     */
+    public String resolve(String host, int port) {
         // 1. Fixed name — highest priority.
         if (fixedName != null) {
             return fixedName;
@@ -85,9 +97,150 @@ public final class ServiceNameResolver {
             onUnmatchedClientName.accept(clientName);
         }
 
-        // 4. Port mapping, else localhost:port.
+        // 4. Port mapping, by the port alone whatever the host, else the host and port.
         String byPort = portsToServiceNames.get(port);
-        return byPort != null ? byPort : "localhost:" + port;
+        if (byPort != null) {
+            return byPort;
+        }
+        String name = hostName(host);
+        return (name == null ? "localhost" : name) + ":" + port;
+    }
+
+    /**
+     * The host as .NET's {@code Uri.Host} gives it, or null for a loopback host or none, which keep
+     * {@code localhost}: ASCII letters lower-cased (other letters as written), an IPv6 literal in brackets, compressed,
+     * with no zone. A trailing dot is kept, so {@code localhost.} is another host, as in .NET. Never a DNS lookup.
+     */
+    static String hostName(String host) {
+        if (host == null || host.isEmpty()) {
+            return null;
+        }
+        String h = host.startsWith("[") && host.endsWith("]") ? host.substring(1, host.length() - 1) : host;
+        if (h.indexOf(':') >= 0) {
+            int zone = h.indexOf('%');
+            String address = zone >= 0 ? h.substring(0, zone) : h;
+            String compressed = compressIpv6(address);
+            if (compressed == null) {
+                return "[" + asciiLower(address) + "]";
+            }
+            return "::1".equals(compressed) ? null : "[" + compressed + "]";
+        }
+        String lower = asciiLower(h);
+        return "localhost".equals(lower) || isIpv4Loopback(lower) ? null : lower;
+    }
+
+    private static String asciiLower(String s) {
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            sb.append(c >= 'A' && c <= 'Z' ? (char) (c + 32) : c);
+        }
+        return sb.toString();
+    }
+
+    /** 127.0.0.0/8, which .NET's {@code Uri.IsLoopback} counts as this machine. */
+    private static boolean isIpv4Loopback(String h) {
+        String[] parts = h.split("\\.", -1);
+        if (parts.length != 4 || !"127".equals(parts[0])) {
+            return false;
+        }
+        for (String part : parts) {
+            if (part.isEmpty() || part.length() > 3 || !part.chars().allMatch(Character::isDigit) || Integer.parseInt(part) > 255) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** An IPv6 literal in RFC 5952's form (lower case, no leading zeros, the longest run of two or more zero groups as ::), or null when it is not one. */
+    static String compressIpv6(String address) {
+        int[] groups = parseIpv6(address);
+        if (groups == null) {
+            return null;
+        }
+        int bestStart = -1;
+        int bestLength = 0;
+        for (int i = 0; i < 8; ) {
+            if (groups[i] != 0) {
+                i++;
+                continue;
+            }
+            int j = i;
+            while (j < 8 && groups[j] == 0) {
+                j++;
+            }
+            if (j - i > bestLength) {
+                bestStart = i;
+                bestLength = j - i;
+            }
+            i = j;
+        }
+        if (bestLength < 2) {
+            bestStart = -1;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            if (i == bestStart) {
+                sb.append("::");
+                i += bestLength - 1;
+                continue;
+            }
+            if (sb.length() > 0 && sb.charAt(sb.length() - 1) != ':') {
+                sb.append(':');
+            }
+            sb.append(Integer.toHexString(groups[i]));
+        }
+        return sb.toString();
+    }
+
+    private static int[] parseIpv6(String address) {
+        int doubleColon = address.indexOf("::");
+        if (doubleColon >= 0 && address.indexOf("::", doubleColon + 1) >= 0) {
+            return null;
+        }
+        String[] head = doubleColon >= 0 ? split(address.substring(0, doubleColon)) : split(address);
+        String[] tail = doubleColon >= 0 ? split(address.substring(doubleColon + 2)) : new String[0];
+        if (head == null || tail == null || (doubleColon < 0 && head.length != 8) || head.length + tail.length > (doubleColon >= 0 ? 7 : 8)) {
+            return null;
+        }
+        int[] groups = new int[8];
+        for (int i = 0; i < head.length; i++) {
+            groups[i] = group(head[i]);
+            if (groups[i] < 0) {
+                return null;
+            }
+        }
+        for (int i = 0; i < tail.length; i++) {
+            groups[8 - tail.length + i] = group(tail[i]);
+            if (groups[8 - tail.length + i] < 0) {
+                return null;
+            }
+        }
+        return groups;
+    }
+
+    private static String[] split(String part) {
+        if (part.isEmpty()) {
+            return new String[0];
+        }
+        String[] pieces = part.split(":", -1);
+        for (String piece : pieces) {
+            if (piece.isEmpty()) {
+                return null;
+            }
+        }
+        return pieces;
+    }
+
+    private static int group(String piece) {
+        if (piece.length() > 4) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(piece, 16);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
     public static Builder builder() {

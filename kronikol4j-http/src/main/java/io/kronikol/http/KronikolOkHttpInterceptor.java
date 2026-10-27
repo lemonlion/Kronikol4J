@@ -105,7 +105,7 @@ public final class KronikolOkHttpInterceptor implements Interceptor {
         List<Header> requestHeaders = toHeaders(tracked);
         URI uri = tracked.url().uri();
         Method method = methodOf(tracked.method());
-        String serviceName = resolver.resolve(tracked.url().port());
+        String serviceName = resolver.resolve(tracked.url().host(), tracked.url().port());
         TestPhase phase = TestPhaseContext.current();
 
         Response response = chain.proceed(tracked);

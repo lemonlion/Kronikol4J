@@ -145,4 +145,27 @@ class TrackingHttpClientTest {
         trackedClient(config).send(postRequest("x"), HttpResponse.BodyHandlers.ofString());
         assertThat(RequestResponseLogger.getAllLogs()).isEmpty();
     }
+
+    @Test
+    void namesAnUnmappedRemoteHostByItsHostAndPort() throws Exception {
+        // .NET #190 R0: a remote host keeps its name. The mock server is the client's proxy, so the call reaches it under
+        // a remote host's name, which URI.getHost() hands over in the case it was written.
+        server.enqueue(new MockResponse().setResponseCode(200));
+        HttpClient jdk = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .proxy(java.net.ProxySelector.of(new java.net.InetSocketAddress(server.getHostName(), server.getPort())))
+            .build();
+        HttpClient client = new TrackingHttpClient(jdk, HttpTrackingConfig.builder()
+            .callerName("Test")
+            .testInfoFetcher(() -> new TestInfo("MyTest", "id-1"))
+            .ids(IdGenerator.seeded(7))
+            .build());
+
+        HttpResponse<String> response = client.send(
+            HttpRequest.newBuilder(java.net.URI.create("http://Pricing.Example.COM:5141/v1/prices")).GET().build(),
+            HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(RequestResponseLogger.getAllLogs().get(0).serviceName()).isEqualTo("pricing.example.com:5141");
+    }
 }

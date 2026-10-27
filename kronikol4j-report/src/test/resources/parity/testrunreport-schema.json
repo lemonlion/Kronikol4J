@@ -461,7 +461,7 @@
         "capturedBy": {
           "type": "string",
           "nullable": true,
-          "description": "Which capture path produced this entry: wire (proxy/TCP tap) or span (OpenTelemetry receiver)"
+          "description": "Which capture path produced this entry, when the capturer says: span (OpenTelemetry receiver), wire (an external capturer that decoded the protocol) or wire \u002B span (both views merged)"
         },
         "durationMs": {
           "type": "number",

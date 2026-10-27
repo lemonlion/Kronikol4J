@@ -178,8 +178,9 @@ public final class RequestResponseLog {
     public RequestResponseLog userAction(boolean v) { this.userAction = v; return this; }
 
     /**
-     * Which capture path produced this entry — {@code wire} (a proxy or TCP tap that decoded the
-     * protocol) or {@code span} (an OpenTelemetry receiver). Matters when capture fidelity is the bug.
+     * Which capture path produced this entry, when the capturer says: {@code span} from an OpenTelemetry receiver,
+     * {@code wire} from an external capturer that decoded the protocol, {@code wire + span} once the two views of one
+     * call are merged. Matters when capture fidelity is the bug.
      */
     public String capturedBy() { return capturedBy; }
     public RequestResponseLog capturedBy(String v) { this.capturedBy = v; return this; }

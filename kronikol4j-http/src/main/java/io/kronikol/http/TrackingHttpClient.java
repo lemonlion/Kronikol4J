@@ -198,7 +198,7 @@ public final class TrackingHttpClient extends HttpClient {
         }
 
         HttpRequest tracked = rb.build();
-        return new Capture(tracked, capturing, who, resolver.resolve(effectivePort(uri)),
+        return new Capture(tracked, capturing, who, resolver.resolve(uri.getHost(), effectivePort(uri)),
             methodOf(request.method()), uri, toHeaders(tracked), traceId, requestResponseId,
             activityTraceId, activitySpanId, TestPhaseContext.current(), withBody);
     }

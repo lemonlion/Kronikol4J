@@ -91,7 +91,7 @@ public final class KronikolWebClientFilter implements ExchangeFilterFunction {
 
         ClientRequest tracked = rb.build();
         Method method = methodOf(request.method().name());
-        String serviceName = resolver.resolve(effectivePort(uri));
+        String serviceName = resolver.resolve(uri.getHost(), effectivePort(uri));
         List<Header> requestHeaders = toHeaders(tracked);
         TestPhase phase = TestPhaseContext.current();
         boolean withBody = config.effectiveVerbosity().includesPayload();

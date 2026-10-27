@@ -49,6 +49,15 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
   `diagnostic` schema definition.
 
 ### Fixed
+- **A call to a remote host that no mapping names is named by its host** (.NET 5.13.0, #190).
+  `ServiceNameResolver` named every such call `localhost:<port>`, whatever host it went to, so two services on one
+  port were one participant. It now takes the request's host and names the call by its host and port as .NET's
+  `Uri.Host` gives it: ASCII letters lower-cased, an IPv6 address in brackets, compressed, with no zone, and
+  `localhost:<port>` for a loopback host or none. The port map is still looked up first, by the port alone, and
+  `resolve(int port)` keeps meaning `localhost`. The OkHttp interceptor, `TrackingHttpClient` and both Spring WebClient
+  hooks pass the host. Facts in `ServiceNameResolverTest` and in each adapter's test.
+- The report schema's `capturedBy` description says what .NET's says from 5.13.0: no Kronikol capturer writes
+  `wire`, while an external capturer may.
 - **Two calls an app made at once through a tap no longer show each other's queries in their internal flow** (.NET
   4.19.4, the audit of #170). `InternalFlowSegmentBuilder` keeps in a call's popup the work of the calls that ran
   inside it, and decided "inside" by the rule `kronikol query flow` nests calls by, so the queries a service made for

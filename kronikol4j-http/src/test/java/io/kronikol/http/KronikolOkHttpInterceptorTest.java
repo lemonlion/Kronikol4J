@@ -216,4 +216,26 @@ class KronikolOkHttpInterceptorTest {
         assertThat(server.takeRequest().getHeader("traceparent"))
             .isEqualTo("00-11111111111111111111111111111111-2222222222222222-01");
     }
+
+    @Test
+    void namesAnUnmappedRemoteHostByItsHostAndPort() throws Exception {
+        // .NET #190 R0: a remote host keeps its name. Every name resolves to the mock server, so the call reaches it
+        // under a remote host's name, which OkHttp hands over lower-cased.
+        server.enqueue(new MockResponse().setResponseCode(200));
+        OkHttpClient client = new OkHttpClient.Builder()
+            .addInterceptor(new KronikolOkHttpInterceptor(HttpTrackingConfig.builder()
+                .callerName("Test")
+                .testInfoFetcher(() -> new TestInfo("MyTest", "id-1"))
+                .ids(IdGenerator.seeded(99))
+                .build()))
+            .dns(hostname -> List.of(java.net.InetAddress.getByName(server.getHostName())))
+            .build();
+
+        String url = "http://Pricing.Example.COM:" + server.getPort() + "/v1/prices";
+        try (Response response = client.newCall(new Request.Builder().url(url).build()).execute()) {
+            assertThat(response.code()).isEqualTo(200);
+        }
+
+        assertThat(RequestResponseLogger.getAllLogs().get(0).serviceName()).isEqualTo("pricing.example.com:" + server.getPort());
+    }
 }
