@@ -2540,6 +2540,7 @@ fixes. Listed for completeness so nothing is silently dropped.
   few milliseconds. The port writes the title as it is (`InternalFlowRenderer.java:133`), so a port's report pays that
   cost in the browser for each such diagram; its activity diagrams already differ from .NET's (no `wrapWidth`, no caps or
   wrapping), and this belongs with porting those.
+- **The service card, `kronikol card` (.NET 5.21.0, 2026-10-28, `SERVICE_CARD_PLAN.md` R1, #191).** Not mirrored: the port has no tool, and the command reads a data file, which Kronikol4J writes only from a standalone run with `kronikol.report.dataFormats=json`; such a card has `run.repository`, `commit`, `branch`, `suite` and `run.report.formatVersion` null even on CI, and causes from nesting alone, and a merged Java run, which writes no data file, has none. Diverges, report output: .NET's component diagram reads an empty dependency category as none, so a delivery from a tracker set to `DependencyCategory = ""` is labelled by its event's method (`Consume (Kafka): Consume (Kafka)`) where it read `: Consume (Kafka)`; the port's `ComponentDiagramGenerator.protocol` (`ComponentDiagramGenerator.java:220`) takes any non-null category, the rule to port. Diverges as before, wider: .NET's merge sweep skips `service.json` and the copy a failed write leaves (`History.run2.json`, `ctrf-report2.json`) as it skips the other files a run writes beside its report; the port's `MergeCommand.collectJsonFiles` (`MergeCommand.java:75-89`) takes every `*.json` under a directory, with no skip list.
 
 ---
 
