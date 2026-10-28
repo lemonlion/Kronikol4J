@@ -2545,6 +2545,7 @@ fixes. Listed for completeness so nothing is silently dropped.
 - **A scenario by its test id, and the scenario row made whole (.NET 5.23.0, 2026-10-28, `QUERY_FOR_PROGRAMS_PLAN.md` R1, #184).** Not mirrored: the port has no query engine. `kronikol query` reads a Java run's report and takes its JUnit unique ids whole as `id:<id>`, `/`, `:` and brackets included, which is why the form has no child addresses; every `scenarios --json` row now prints the id, with `calls`, `diagrams`, `sourceFile`, `sourceLine`, `rule`, `isHappyPath` and `featureSourceFile`. Diverges, run output: .NET's `Failures.jsonl` failure lines carry `id` after `address`, and the agent instructions written beside a report list the `id:` form; the port writes neither file.
 - **`kronikol query diagram` lists and writes a scenario's or a run's diagrams (.NET 5.24.0, 2026-10-28, `QUERY_FOR_PROGRAMS_PLAN.md` R2, #184).** Not mirrored: the port has no query engine. A Java run's diagrams are read the same way, one per scenario that made calls at the default rendering.
 - **`kronikol query --json` refusals carry `error.kind` (.NET 5.25.0, 2026-10-28, `QUERY_FOR_PROGRAMS_PLAN.md` R3, #184).** Not mirrored: the port has no query engine.
+- **`summary --json` lists every diagnostic, and `grep --count` says what it did not search (.NET 5.26.0, 2026-10-28, `QUERY_FOR_PROGRAMS_PLAN.md` R4, #183, #182).** Not mirrored: the port has no query engine.
 
 ---
 
