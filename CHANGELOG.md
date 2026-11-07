@@ -49,6 +49,10 @@ All notable changes to Kronikol4J are documented here. Versions follow SemVer.
   `diagnostic` schema definition.
 
 ### Fixed
+- **A test with no caller that nobody calls draws one actor** (.NET 5.34.1, #228 F7). `appendParticipants` set
+  `actorDefined` only for the caller no service calls, so a test where every caller is also called drew each caller
+  without a category as an `actor`. The first is now the actor and the rest are entities. Fact:
+  `PlantUmlParityTest.oneActorWithNoPureCaller`.
 - **A call to a remote host that no mapping names is named by its host** (.NET 5.13.0, #190).
   `ServiceNameResolver` named every such call `localhost:<port>`, whatever host it went to, so two services on one
   port were one participant. It now takes the request's host and names the call by its host and port as .NET's

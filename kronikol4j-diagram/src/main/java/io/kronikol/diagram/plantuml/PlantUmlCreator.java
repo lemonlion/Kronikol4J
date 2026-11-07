@@ -283,9 +283,10 @@ public final class PlantUmlCreator {
                         sb.append(' ').append(DependencyPalette.colorFor(callerCategory, dependencyColors));
                     }
                     sb.append(NL);
-                } else { // category-less caller: entity once an actor exists, else actor (.NET actorDefined)
+                } else { // category-less caller: the first is the actor and the only one (.NET actorDefined, #228 F7)
                     sb.append(actorDefined ? "entity" : "actor").append(" \"").append(t.callerName())
                         .append("\" as ").append(callerShortName).append(NL);
+                    actorDefined = true;
                 }
             }
 

@@ -283,6 +283,24 @@ class PlantUmlParityTest {
     }
 
     @Test
+    void oneActorWithNoPureCaller() {
+        // .NET 5.34.1's F7 (#228): with no caller that nobody calls, every caller without a category met before it was
+        // called was an actor, as only the pure caller set actorDefined; the first is the actor, the rest entities.
+        List<RequestResponseLog> logs = List.of(
+            callerLog("No pure caller", "http://disk/w", "disk", "worker", DependencyCategories.DATABASE, null,
+                RequestResponseType.REQUEST, "{}", null),
+            callerLog("No pure caller", "http://worker/run", "worker", "scheduler", DependencyCategories.HTTP, null,
+                RequestResponseType.REQUEST, "{}", null),
+            callerLog("No pure caller", "http://scheduler/done", "scheduler", "worker", DependencyCategories.HTTP, null,
+                RequestResponseType.REQUEST, "{}", null));
+
+        String source = PlantUmlCreator.create(logs, false).get(0).diagrams().get(0);
+
+        assertThat(source.lines().filter(l -> l.startsWith("actor ")).toList()).containsExactly("actor \"worker\" as worker");
+        assertThat(source).contains("entity \"scheduler\" as scheduler");
+    }
+
+    @Test
     void componentDiagram() throws IOException {
         // Run-level component diagram (browser/non-C4 mode) over the fan-out corpus: deterministic
         // first-seen participant order, per-type shapes + arrow colours, aggregated call/test counts.
